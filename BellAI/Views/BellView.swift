@@ -11,10 +11,13 @@ struct BellView: View {
                 .padding(.top, 12)
 
             ScrollView {
-                BellListeningView()
-                    .padding(.top, 18)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 16)
+                VStack(spacing: 16) {
+                    BellListeningView()
+                    BellConversationView()
+                }
+                .padding(.top, 18)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
             }
 
             Spacer(minLength: 0)
