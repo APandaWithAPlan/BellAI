@@ -3,10 +3,13 @@ import SwiftUI
 struct HomeView: View {
     var body: some View {
         ScrollView {
-            HomeHeaderView()
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+            VStack(alignment: .leading, spacing: 12) {
+                HomeHeaderView()
+                HomeFeatureCardsView()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
