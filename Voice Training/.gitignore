@@ -1,2 +1,10 @@
 # voice recordings and generated clips (large, personal)
 voice_data/
+
+# training outputs (large)
+bella_voice_lora/
+training_runs/
+test_outputs/
+__pycache__/
+tune_outputs/
+unsloth_compiled_cache/
