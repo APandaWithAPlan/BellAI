@@ -10,6 +10,13 @@ struct BellView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
+            ScrollView {
+                BellListeningView()
+                    .padding(.top, 18)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 16)
+            }
+
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
