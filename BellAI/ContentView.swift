@@ -11,6 +11,11 @@ struct ContentView: View {
 
             if selectedTab == .home {
                 HomeView()
+            } else if selectedTab == .bell {
+                BellView(
+                    onClose: { selectedTab = .home },
+                    onOpenSettings: { selectedTab = .settings }
+                )
             } else {
                 Text(selectedTab.rawValue)
                     .font(.title2.weight(.semibold))
