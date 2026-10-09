@@ -1,0 +1,7 @@
+# Xcode user-specific settings
+**/xcuserdata/
+*.xcuserstate
+
+# Xcode build files
+DerivedData/
+.build/
