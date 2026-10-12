@@ -14,6 +14,15 @@ Setup (once)
 Run (from the folder that contains voice_data)
     python prepare_dataset.py
 
+Clip edges are checked against the sound itself (tools/fix_clips.py), because Whisper's word
+timings run early: without that, clips start with silence and cut off the last word.
+
+Adding more recordings later
+    Put the new files in voice_data/new_recordings, then run:
+        python prepare_dataset.py --add
+    This splits and transcribes only the new files and adds them to the existing
+    clips and metadata.csv. Nothing already in the dataset is changed.
+
 Useful options
     python prepare_dataset.py --overwrite     rebuild clips (erases transcript edits!)
     python prepare_dataset.py --cpu           skip the GPU if it crashes on startup
@@ -30,6 +39,9 @@ import sys
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+from fix_clips import refine  # noqa: E402  - Whisper's word timings run early; this fixes clip edges
 
 SAMPLE_RATE = 24000          # Orpheus (SNAC codec) expects 24 kHz audio
 WHISPER_RATE = 16000         # Whisper expects 16 kHz audio
@@ -173,9 +185,14 @@ def main():
     parser.add_argument("--language", default="en")
     parser.add_argument("--cpu", action="store_true", help="do not use the GPU")
     parser.add_argument("--overwrite", action="store_true", help="replace an existing dataset")
+    parser.add_argument("--add", action="store_true",
+                        help="add the recordings in voice_data/new_recordings to the existing dataset")
+    parser.add_argument("--new", default="voice_data/new_recordings", help="folder used by --add")
     args = parser.parse_args()
+    if args.add and args.overwrite:
+        sys.exit("Use either --add or --overwrite, not both.")
 
-    raw_dir, out_dir = Path(args.raw), Path(args.out)
+    raw_dir, out_dir = Path(args.new if args.add else args.raw), Path(args.out)
     meta_path = out_dir / "metadata.csv"
 
     if not raw_dir.is_dir():
@@ -183,7 +200,13 @@ def main():
     recordings = sorted(p for p in raw_dir.iterdir() if p.suffix.lower() in AUDIO_TYPES)
     if not recordings:
         sys.exit(f"No audio files found in '{raw_dir}'.")
-    if meta_path.exists() and not args.overwrite:
+    existing = set()
+    if args.add:
+        if not meta_path.exists():
+            sys.exit(f"'{meta_path}' doesn't exist yet. Run without --add first.")
+        with open(meta_path, encoding="utf-8-sig", newline="") as f:
+            existing = {row[0].lower() for row in list(csv.reader(f))[1:] if row}
+    elif meta_path.exists() and not args.overwrite:
         sys.exit(
             f"'{meta_path}' already exists. Running again would erase any transcript fixes.\n"
             "Add --overwrite if you really want to rebuild everything."
@@ -201,6 +224,10 @@ def main():
 
     for number, path in enumerate(recordings, 1):
         print(f"[{number}/{len(recordings)}] {path.name}")
+        stem = re.sub(r"[^A-Za-z0-9_-]+", "_", path.stem).strip("_") or f"rec{number}"
+        if any(name.startswith(stem.lower() + "_") for name in existing):
+            print("    already in the dataset, skipping (rename the file if it is a different recording)")
+            continue
         words = transcribe_words(model, path, args.language)
         if not words:
             print("    no speech found, skipping")
@@ -209,7 +236,6 @@ def main():
         audio = load_audio(path, SAMPLE_RATE)
         length = len(audio) / SAMPLE_RATE
         chunks = chunk_words(words)
-        stem = re.sub(r"[^A-Za-z0-9_-]+", "_", path.stem).strip("_") or f"rec{number}"
         kept = 0
 
         for i, chunk in enumerate(chunks):
@@ -225,26 +251,44 @@ def main():
             kept += 1
             name = f"{stem}_{kept:04d}.wav"
             samples = audio[int(start * SAMPLE_RATE): int(end * SAMPLE_RATE)]
+            try:                                   # tighten the cut using the sound itself (see tools/fix_clips.py)
+                refined, _ = refine(audio, int(start * SAMPLE_RATE), len(samples), "<" in text)
+                if len(refined) >= SAMPLE_RATE:
+                    samples = refined
+                    end = start + len(samples) / SAMPLE_RATE
+            except Exception:
+                pass
             sf.write(str(out_dir / name), samples, SAMPLE_RATE, subtype="PCM_16")
             rows.append((name, text))
             total_seconds += end - start
         print(f"    {kept} clips")
 
     if not rows:
-        sys.exit("No clips were produced. Check that the recordings contain clear speech.")
+        sys.exit("No new clips were produced." if args.add else
+                 "No clips were produced. Check that the recordings contain clear speech.")
 
-    with open(meta_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["file_name", "text"])
-        writer.writerows(rows)
+    if args.add:
+        needs_newline = not meta_path.read_bytes().endswith(b"\n")
+        with open(meta_path, "a", newline="", encoding="utf-8") as f:
+            if needs_newline:
+                f.write("\r\n")
+            csv.writer(f).writerows(rows)
+    else:
+        with open(meta_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["file_name", "text"])
+            writer.writerows(rows)
 
     print()
-    print(f"Done: {len(rows)} clips, {total_seconds / 60:.1f} minutes of speech.")
+    added = "Added" if args.add else "Done:"
+    print(f"{added} {len(rows)} clips, {total_seconds / 60:.1f} minutes of speech.")
+    if args.add:
+        print(f"The dataset now has {len(existing) + len(rows)} clips. The new rows are at the bottom of metadata.csv.")
     if skipped:
         print(f"Skipped {skipped} fragments that were too short.")
     print(f"Clips and metadata.csv are in: {out_dir.resolve()}")
     print("Next: open metadata.csv and correct any transcript mistakes.")
-    if total_seconds < 15 * 60:
+    if total_seconds < 15 * 60 and not args.add:
         print("Note: under 15 minutes is thin for a good voice match. 30-60 minutes is the goal.")
 
 

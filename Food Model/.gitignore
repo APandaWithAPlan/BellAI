@@ -1,0 +1,12 @@
+# Python environment for this folder only (keeps it separate from Voice Training)
+.venv/
+__pycache__/
+
+# your own food photos and test data (personal / large)
+photos/
+eval_data/
+
+# outputs
+results/
+cache/
+food_lora/

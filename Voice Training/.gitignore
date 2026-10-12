@@ -8,3 +8,7 @@ test_outputs/
 __pycache__/
 tune_outputs/
 unsloth_compiled_cache/
+bella_voice_merged/
+tools/
+*.gguf
+saved_voices/

@@ -1,9 +1,15 @@
 """
 speak.py - make your trained voice say something.
 
-Run (from the Voice Training folder), after train_voice.py has finished:
+Fastest way to try lots of lines: run it with no text. The model loads once and stays
+loaded, and each line you type is spoken out loud:
+    python speak.py
+
+One-off use (from the Voice Training folder):
     python speak.py "Good morning! Beanie is asleep on the couch."
     python speak.py "Hello <laugh> that tickles." --out hello.wav
+
+There is no length limit: long text is spoken a few sentences at a time and joined together.
 
 The audio is saved as a WAV file (default: test_outputs/speak.wav).
 Sound tags you can use in the text: <laugh> <chuckle> <sigh> <gasp> <yawn> <groan> <cough> <sniffle>
@@ -77,6 +83,43 @@ def synthesize(model, tokenizer, snac_model, text, voice=VOICE, max_new_tokens=1
     return audio.squeeze().float().cpu().numpy()
 
 
+def split_text(text, limit=160):
+    """Break long text into sentence-sized pieces the model can speak in one go."""
+    import re
+
+    sentences = re.findall(r"[^.!?]+[.!?]+[\"')\]]*|[^.!?]+$", text.strip())
+    pieces, current = [], ""
+    for sentence in (s.strip() for s in sentences):
+        chunks = []
+        while len(sentence) > limit:                 # a single huge sentence: cut at a comma or space
+            cut = max(sentence.rfind(", ", 0, limit), sentence.rfind(" ", 0, limit))
+            cut = cut if cut > 0 else limit - 1
+            chunks.append(sentence[:cut + 1].strip())
+            sentence = sentence[cut + 1:].strip()
+        if sentence:
+            chunks.append(sentence)
+        for chunk in chunks:
+            if current and len(current) + len(chunk) + 1 > limit:
+                pieces.append(current)
+                current = chunk
+            else:
+                current = (current + " " + chunk).strip()
+    if current:
+        pieces.append(current)
+    return pieces
+
+
+def speak_long(model, tokenizer, snac_model, text, voice=VOICE, pause=0.3):
+    """Speak text of any length by generating it a few sentences at a time."""
+    import numpy as np
+
+    gap = np.zeros(int(pause * SAMPLE_RATE), dtype=np.float32)
+    parts = []
+    for piece in split_text(text):
+        parts.extend([synthesize(model, tokenizer, snac_model, piece, voice), gap])
+    return np.concatenate(parts[:-1]) if parts else gap
+
+
 def load_base_model(name):
     """Load the Orpheus language model onto the GPU in bfloat16."""
     import torch
@@ -109,20 +152,54 @@ def load_voice():
     return model, tokenizer, snac_model
 
 
+def play(path):
+    """Play a WAV file through the speakers (Windows only; elsewhere it is just saved)."""
+    try:
+        import winsound
+        winsound.PlaySound(str(path), winsound.SND_FILENAME)
+    except Exception:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(description="Speak text in your trained voice.")
-    parser.add_argument("text", help="what to say (put it in quotes)")
+    parser.add_argument("text", nargs="?", help="what to say (in quotes). Leave it out to keep typing lines.")
     parser.add_argument("--out", default=str(HERE / "test_outputs" / "speak.wav"))
+    parser.add_argument("--quiet", action="store_true", help="save the file without playing it")
     args = parser.parse_args()
 
     model, tokenizer, snac_model = load_voice()
+    import time
     import soundfile as sf
 
-    audio = synthesize(model, tokenizer, snac_model, args.text)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(out), audio, SAMPLE_RATE)
-    print(f"Saved {len(audio) / SAMPLE_RATE:.1f} seconds of audio to {out}")
+
+    def say(text):
+        started = time.time()
+        audio = speak_long(model, tokenizer, snac_model, text)
+        took = time.time() - started
+        sf.write(str(out), audio, SAMPLE_RATE)
+        print(f"{len(audio) / SAMPLE_RATE:.1f}s of speech, generated in {took:.1f}s. Saved to {out}")
+        if not args.quiet:
+            play(out)
+
+    if args.text:
+        return say(args.text)
+
+    print("The voice is loaded and will stay loaded. Type a line and press Enter. Type quit to stop.")
+    while True:
+        try:
+            text = input("Say> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if text.lower() in ("quit", "exit", "q"):
+            break
+        if text:
+            try:
+                say(text)
+            except Exception as err:
+                print(f"That one failed: {err}")
 
 
 if __name__ == "__main__":
