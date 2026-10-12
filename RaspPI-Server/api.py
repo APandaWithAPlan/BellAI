@@ -1,11 +1,12 @@
 # Endpoint to forward user's prompt to the AI server.
-# 10/11/2026
+# 10/12/2026
 # https://fastapi.tiangolo.com/tutorial/body/#import-pydantics-basemodel
 # https://github.com/ollama/ollama-python
 # https://pydantic.dev/docs/validation/dev/errors/validation_errors/
+# https://fastapi.tiangolo.com/reference/uploadfile/#fastapi.UploadFile
 
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 from pydantic import BaseModel, Field, field_validator
 import ollama
 
@@ -32,6 +33,13 @@ def receive_chat_prompt(prompt: Prompt):
 
     response = forward_request(prompt.request)
     return get_response(response)
+
+@app.post("/audio")
+async def receive_audio_prompt(audio: UploadFile):
+    # convert audio to format whisper-cli accepts
+    # transcribe audio to text
+    # send to ai server
+    pass
 
 # Create function to send the prompt to the AI server
 def forward_request(request: str):
