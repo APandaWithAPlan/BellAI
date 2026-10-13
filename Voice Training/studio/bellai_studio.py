@@ -30,6 +30,7 @@ import threading
 import time
 import traceback
 import webbrowser
+import zipfile
 from collections import deque
 from pathlib import Path
 
@@ -48,6 +49,7 @@ SETTINGS_FILE = STUDIO_DIR / "studio_settings.json"
 RESULTS_FILE = STUDIO_DIR / "studio_results.json"
 EVAL_DIR = STUDIO_DIR / "eval"
 PAGE = STUDIO_DIR / "index.html"
+PACKS_DIR = VOICE_DIR / "voice_packs"
 PORT = 9890
 
 TEST_LINES = [
@@ -834,6 +836,69 @@ def train(body: dict = Body(...)):
 def train_stop():
     TRAINER.stop()
     return TRAINER.status()
+
+
+PACK_README = """BellAi voice pack
+=================
+
+This is BellAi's GPT-SoVITS voice, ready to plug into the app, the website or the Pi.
+
+Files
+  gpt.ckpt, sovits.pth   the trained voice
+  reference.wav          the clip BellAi copies her tone from
+  voice.json             settings (reference text, speed, expressiveness)
+  bellai_voice_server.py the voice as a web API (POST /tts -> streaming WAV)
+  pi_client_example.py   speaks through the server from a Pi or any other device
+
+Run the server (needs GPT-SoVITS installed on that machine and an NVIDIA GPU for real-time speed)
+  Windows:  "<GPT-SoVITS folder>\\runtime\\python.exe" bellai_voice_server.py --gpt-sovits "<GPT-SoVITS folder>"
+  Linux:    python bellai_voice_server.py --gpt-sovits ~/GPT-SoVITS
+  Add --host 0.0.0.0 --key SOME-SECRET to let other devices on the network use it.
+
+Use it
+  Browser test:  http://localhost:9880/tts?text=Hello%20there
+  Any language:  POST http://<server>:9880/tts  with JSON {"text": "Hello!"}  -> audio/wav (streams)
+                 header X-API-Key: SOME-SECRET  if the server was started with --key
+  From a Pi:     python3 pi_client_example.py --server http://<server>:9880 "Hello!"
+  Health check:  GET /health
+"""
+
+
+@app.post("/api/export")
+def export_pack():
+    gpt, sovits, ref = ENGINE.settings["gpt"], ENGINE.settings["sovits"], ENGINE.settings["ref"]
+    info = CLIP_DATA.by_name.get(ref)
+    if not info:
+        raise HTTPException(400, "Pick a reference clip first.")
+    PACKS_DIR.mkdir(parents=True, exist_ok=True)
+    name = time.strftime("BellAi-voice-%Y%m%d-%H%M.zip")
+    voice = {
+        "name": "BellAi", "engine": "GPT-SoVITS", "version": "v2", "language": "en",
+        "reference_text": info["text"], "speed": ENGINE.settings["speed"],
+        "temperature": ENGINE.settings["temperature"], "top_k": ENGINE.settings["top_k"],
+        "trained_from": {"gpt": Path(gpt).name, "sovits": Path(sovits).name, "reference": ref},
+        "exported": time.strftime("%Y-%m-%d %H:%M"), "test_summary": TRAINER.summary,
+    }
+    partial = PACKS_DIR / (name + ".partial")
+    with zipfile.ZipFile(partial, "w", zipfile.ZIP_STORED) as z:   # the models don't compress anyway
+        z.write(gpt, "gpt.ckpt")
+        z.write(sovits, "sovits.pth")
+        z.write(str(CLIPS / ref), "reference.wav")
+        z.writestr("voice.json", json.dumps(voice, indent=2))
+        z.write(str(STUDIO_DIR / "bellai_voice_server.py"), "bellai_voice_server.py")
+        z.write(str(STUDIO_DIR / "pi_client_example.py"), "pi_client_example.py")
+        z.writestr("README.txt", PACK_README)
+    partial.replace(PACKS_DIR / name)
+    size = (PACKS_DIR / name).stat().st_size
+    return {"name": name, "url": f"/api/packs/{name}", "mb": round(size / 1e6), "folder": str(PACKS_DIR)}
+
+
+@app.get("/api/packs/{name}")
+def download_pack(name: str):
+    path = (PACKS_DIR / name).resolve()
+    if path.parent != PACKS_DIR.resolve() or not path.exists() or path.suffix != ".zip":
+        raise HTTPException(404, "Not found")
+    return FileResponse(str(path), media_type="application/zip", filename=name)
 
 
 @app.post("/api/reload-clips")
