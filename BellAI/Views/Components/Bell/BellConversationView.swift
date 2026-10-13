@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Sample conversation content until the chat service supplies messages.
 struct BellConversationView: View {
+    var submittedPrompt: String? = nil
     @State private var prompt = "Make the living room cozy and play the playlist from last Sunday."
     @State private var draft = ""
     @State private var isEditing = false
@@ -11,55 +12,69 @@ struct BellConversationView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            BellMessageCardView(
-                position: .trailing,
-                title: "YOU",
-                symbol: "person.crop.circle",
-                message: prompt,
-                subtext: "Transcribed on this iPhone"
-            ) {
-                Button {
-                    draft = prompt
-                    isEditing = true
-                } label: {
-                    Label("Edit", systemImage: "pencil")
-                        .frame(minHeight: 44)
+            if let submittedPrompt {
+                BellMessageCardView(
+                    position: .trailing,
+                    title: "YOU",
+                    symbol: "person.crop.circle",
+                    message: submittedPrompt,
+                    subtext: "Typed message"
+                ) {
+                    ShareLink(item: submittedPrompt) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                }
+            } else {
+                BellMessageCardView(
+                    position: .trailing,
+                    title: "YOU",
+                    symbol: "person.crop.circle",
+                    message: prompt,
+                    subtext: "Transcribed on this iPhone"
+                ) {
+                    Button {
+                        draft = prompt
+                        isEditing = true
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                            .frame(minHeight: 44)
+                    }
+
+                    ShareLink(item: prompt) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                            .frame(minHeight: 44)
+                    }
                 }
 
-                ShareLink(item: prompt) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(minHeight: 44)
+                BellMessageCardView(
+                    position: .leading,
+                    title: "BELL",
+                    symbol: "sparkles",
+                    badge: "2.8 sec",
+                    message: response,
+                    subtext: "Used your Sunday 7:14 PM routine · Living room + music",
+                    onRoutineTap: { showsRoutine.toggle() },
+                    isRoutineExpanded: showsRoutine
+                ) {
+                    ShareLink(item: response) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                            .frame(minHeight: 44)
+                    }
                 }
-            }
 
-            BellMessageCardView(
-                position: .leading,
-                title: "BELL",
-                symbol: "sparkles",
-                badge: "2.8 sec",
-                message: response,
-                subtext: "Used your Sunday 7:14 PM routine · Living room + music",
-                onRoutineTap: { showsRoutine.toggle() },
-                isRoutineExpanded: showsRoutine
-            ) {
-                ShareLink(item: response) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(minHeight: 44)
+                if showsRoutine {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Sunday routine")
+                            .font(.subheadline.weight(.semibold))
+                        Label("Warm lights · 35% brightness", systemImage: "lightbulb")
+                        Label("Sunday Slowdown · Living room speaker", systemImage: "music.note")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 16))
                 }
-            }
-
-            if showsRoutine {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Sunday routine")
-                        .font(.subheadline.weight(.semibold))
-                    Label("Warm lights · 35% brightness", systemImage: "lightbulb")
-                    Label("Sunday Slowdown · Living room speaker", systemImage: "music.note")
-                }
-                .font(.caption)
-                .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16))
             }
         }
         .sheet(isPresented: $isEditing) {

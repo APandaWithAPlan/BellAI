@@ -1,0 +1,3 @@
+// Local development only. The included file is ignored by Git.
+OLLAMA_MODEL = gemma4:31b
+#include? "../BellAI/Config/Secrets.xcconfig"

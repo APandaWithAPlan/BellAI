@@ -5,3 +5,6 @@
 # Xcode build files
 DerivedData/
 .build/
+
+# Local API credentials
+BellAI/Config/Secrets.xcconfig

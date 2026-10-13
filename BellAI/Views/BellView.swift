@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct BellView: View {
+    var submittedPrompt: String? = nil
+    var isSubmitting = false
     let onClose: () -> Void
     let onOpenSettings: () -> Void
 
@@ -18,7 +20,11 @@ struct BellView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     BellListeningView()
-                    BellConversationView()
+                    BellConversationView(submittedPrompt: submittedPrompt)
+                    if isSubmitting {
+                        ProgressView("Sending…")
+                            .font(.caption)
+                    }
                     BellInputControlsView(
                         isSpeakerEnabled: $isSpeakerEnabled,
                         isKeyboardVisible: showsKeyboardInput,
