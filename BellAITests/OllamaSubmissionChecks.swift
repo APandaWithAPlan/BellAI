@@ -22,10 +22,20 @@ final class StubURLProtocol: URLProtocol {
 final class StubService: BellAIService {
     var requests: [ChatRequest] = []
     var shouldFail = false
+    var shouldCancel = false
     func send(_ request: ChatRequest) async throws -> ChatResponse {
         requests.append(request)
+        if shouldCancel { throw CancellationError() }
         if shouldFail { throw BellAIServiceError.http(429) }
         return ChatResponse(model: request.model, message: ChatMessage(role: "assistant", content: "Mock reply"), done: true)
+    }
+}
+
+@MainActor
+final class DelayedService: BellAIService {
+    var continuation: CheckedContinuation<ChatResponse, Error>?
+    func send(_ request: ChatRequest) async throws -> ChatResponse {
+        try await withCheckedThrowingContinuation { continuation = $0 }
     }
 }
 
@@ -44,13 +54,40 @@ struct OllamaSubmissionChecks {
         await viewModel.submitStoredRequest()
         precondition(stub.requests.count == 1 && !viewModel.isSubmitting)
         precondition(viewModel.errorMessage == nil)
+        precondition(viewModel.response?.message.content == "Mock reply")
+        precondition(viewModel.responseError == nil)
         precondition(viewModel.pendingRequest?.messages.first?.content == "Hello Bell!")
 
         stub.shouldFail = true
         precondition(viewModel.validateAndStoreRequest("Try again"))
+        precondition(viewModel.response == nil && viewModel.responseError == nil)
         await viewModel.submitStoredRequest()
-        precondition(viewModel.errorMessage != nil && !viewModel.isSubmitting)
+        precondition(viewModel.responseError != nil && !viewModel.isSubmitting)
+        precondition(viewModel.response == nil && viewModel.errorMessage == nil)
         precondition(viewModel.pendingRequest?.messages.first?.content == "Try again")
+
+        stub.shouldFail = false
+        stub.shouldCancel = true
+        precondition(viewModel.validateAndStoreRequest("Cancel this"))
+        precondition(viewModel.responseError == nil)
+        await viewModel.submitStoredRequest()
+        precondition(!viewModel.isSubmitting && viewModel.response == nil)
+        precondition(viewModel.responseError?.contains("cancelled") == true)
+
+        let delayed = DelayedService()
+        let delayedModel = ChatViewModel(service: delayed, model: "test-model")
+        precondition(delayedModel.validateAndStoreRequest("Wait for it"))
+        let submission = Task { await delayedModel.submitStoredRequest() }
+        while delayed.continuation == nil { await Task.yield() }
+        precondition(delayedModel.isSubmitting)
+        precondition(delayedModel.response == nil && delayedModel.responseError == nil)
+        precondition(!delayedModel.validateAndStoreRequest("Duplicate"))
+        delayed.continuation?.resume(returning: ChatResponse(
+            model: "test-model", message: ChatMessage(role: "assistant", content: "Delayed reply"), done: true
+        ))
+        await submission.value
+        precondition(!delayedModel.isSubmitting)
+        precondition(delayedModel.response?.message.content == "Delayed reply")
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]

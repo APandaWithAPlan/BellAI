@@ -16,6 +16,8 @@ struct ContentView: View {
                 BellView(
                     submittedPrompt: chat.pendingRequest?.messages.first?.content,
                     isSubmitting: chat.isSubmitting,
+                    response: chat.response,
+                    responseError: chat.responseError,
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }
                 )

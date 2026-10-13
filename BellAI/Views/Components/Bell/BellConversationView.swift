@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// Sample conversation content until the chat service supplies messages.
+/// Displays the current request and its result, with sample content before submission.
 struct BellConversationView: View {
     var submittedPrompt: String? = nil
+    var assistantResponse: ChatResponse? = nil
+    var responseError: String? = nil
     @State private var prompt = "Make the living room cozy and play the playlist from last Sunday."
     @State private var draft = ""
     @State private var isEditing = false
@@ -22,6 +24,29 @@ struct BellConversationView: View {
                 ) {
                     ShareLink(item: submittedPrompt) {
                         Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                }
+                if let responseError {
+                    BellMessageCardView(
+                        position: .leading,
+                        title: "BELL · REQUEST FAILED",
+                        symbol: "exclamationmark.triangle",
+                        message: responseError,
+                        subtext: "Your message is still available above."
+                    ) {
+                        EmptyView()
+                    }
+                } else if let assistantResponse {
+                    BellMessageCardView(
+                        position: .leading,
+                        title: "BELL",
+                        symbol: "sparkles",
+                        message: assistantResponse.message.content,
+                        subtext: ""
+                    ) {
+                        ShareLink(item: assistantResponse.message.content) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
                     }
                 }
             } else {

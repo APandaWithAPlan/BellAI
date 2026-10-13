@@ -3,6 +3,8 @@ import SwiftUI
 struct BellView: View {
     var submittedPrompt: String? = nil
     var isSubmitting = false
+    var response: ChatResponse? = nil
+    var responseError: String? = nil
     let onClose: () -> Void
     let onOpenSettings: () -> Void
 
@@ -13,18 +15,22 @@ struct BellView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            BellHeaderView(onClose: onClose, onOpenSettings: onOpenSettings)
+            BellHeaderView(
+                subtitle: isSubmitting ? "Thinking…" : "Ready to help",
+                onClose: onClose,
+                onOpenSettings: onOpenSettings
+            )
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
             ScrollView {
                 VStack(spacing: 16) {
-                    BellListeningView()
-                    BellConversationView(submittedPrompt: submittedPrompt)
-                    if isSubmitting {
-                        ProgressView("Sending…")
-                            .font(.caption)
-                    }
+                    BellListeningView(isWaiting: isSubmitting)
+                    BellConversationView(
+                        submittedPrompt: submittedPrompt,
+                        assistantResponse: response,
+                        responseError: responseError
+                    )
                     BellInputControlsView(
                         isSpeakerEnabled: $isSpeakerEnabled,
                         isKeyboardVisible: showsKeyboardInput,

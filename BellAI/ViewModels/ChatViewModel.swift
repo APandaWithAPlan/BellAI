@@ -6,6 +6,8 @@ import Observation
 final class ChatViewModel {
     private(set) var pendingRequest: ChatRequest?
     private(set) var isSubmitting = false
+    private(set) var response: ChatResponse?
+    private(set) var responseError: String?
     var errorMessage: String?
 
     private let service: any BellAIService
@@ -31,6 +33,8 @@ final class ChatViewModel {
             errorMessage = "Keep your message to 4,000 characters or fewer."
             return false
         }
+        response = nil
+        responseError = nil
         pendingRequest = ChatRequest(
             model: model,
             messages: [ChatMessage(role: "user", content: message)],
@@ -45,13 +49,14 @@ final class ChatViewModel {
         defer { isSubmitting = false }
         do {
             let response = try await service.send(request)
+            self.response = response
             // Do not log authorization headers or configuration values.
             print("[Ollama] model: \(response.model), done: \(response.done)")
             print("[Ollama] response: \(response.message.content)")
         } catch is CancellationError {
-            // A cancelled task does not need an error alert.
+            responseError = "The request was cancelled. Please try again."
         } catch {
-            errorMessage = error.localizedDescription
+            responseError = error.localizedDescription
             print("[Ollama] error: \(error.localizedDescription)")
         }
     }

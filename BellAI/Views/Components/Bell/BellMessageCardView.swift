@@ -71,37 +71,43 @@ struct BellMessageCardView<Actions: View>: View {
                         .textSelection(.enabled)
                         .contextMenu { actions() }
 
-                    Button {
-                        onRoutineTap?()
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "brain.head.profile")
-                                .font(.system(size: 17, weight: .light))
-                                .foregroundStyle(accent)
+                    if onRoutineTap != nil {
+                        Button {
+                            onRoutineTap?()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "brain.head.profile")
+                                    .font(.system(size: 17, weight: .light))
+                                    .foregroundStyle(accent)
 
-                            Text(subtext)
-                                .font(.caption)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(subtext)
+                                    .font(.caption)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                            Image(systemName: isRoutineExpanded ? "chevron.down" : "chevron.right")
-                                .font(.system(size: 11, weight: .light))
+                                Image(systemName: isRoutineExpanded ? "chevron.down" : "chevron.right")
+                                    .font(.system(size: 11, weight: .light))
+                            }
+                            .foregroundStyle(secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .frame(minHeight: 56)
+                            .background(Color(red: 0.95, green: 0.93, blue: 0.94), in: RoundedRectangle(cornerRadius: 13))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 13)
+                                    .strokeBorder(Color(red: 0.86, green: 0.82, blue: 0.85), lineWidth: 0.75)
+                            }
                         }
-                        .foregroundStyle(secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .frame(minHeight: 56)
-                        .background(Color(red: 0.95, green: 0.93, blue: 0.94), in: RoundedRectangle(cornerRadius: 13))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 13)
-                                .strokeBorder(Color(red: 0.86, green: 0.82, blue: 0.85), lineWidth: 0.75)
-                        }
+                        .buttonStyle(.plain)
+                        .disabled(onRoutineTap == nil)
+                        .accessibilityHint("Shows the routine used for this response")
+                        .accessibilityValue(isRoutineExpanded ? "Expanded" : "Collapsed")
+                    } else if !subtext.isEmpty {
+                        Text(subtext)
+                            .font(.caption)
+                            .foregroundStyle(secondary)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(onRoutineTap == nil)
-                    .accessibilityHint("Shows the routine used for this response")
-                    .accessibilityValue(isRoutineExpanded ? "Expanded" : "Collapsed")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
