@@ -12,3 +12,7 @@ bella_voice_merged/
 tools/
 *.gguf
 saved_voices/
+GPT-SoVITS/
+studio/eval/
+studio/studio_results.json
+studio/studio_settings.json

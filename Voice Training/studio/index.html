@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BellAi Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 13 8 3l6 6h4l6-6 2 10a10 10 0 1 1-20 0z' fill='%23b89cff'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f6f2ec; --bg2:#efe8df; --card:#fffdf9; --line:#e6ddd1; --text:#231d2b; --muted:#776d83;
+  --accent:#7b5cff; --accent-2:#ff8f6b; --accent-soft:#ece6ff; --good:#2f9e6b; --warn:#c7772b; --bad:#d4483b;
+  --shadow:0 1px 2px rgba(35,29,43,.05),0 8px 28px rgba(35,29,43,.07);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121017; --bg2:#17141e; --card:#1c1924; --line:#2c2737; --text:#f1ecf6; --muted:#a297b0;
+    --accent:#a58bff; --accent-2:#ff9f7f; --accent-soft:#2a2340; --good:#4cc38a; --warn:#e3a35b; --bad:#ff6b5e;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:radial-gradient(1200px 500px at 10% -10%,var(--accent-soft),transparent 60%),var(--bg);
+  color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 48px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.logo{width:42px;height:42px;flex:none}
+h1{font-size:22px;letter-spacing:-.01em;margin:0;font-weight:700}
+.sub{color:var(--muted);font-size:13px}
+.pill{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;
+  background:var(--card);border:1px solid var(--line);font-size:13px;white-space:nowrap;box-shadow:var(--shadow)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.dot.ok{background:var(--good)} .dot.bad{background:var(--bad)}
+.dot.pulse{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:20px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 14px;font-weight:600}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:18px}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{min-width:0}
+
+/* speak */
+.speak{position:relative;overflow:hidden}
+.composer{display:flex;gap:12px;align-items:flex-end}
+textarea{flex:1;resize:none;min-height:96px;max-height:260px;border:1px solid var(--line);border-radius:14px;
+  background:var(--bg2);color:var(--text);padding:14px 16px;font:inherit;font-size:17px;line-height:1.45;outline:none;
+  transition:border-color .15s,box-shadow .15s}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;
+  padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+  transition:transform .08s,background .15s,border-color .15s,opacity .15s}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.big{height:96px;width:96px;border-radius:20px;flex-direction:column;justify-content:center;font-size:14px;gap:6px}
+.btn.big svg{width:28px;height:28px}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.viz{height:54px;width:100%;margin:14px 0 6px;display:block}
+.stats{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;min-height:26px}
+.stat b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.stat span{color:var(--muted);font-size:13px;margin-left:4px}
+.stat.fast b{color:var(--good)} .stat.slow b{color:var(--warn)}
+.hint{color:var(--muted);font-size:13px}
+kbd{font:12px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--bg2)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid var(--line);background:var(--bg2);color:var(--text);border-radius:999px;padding:5px 12px;
+  font:inherit;font-size:13px;cursor:pointer;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip:hover{border-color:var(--accent)}
+.spacer{flex:1}
+
+/* forms */
+label.field{display:block;margin-bottom:14px}
+.field .name{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px}
+.field .name em{font-style:normal;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+select,input[type=search]{width:100%;border:1px solid var(--line);background:var(--bg2);color:var(--text);
+  border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;outline:none}
+select:focus,input[type=search]:focus{border-color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.ref-text{font-size:13px;color:var(--muted);background:var(--bg2);border-radius:10px;padding:10px 12px;margin:8px 0 0;
+  border:1px dashed var(--line)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.two{grid-template-columns:1fr}}
+details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;margin:4px 0 10px;list-style:none}
+details summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+
+/* train */
+.seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:13px;
+  padding:7px 12px;border-radius:9px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:var(--shadow)}
+.data{display:flex;gap:16px;margin:4px 0 14px}
+.data div b{display:block;font-size:22px;letter-spacing:-.01em}
+.data div span{color:var(--muted);font-size:12px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:16px 0 8px}
+.step{font-size:12px;color:var(--muted);text-align:center}
+.step i{display:block;height:6px;border-radius:6px;background:var(--line);margin-bottom:6px;overflow:hidden;position:relative}
+.step i b{position:absolute;inset:0;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .4s}
+.step.now{color:var(--text);font-weight:600}
+.msg{font-size:13px;min-height:20px;margin:6px 0}
+pre.log{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:12px/1.45 var(--mono);
+  color:var(--muted);height:170px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:7px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;vertical-align:middle}
+td:nth-child(2){overflow-wrap:anywhere}
+@media (max-width:480px){th,td{padding:6px 3px}.card{padding:16px}}
+tr.chosen td{background:var(--accent-soft)}
+tr.chosen td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.play{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;width:28px;height:28px;
+  display:inline-grid;place-items:center;cursor:pointer;padding:0}
+.play:hover{border-color:var(--accent)}
+.play svg{width:12px;height:12px}
+.summary{font-size:13px;background:var(--accent-soft);border-radius:10px;padding:10px 12px;margin-top:10px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs>
+      <path d="M9 20 12 5l9 8h6l9-8 3 15a15 15 0 1 1-30 0z" fill="url(#g)"/>
+      <circle cx="18.5" cy="24" r="2.4" fill="var(--card)"/><circle cx="29.5" cy="24" r="2.4" fill="var(--card)"/>
+      <path d="M21 31q3 2.5 6 0" stroke="var(--card)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1>BellAi Studio</h1>
+      <div class="sub" id="sub">Your voice, on tap</div>
+    </div>
+    <div class="pill"><span class="dot pulse" id="dot"></span><span id="state">Connecting...</span></div>
+  </header>
+
+  <section class="card speak">
+    <div class="composer">
+      <textarea id="text" placeholder="Type something for BellAi to say..." maxlength="1200"></textarea>
+      <button class="btn primary big" id="speakBtn" disabled title="Speak (Enter)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+        <span id="speakLabel">Speak</span>
+      </button>
+    </div>
+    <canvas class="viz" id="viz"></canvas>
+    <div class="row">
+      <div class="stats" id="stats"><span class="hint">Press <kbd>Enter</kbd> to speak, <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line, <kbd>Esc</kbd> to stop.</span></div>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="saveBtn" disabled title="Download the last line as a WAV file">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>Save
+      </button>
+    </div>
+    <div class="chips" id="recent"></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Voice</h2>
+      <label class="field">
+        <div class="name">Reference clip <em id="refLen"></em></div>
+        <input type="search" id="refSearch" placeholder="Search your clips..." autocomplete="off">
+        <div class="row" style="margin-top:8px;flex-wrap:nowrap">
+          <select id="ref" style="flex:1;min-width:0"></select>
+          <button class="play" id="refPlay" title="Hear this clip" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button>
+        </div>
+        <div class="ref-text" id="refText">BellAi copies the tone of this clip, so pick one that sounds like how you want her to talk.</div>
+      </label>
+      <label class="field">
+        <div class="name">Speed <em id="speedVal"></em></div>
+        <input type="range" id="speed" min="0.8" max="1.3" step="0.05">
+      </label>
+      <label class="field">
+        <div class="name">Expressiveness <em id="tempVal"></em></div>
+        <input type="range" id="temperature" min="0.5" max="1.3" step="0.05">
+      </label>
+      <details>
+        <summary>Models and fine tuning</summary>
+        <label class="field">
+          <div class="name">Variety <em id="topkVal"></em></div>
+          <input type="range" id="top_k" min="3" max="30" step="1">
+        </label>
+        <div class="two">
+          <label class="field"><div class="name">SoVITS (sound)</div><select id="sovits"></select></label>
+          <label class="field"><div class="name">GPT (rhythm)</div><select id="gpt"></select></label>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Training</h2>
+      <div class="data">
+        <div><b id="dClips">-</b><span>clips</span></div>
+        <div><b id="dMin">-</b><span>minutes of you</span></div>
+        <div><b id="dModel" style="font-size:15px;margin-top:6px">-</b><span>current voice</span></div>
+      </div>
+      <div class="row">
+        <div class="seg" id="preset">
+          <button data-p="quick">Quick</button><button data-p="balanced" class="on">Balanced</button><button data-p="best">Best</button>
+        </div>
+        <span class="hint" id="presetHint"></span>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="trainBtn">Train new voice</button>
+        <button class="btn" id="testBtn" title="Test the saved versions of your current voice and a few reference clips, and keep the best">Find best settings</button>
+        <button class="btn danger" id="stopBtn" hidden>Stop</button>
+      </div>
+      <div class="steps" id="steps"></div>
+      <div class="msg" id="trainMsg"><span class="hint">Training uses every clip in your metadata.csv. Afterwards BellAi tests each saved version and keeps whichever sounds most like you.</span></div>
+      <details id="logBox"><summary>Log</summary><pre class="log" id="log"></pre></details>
+      <div id="results"></div>
+    </section>
+  </div>
+  <footer>Runs entirely on your computer &middot; <span id="gpu"></span></footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+               set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let S = null, refs = [], preset = store.get("preset","balanced");
+let ctx = null, analyser = null, sources = [], controller = null, lastPcm = [], lastRate = 32000, speaking = false, speakId = 0;
+
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),3200)}
+function shortName(p){return (p||"").split("/").pop().replace(/\.(ckpt|pth)$/,"")}
+function niceModel(p){const s=shortName(p);const m=s.match(/(.+?)[-_]e(\d+)/);return m?`${m[1]} · epoch ${m[2]}`:s}
+async function api(path,body){
+  const r = await fetch(path, body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m}catch(e){} throw new Error(m)}
+  return r.json();
+}
+
+/* ---------- status ---------- */
+async function refresh(){
+  try{ S = await api("/api/status"); }catch(e){ setState("Studio isn't running", "bad"); return; }
+  setState(S.ready ? (S.busy==="test" ? "Testing voices..." : S.train.state==="running" ? "Ready · training" : "Ready") : S.status,
+           S.ready ? "ok" : (S.status.startsWith("Couldn't") ? "bad" : "load"));
+  $("speakBtn").disabled = !S.ready;
+  $("gpu").textContent = S.gpu;
+  $("dClips").textContent = S.dataset.clips;
+  $("dMin").textContent = Math.round(S.dataset.minutes);
+  $("dModel").textContent = niceModel(S.settings.sovits);
+  fillSettings();
+  renderTrain(S.train);
+}
+function setState(text, kind){
+  $("state").textContent = text;
+  $("dot").className = "dot" + (kind==="ok"?" ok":kind==="bad"?" bad":" pulse");
+}
+let settingsFilled = false;
+function fillSettings(){
+  const st = S.settings;
+  for (const [id, fmt] of [["speed",v=>v.toFixed(2)+"×"],["temperature",v=>v.toFixed(2)],["top_k",v=>String(v)]]){
+    const el=$(id); if(document.activeElement!==el){el.value=st[id];}
+    $({speed:"speedVal",temperature:"tempVal",top_k:"topkVal"}[id]).textContent = fmt(Number(el.value));
+  }
+  fillSelect($("gpt"), S.weights.gpt, st.gpt);
+  fillSelect($("sovits"), S.weights.sovits, st.sovits);
+  if(!settingsFilled && refs.length){ renderRefs(); settingsFilled = true; }
+  const r = refs.find(x=>x.name===st.ref);
+  if(r){ $("refText").textContent = "“"+r.text+"”"; $("refLen").textContent = r.seconds+" s"; }
+  if(document.activeElement!==$("ref") && $("ref").value!==st.ref && [...$("ref").options].some(o=>o.value===st.ref)) $("ref").value = st.ref;
+}
+function fillSelect(sel, items, current){
+  if(document.activeElement===sel) return;
+  const key = items.join("|")+"#"+current;
+  if(sel._key===key) return; sel._key=key;
+  sel.innerHTML = "";
+  const all = items.includes(current) ? items : [current, ...items];
+  for(const p of all){const o=document.createElement("option");o.value=p;o.textContent=niceModel(p);sel.appendChild(o)}
+  sel.value = current;
+}
+function renderRefs(){
+  const q = $("refSearch").value.trim().toLowerCase();
+  const list = refs.filter(r => !q || r.text.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
+  const sel = $("ref"); sel.innerHTML="";
+  const current = S ? S.settings.ref : null;
+  const shown = list.slice(0, 300);
+  if(current && !shown.some(r=>r.name===current)){const c=refs.find(r=>r.name===current); if(c) shown.unshift(c)}
+  for(const r of shown){const o=document.createElement("option");o.value=r.name;
+    o.textContent=`${r.text.length>70?r.text.slice(0,68)+"…":r.text}  (${r.seconds}s)`;sel.appendChild(o)}
+  if(current) sel.value = current;
+}
+
+/* ---------- speaking ---------- */
+function ensureAudio(){
+  if(!ctx){
+    ctx = new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
+    analyser = ctx.createAnalyser(); analyser.fftSize = 1024; analyser.connect(ctx.destination);
+    draw();
+  }
+  if(ctx.state==="suspended") ctx.resume();
+}
+function stopAudio(){
+  speakId++;
+  if(controller){controller.abort(); controller=null}
+  for(const s of sources){try{s.stop()}catch(e){}}
+  sources = []; setSpeaking(false);
+}
+function setSpeaking(on){
+  speaking = on;
+  $("speakLabel").textContent = on ? "Stop" : "Speak";
+  $("speakBtn").querySelector("svg").innerHTML = on
+    ? '<rect x="6" y="6" width="12" height="12" rx="2.5"/>'
+    : '<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>';
+}
+async function speak(textOverride){
+  if(speaking){ stopAudio(); return; }
+  const text = (textOverride ?? $("text").value).trim();
+  if(!text){ $("text").focus(); return; }
+  ensureAudio(); stopAudio();
+  controller = new AbortController();
+  const myId = speakId;
+  setSpeaking(true);
+  const t0 = performance.now();
+  let firstMs = null, nextTime = 0, leftover = null, samples = 0;
+  lastPcm = [];
+  showStats({waiting:true});
+  try{
+    const r = await fetch("/api/speak",{method:"POST",headers:{"Content-Type":"application/json"},
+                                        body:JSON.stringify({text}),signal:controller.signal});
+    if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m}catch(e){} throw new Error(m)}
+    const rate = Number(r.headers.get("X-Sample-Rate")||32000); lastRate = rate;
+    const reader = r.body.getReader();
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      let bytes = value;
+      if(leftover){const m=new Uint8Array(leftover.length+bytes.length);m.set(leftover);m.set(bytes,leftover.length);bytes=m;leftover=null}
+      if(bytes.length%2){leftover=bytes.slice(bytes.length-1);bytes=bytes.slice(0,bytes.length-1)}
+      if(!bytes.length) continue;
+      const pcm = new Int16Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset+bytes.length));
+      lastPcm.push(pcm); samples += pcm.length;
+      const buf = ctx.createBuffer(1, pcm.length, rate), ch = buf.getChannelData(0);
+      for(let i=0;i<pcm.length;i++) ch[i] = pcm[i]/32768;
+      const src = ctx.createBufferSource(); src.buffer = buf; src.connect(analyser);
+      const at = Math.max(nextTime, ctx.currentTime + 0.03);
+      src.start(at); nextTime = at + buf.duration; sources.push(src);
+      if(firstMs===null){ firstMs = performance.now()-t0 + (at-ctx.currentTime)*1000; showStats({first:firstMs}); }
+    }
+    const genMs = performance.now()-t0, secs = samples/rate;
+    showStats({first:firstMs, secs, rt: secs/(genMs/1000)});
+    $("saveBtn").disabled = samples===0;
+    remember(text);
+    const endIn = Math.max(0, nextTime-ctx.currentTime);
+    controller = null;
+    setTimeout(()=>{ if(myId===speakId) setSpeaking(false) }, endIn*1000+50);
+  }catch(e){
+    setSpeaking(false);
+    if(e.name!=="AbortError"){ toast(e.message); showStats({}); }
+  }
+}
+function showStats({waiting, first, secs, rt}){
+  const el = $("stats");
+  if(waiting){ el.innerHTML = '<span class="hint">Thinking…</span>'; return; }
+  if(first==null){ el.innerHTML = '<span class="hint">Press <kbd>Enter</kbd> to speak, <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line, <kbd>Esc</kbd> to stop.</span>'; return; }
+  const cls = first<=1000 ? "fast" : "slow";
+  let h = `<div class="stat ${cls}"><b>${(first/1000).toFixed(2)} s</b><span>to first sound</span></div>`;
+  if(secs) h += `<div class="stat"><b>${secs.toFixed(1)} s</b><span>of speech</span></div><div class="stat"><b>${rt.toFixed(1)}×</b><span>real time</span></div>`;
+  el.innerHTML = h;
+}
+function remember(text){
+  let r = store.get("recent", []).filter(x=>x!==text); r.unshift(text); r = r.slice(0,6);
+  store.set("recent", r); renderRecent();
+}
+function renderRecent(){
+  const box = $("recent"); box.innerHTML="";
+  for(const t of store.get("recent", [])){
+    const b=document.createElement("button"); b.className="chip"; b.textContent=t; b.title=t;
+    b.onclick=()=>{ $("text").value=t; stopAudio(); speak(t); }; box.appendChild(b);
+  }
+}
+function saveWav(){
+  if(!lastPcm.length) return;
+  const n = lastPcm.reduce((a,p)=>a+p.length,0), buf = new ArrayBuffer(44+n*2), v = new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,lastRate,true);v.setUint32(28,lastRate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
+  let o=44; for(const p of lastPcm){new Int16Array(buf,o,p.length).set(p);o+=p.length*2}
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+  a.download="bellai_"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".wav"; a.click();
+}
+
+/* ---------- visualizer ---------- */
+function draw(){
+  const c=$("viz"), g=c.getContext("2d"), dpr=window.devicePixelRatio||1;
+  const data=new Uint8Array(analyser.fftSize);
+  const styles=getComputedStyle(document.documentElement);
+  (function frame(){
+    const w=c.clientWidth, h=c.clientHeight;
+    if(c.width!==w*dpr){c.width=w*dpr;c.height=h*dpr}
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+    analyser.getByteTimeDomainData(data);
+    const bars=Math.floor(w/6), grad=g.createLinearGradient(0,0,w,0);
+    grad.addColorStop(0,styles.getPropertyValue("--accent").trim()); grad.addColorStop(1,styles.getPropertyValue("--accent-2").trim());
+    g.fillStyle=grad;
+    for(let i=0;i<bars;i++){
+      const s=Math.floor(i*data.length/bars); let peak=0;
+      for(let j=s;j<s+Math.floor(data.length/bars);j++) peak=Math.max(peak,Math.abs(data[j]-128));
+      const bh=Math.max(2,(peak/128)*h*1.6);
+      g.globalAlpha = speaking ? .95 : .35;
+      g.beginPath(); g.roundRect ? g.roundRect(i*6,(h-bh)/2,3.2,bh,2) : g.rect(i*6,(h-bh)/2,3.2,bh); g.fill();
+    }
+    requestAnimationFrame(frame);
+  })();
+}
+
+/* ---------- settings ---------- */
+let saveTimer=null;
+function queueSetting(body){ clearTimeout(saveTimer); saveTimer=setTimeout(async()=>{ try{ S=await api("/api/settings",body); fillSettings(); }catch(e){ toast(e.message) } },250); }
+for(const id of ["speed","temperature","top_k"]){
+  $(id).addEventListener("input",()=>{ const v=Number($(id).value);
+    $({speed:"speedVal",temperature:"tempVal",top_k:"topkVal"}[id]).textContent = id==="speed"?v.toFixed(2)+"×":id==="temperature"?v.toFixed(2):String(v);
+    queueSetting({[id]:v}); });
+}
+async function changeHeavy(body, msg){
+  setState(msg, "load");
+  try{ S = await api("/api/settings", body); toast("Done"); }catch(e){ toast(e.message) }
+  refresh();
+}
+$("ref").addEventListener("change",()=>{ const r=refs.find(x=>x.name===$("ref").value); if(r){$("refText").textContent="“"+r.text+"”";$("refLen").textContent=r.seconds+" s"}
+  changeHeavy({ref:$("ref").value}, "Switching reference..."); });
+$("refSearch").addEventListener("input", renderRefs);
+$("refPlay").addEventListener("click",()=>{ ensureAudio(); const a=new Audio("/api/clip/"+encodeURIComponent($("ref").value)); a.play(); });
+$("gpt").addEventListener("change",()=>changeHeavy({gpt:$("gpt").value},"Loading GPT model..."));
+$("sovits").addEventListener("change",()=>changeHeavy({sovits:$("sovits").value},"Loading SoVITS model..."));
+
+/* ---------- training ---------- */
+const presetText = {quick:"About 15 min", balanced:"About 25 min", best:"About 45 min · most accurate"};
+function renderPreset(){ for(const b of $("preset").children) b.classList.toggle("on", b.dataset.p===preset); $("presetHint").textContent = presetText[preset]; }
+$("preset").addEventListener("click",e=>{ if(e.target.dataset.p){ preset=e.target.dataset.p; store.set("preset",preset); renderPreset(); } });
+$("trainBtn").addEventListener("click",async()=>{
+  try{ await api("/api/train",{preset}); $("logBox").open=true; refresh(); }catch(e){ toast(e.message) } });
+$("testBtn").addEventListener("click",async()=>{
+  try{ await api("/api/train",{test_only:true}); $("logBox").open=true; refresh(); }catch(e){ toast(e.message) } });
+$("stopBtn").addEventListener("click",async()=>{ try{ await api("/api/train/stop",{}); }catch(e){ toast(e.message) } });
+
+let lastLogLen = 0;
+function renderTrain(t){
+  const running = t.state==="running";
+  $("trainBtn").hidden = running; $("testBtn").hidden = running; $("stopBtn").hidden = !running;
+  $("trainBtn").disabled = $("testBtn").disabled = !S.ready;
+  const steps = $("steps");
+  if(!steps.children.length) steps.innerHTML = t.stages.map(s=>`<div class="step"><i><b></b></i>${s}</div>`).join("");
+  [...steps.children].forEach((el,i)=>{
+    const fill = t.stage<0 ? 0 : i<t.stage ? 1 : i>t.stage ? 0 : Math.min(1, t.progress*t.stages.length - i);
+    el.querySelector("b").style.width = (t.state==="idle" && !t.results.length ? 0 : (t.state==="done" ? 100 : fill*100)) + "%";
+    el.classList.toggle("now", running && i===t.stage);
+  });
+  if(t.state!=="idle") $("trainMsg").innerHTML = t.state==="done" ? `<span style="color:var(--good)">\u2713 Finished. BellAi is now using the best version.</span>`
+    : `<span style="color:${t.state==="failed"?"var(--bad)":"inherit"}">${esc(t.message)}</span>`;
+  const log = $("log");
+  if(t.log.length!==lastLogLen || running){
+    const atBottom = log.scrollTop+log.clientHeight >= log.scrollHeight-20;
+    log.textContent = t.log.join("\n"); lastLogLen = t.log.length;
+    if(atBottom) log.scrollTop = log.scrollHeight;
+  }
+  renderResults(t);
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+let resultsKey = "";
+function renderResults(t){
+  const key = JSON.stringify(t.results)+t.summary; if(key===resultsKey) return; resultsKey=key;
+  const box=$("results");
+  if(!t.results.length){ box.innerHTML=""; return; }
+  const pct=v=>v==null?"–":Math.round(v*100)+"%";
+  box.innerHTML = (t.summary?`<div class="summary">${esc(t.summary)}</div>`:"") +
+    `<details ${t.state==="done"?"open":""} style="margin-top:12px"><summary>Test results</summary><table><thead><tr><th></th><th>Version</th><th>Sounds like you</th><th>Words right</th><th>Score</th></tr></thead><tbody>` +
+    t.results.map(r=>`<tr class="${r.chosen?"chosen":""}"><td><button class="play" data-s="${esc(r.sample)}" title="Hear it"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button></td>
+      <td>${esc(r.label)}${r.chosen?" ✓":""}</td><td>${r.similarity.toFixed(3)}</td><td>${pct(r.accuracy)}</td><td><b>${r.score.toFixed(3)}</b></td></tr>`).join("") +
+    `</tbody></table></details>`;
+  box.querySelectorAll(".play").forEach(b=>b.onclick=()=>{ ensureAudio(); new Audio("/api/eval/"+b.dataset.s).play(); });
+}
+
+/* ---------- keys + boot ---------- */
+$("text").addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); if(!$("speakBtn").disabled) { if(speaking) stopAudio(); speak(); } }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") stopAudio(); });
+$("speakBtn").addEventListener("click",()=>speak());
+$("saveBtn").addEventListener("click",saveWav);
+
+(async function boot(){
+  renderPreset(); renderRecent();
+  try{ refs = await api("/api/refs"); }catch(e){}
+  await refresh();
+  $("text").focus();
+  setInterval(refresh, 1500);
+})();
+</script>
+</body>
+</html>
