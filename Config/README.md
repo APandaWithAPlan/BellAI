@@ -6,7 +6,7 @@ Keep the secrets file ignored by Git. It should define `OLLAMA_API_KEY` with you
 
 Debug builds embed the key in their generated Info.plist for local testing. The raw secrets file is excluded from app resources. Release builds do not include Debug.xcconfig. Use a backend before distributing an app with a developer-owned API key.
 
-Home submission validates trimmed text (1–4,000 characters), stores a single request in memory, opens Bell, and posts to `https://ollama.com/api/chat` with streaming disabled. Requests are not saved to disk. The returned model, completion status, and assistant text print in Xcode's console with an `[Ollama]` prefix. The reply or API error appears below the submitted prompt in Bell. While the request runs, the avatar’s outer ring gently pulses; it stops on success, failure, or cancellation and respects Reduce Motion. Validation errors display an alert before navigation.
+Home submission validates trimmed text (1–4,000 characters), starts a fresh conversation in memory, opens Bell, and posts to `https://ollama.com/api/chat` with streaming disabled. Requests are not saved to disk. The returned model, completion status, and assistant text print in Xcode's console with an `[Ollama]` prefix. The reply or API error appears below the submitted prompt in Bell. While the request runs, the avatar’s outer ring gently pulses; it stops on success, failure, or cancellation and respects Reduce Motion. Validation errors display an alert before navigation.
 
 Run offline validation and HTTP checks with:
 
@@ -17,3 +17,5 @@ sh scripts/check-ollama.sh
 These checks use a mock URLSession protocol and fake credentials; they do not contact Ollama.
 
 Manual check: run the Debug app, enter `Hello` on Home, and tap Send. Bell should display the submitted prompt and a pulsing avatar ring. The console should print Ollama's reply (or an error if the key, model access, or quota is unavailable). Returning Home during the request must not allow a duplicate submission. Empty or whitespace-only input should show a validation error without navigating.
+
+The Bell keyboard button opens a follow-up input. Send appends the user message, includes previous user/assistant messages in the API request, and appends the reply or error. Error notices stay in the UI but are excluded from API history. Switching tabs preserves the current conversation; a valid Home submission starts a new session and clears the previous messages. History is not persisted across app launches. Invalid submissions and attempts while a request is pending do not clear the session.

@@ -1,10 +1,9 @@
 import SwiftUI
 
 struct BellView: View {
-    var submittedPrompt: String? = nil
+    var conversation: [ConversationEntry] = []
     var isSubmitting = false
-    var response: ChatResponse? = nil
-    var responseError: String? = nil
+    var onSubmitPrompt: (String) -> Bool = { _ in false }
     let onClose: () -> Void
     let onOpenSettings: () -> Void
 
@@ -20,55 +19,83 @@ struct BellView: View {
                 onClose: onClose,
                 onOpenSettings: onOpenSettings
             )
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
 
-            ScrollView {
-                VStack(spacing: 16) {
-                    BellListeningView(isWaiting: isSubmitting)
-                    BellConversationView(
-                        submittedPrompt: submittedPrompt,
-                        assistantResponse: response,
-                        responseError: responseError
-                    )
-                    BellInputControlsView(
-                        isSpeakerEnabled: $isSpeakerEnabled,
-                        isKeyboardVisible: showsKeyboardInput,
-                        onKeyboardTap: {
-                            showsKeyboardInput.toggle()
-                            if !showsKeyboardInput {
-                                isPromptFocused = false
-                            }
-                        }
-                    )
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        BellListeningView(isWaiting: isSubmitting)
+                        BellConversationView(conversation: conversation)
+                        Color.clear.frame(height: 1).id("conversationEnd")
+                    }
+                    .padding(.top, 18)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 16)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: conversation.last?.id) { _, _ in
+                    proxy.scrollTo("conversationEnd", anchor: .bottom)
+                }
+                .onChange(of: isPromptFocused) { _, focused in
+                    if focused { proxy.scrollTo("conversationEnd", anchor: .bottom) }
+                }
+            }
 
-                    if showsKeyboardInput {
-                        TextField("Type a message…", text: $typedPrompt, axis: .vertical)
+            VStack(spacing: 12) {
+                BellInputControlsView(
+                    isSpeakerEnabled: $isSpeakerEnabled,
+                    isKeyboardVisible: showsKeyboardInput,
+                    onKeyboardTap: toggleKeyboardInput
+                )
+
+                if showsKeyboardInput {
+                    HStack(spacing: 8) {
+                        TextField("Type a message…", text: $typedPrompt)
                             .font(.body)
                             .textFieldStyle(.plain)
-                            .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
-                            .tint(Color(red: 0.92, green: 0.24, blue: 0.49))
-                            .lineLimit(1...4)
-                            .padding(14)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 16))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(Color(red: 0.92, green: 0.24, blue: 0.49), lineWidth: 1)
-                            }
                             .focused($isPromptFocused)
+                            .submitLabel(.send)
+                            .onSubmit(submitFollowUp)
                             .accessibilityLabel("Message Bell AI")
                             .task { isPromptFocused = true }
+
+                        Button(action: submitFollowUp) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 26))
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSubmitting || typedPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityLabel("Send message")
+                    }
+                    .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
+                    .tint(Color(red: 0.92, green: 0.24, blue: 0.49))
+                    .padding(.leading, 14)
+                    .padding(.trailing, 4)
+                    .padding(.vertical, 4)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color(red: 0.92, green: 0.24, blue: 0.49), lineWidth: 1)
                     }
                 }
-                .padding(.top, 18)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
             }
-            .scrollDismissesKeyboard(.interactively)
-
-            Spacer(minLength: 0)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func toggleKeyboardInput() {
+        showsKeyboardInput.toggle()
+        if !showsKeyboardInput { isPromptFocused = false }
+    }
+
+    private func submitFollowUp() {
+        guard !isSubmitting, onSubmitPrompt(typedPrompt) else { return }
+        typedPrompt = ""
+        isPromptFocused = false
     }
 }
 

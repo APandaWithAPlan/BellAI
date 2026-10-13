@@ -64,7 +64,7 @@ struct OllamaSubmissionChecks {
         await viewModel.submitStoredRequest()
         precondition(viewModel.responseError != nil && !viewModel.isSubmitting)
         precondition(viewModel.response == nil && viewModel.errorMessage == nil)
-        precondition(viewModel.pendingRequest?.messages.first?.content == "Try again")
+        precondition(viewModel.pendingRequest?.messages.last?.content == "Try again")
 
         stub.shouldFail = false
         stub.shouldCancel = true
@@ -88,6 +88,38 @@ struct OllamaSubmissionChecks {
         await submission.value
         precondition(!delayedModel.isSubmitting)
         precondition(delayedModel.response?.message.content == "Delayed reply")
+
+        let historyService = StubService()
+        let historyModel = ChatViewModel(service: historyService, model: "test-model")
+        precondition(historyModel.startNewSession(with: "First question"))
+        await historyModel.submitStoredRequest()
+        precondition(historyModel.conversation.map(\.kind) == [.user, .assistant])
+        precondition(historyModel.validateAndStoreRequest("Follow-up"))
+        precondition(historyModel.pendingRequest?.messages.map(\.role) == ["user", "assistant", "user"])
+        precondition(historyModel.pendingRequest?.messages.last?.content == "Follow-up")
+        await historyModel.submitStoredRequest()
+        precondition(historyModel.conversation.count == 4)
+        let savedHistory = historyModel.conversation
+        precondition(!historyModel.startNewSession(with: "  "))
+        precondition(historyModel.conversation == savedHistory)
+
+        historyService.shouldFail = true
+        precondition(historyModel.validateAndStoreRequest("Fail this request"))
+        await historyModel.submitStoredRequest()
+        precondition(historyModel.conversation.last?.kind == .error)
+        precondition(historyModel.conversation.count == 6)
+        precondition(historyModel.validateAndStoreRequest("Recover"))
+        precondition(historyModel.pendingRequest?.messages.count == 6)
+        precondition(historyModel.pendingRequest?.messages.allSatisfy { $0.role != "error" } == true)
+        precondition(!historyModel.startNewSession(with: "Cannot reset while sending"))
+        historyService.shouldFail = false
+        await historyModel.submitStoredRequest()
+        precondition(historyModel.startNewSession(with: "New session"))
+        precondition(historyModel.conversation.count == 1)
+        precondition(historyModel.pendingRequest?.messages == [ChatMessage(role: "user", content: "New session")])
+        precondition(historyModel.response == nil && historyModel.responseError == nil)
+        await historyModel.submitStoredRequest()
+        precondition(historyModel.conversation.count == 2)
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]

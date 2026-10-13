@@ -14,10 +14,9 @@ struct ContentView: View {
                 HomeView(isSubmitting: chat.isSubmitting, onSubmitPrompt: submitHomePrompt)
             } else if selectedTab == .bell {
                 BellView(
-                    submittedPrompt: chat.pendingRequest?.messages.first?.content,
+                    conversation: chat.conversation,
                     isSubmitting: chat.isSubmitting,
-                    response: chat.response,
-                    responseError: chat.responseError,
+                    onSubmitPrompt: submitFollowUpPrompt,
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }
                 )
@@ -41,7 +40,7 @@ struct ContentView: View {
     }
 
     private func submitHomePrompt(_ text: String) -> Bool {
-        guard chat.validateAndStoreRequest(text) else { return false }
+        guard chat.startNewSession(with: text) else { return false }
         transitionToBellConversation()
         Task { await chat.submitStoredRequest() }
         return true
@@ -49,6 +48,12 @@ struct ContentView: View {
 
     private func transitionToBellConversation() {
         selectedTab = .bell
+    }
+
+    private func submitFollowUpPrompt(_ text: String) -> Bool {
+        guard chat.validateAndStoreRequest(text) else { return false }
+        Task { await chat.submitStoredRequest() }
+        return true
     }
 }
 
