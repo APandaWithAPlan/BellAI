@@ -16,3 +16,11 @@ GPT-SoVITS/
 studio/eval/
 studio/studio_results.json
 studio/studio_settings.json
+voice_packs/
+
+# Orpheus model files and training output (large)
+orpheus/models/
+orpheus/outputs/
+
+# files waiting for you to delete
+_to_delete/

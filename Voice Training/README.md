@@ -1,2 +1,56 @@
 # BellAI
 Home Assistant That Extends Beyond the Home
+
+## Voice Training
+
+This folder holds BellAi's voice: your recordings and two ways of turning them into a voice.
+
+| Folder / file | What it is |
+|---|---|
+| `BellAi Studio.bat` | **Start here.** Opens BellAi Studio (GPT-SoVITS voice): type a line and hear it, train, and export the voice. |
+| `voice_data/` | Your recordings and the clips both voices learn from. |
+| `orpheus/` | Everything for the Orpheus voice (scripts, models, test audio). |
+| `studio/` | The code behind BellAi Studio. |
+| `GPT-SoVITS/` | The GPT-SoVITS program (downloaded, don't edit). |
+| `voice_packs/` | Voice packs exported from BellAi Studio (appears after your first export). |
+| `_to_delete/` | Leftover caches. Safe to delete. |
+
+### voice_data/
+
+| Folder | What it is |
+|---|---|
+| `raw/` | Your first recording. |
+| `new_recordings/` | Later recordings, added with `prepare_dataset.py --add`. |
+| `clips/` | The cut-up training clips and `metadata.csv` (what's said in each one). |
+| `gpt_sovits/` | The training list GPT-SoVITS reads (made automatically). |
+| `removed_clips/` | Clips and transcripts taken out of training, plus backups. |
+| `unused_recordings/` | Recordings not used for training. |
+
+### orpheus/
+
+Run these from inside the `orpheus` folder (`cd orpheus` first).
+
+| Script | What it does |
+|---|---|
+| `prepare_dataset.py` | Cuts recordings into clips and transcribes them (feeds both voices). |
+| `tune_voice.py` | Trains the Orpheus voice and keeps the best epoch. |
+| `export_voice.py` | Puts the trained voice into Ollama (`--q6` for a faster 6-bit copy). |
+| `fast_speak.py` | Type a line, hear it in real time. |
+| `speak.py` | Slower, no Ollama needed. |
+| `compare_voice.py`, `compare_engines.py`, `codec_check.py` | Tests and comparisons. |
+| `train_voice.py`, `fix_clips.py` | Helpers used by the scripts above. |
+
+| Folder | What it is |
+|---|---|
+| `models/` | The trained Orpheus voice (`bella_voice_lora`), the merged model, GGUF files and Modelfiles. |
+| `outputs/` | Training checkpoints (`training_runs`), each epoch's test audio (`tune_outputs`) and other test audio (`test_outputs`). |
+| `tools/` | llama.cpp converter (downloaded automatically) and old script backups. |
+
+### Common tasks
+
+- **Hear the GPT-SoVITS voice:** double-click `BellAi Studio.bat`.
+- **Hear the Orpheus voice:** `cd orpheus` then `python fast_speak.py` (Ollama must be running).
+- **Add a new recording:** put it in `voice_data/new_recordings`, then `cd orpheus` and `python prepare_dataset.py --add`.
+- **Retrain GPT-SoVITS:** BellAi Studio, Training, Train new voice.
+- **Retrain Orpheus:** `cd orpheus`, `python tune_voice.py`, then `python export_voice.py`.
+- **Get the GPT-SoVITS model as one file:** BellAi Studio, Voice, Export voice pack.

@@ -5,20 +5,20 @@ Before running:
   * Ollama is running (Orpheus lives there as "bellai-voice")
   * BellAi Studio is open (double-click "BellAi Studio.bat"), which serves GPT-SoVITS
 
-Run (from the Voice Training folder):
+Run (from the orpheus folder):
     python compare_engines.py
     python compare_engines.py --orpheus-model bellai-voice-q6
 
 It saves:
-    test_outputs/compare/orpheus/line_1.wav ...    Orpheus
-    test_outputs/compare/sovits/line_1.wav ...     GPT-SoVITS
-    test_outputs/compare/blind/line_1_A.wav / _B.wav   the same files with the names hidden,
+    outputs/test_outputs/compare/orpheus/line_1.wav ...    Orpheus
+    outputs/test_outputs/compare/sovits/line_1.wav ...     GPT-SoVITS
+    outputs/test_outputs/compare/blind/line_1_A.wav / _B.wav   the same files with the names hidden,
                                                        so you can pick a favourite without bias
-    test_outputs/compare/blind/answers.txt          which letter was which (peek after!)
+    outputs/test_outputs/compare/blind/answers.txt          which letter was which (peek after!)
 and prints how quickly each one started talking.
 
 Then, for a voice-similarity score against your real clips:
-    python compare_voice.py test_outputs\\compare\\orpheus test_outputs\\compare\\sovits --similarity
+    python compare_voice.py outputs\\test_outputs\\compare\\orpheus outputs\\test_outputs\\compare\\sovits --similarity
 """
 
 import argparse
@@ -35,8 +35,11 @@ import soundfile as sf
 from fast_speak import SAMPLE_RATE, Decoder, stream_frames
 from speak import split_text
 
-HERE = Path(__file__).resolve().parent
-OUT = HERE / "test_outputs" / "compare"
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+OUT = OUTPUTS / "test_outputs" / "compare"
 STUDIO = "http://127.0.0.1:9890/api/speak"
 
 # Lines that are not in your recordings, so neither model can just repeat what it learned.
@@ -138,7 +141,7 @@ def main():
     print(f"\nFiles are in {OUT}")
     print("Listen to the 'blind' folder first, pick A or B for each line, then check answers.txt.")
     print("For a voice-similarity score:")
-    print("    python compare_voice.py test_outputs\\compare\\orpheus test_outputs\\compare\\sovits --similarity")
+    print("    python compare_voice.py outputs\\test_outputs\\compare\\orpheus outputs\\test_outputs\\compare\\sovits --similarity")
 
 
 if __name__ == "__main__":

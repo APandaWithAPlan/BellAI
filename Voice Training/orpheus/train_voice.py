@@ -4,7 +4,7 @@ train_voice.py - fine-tune Orpheus 3B on your voice clips.
 Setup (once):
     pip install snac soundfile peft
 
-Run (from the Voice Training folder):
+Run (from the orpheus folder):
     python train_voice.py
 
 What it does
@@ -28,8 +28,11 @@ from speak import (AUDIO_OFFSET, BEGIN_OF_TEXT, CODEBOOK, END_OF_HUMAN, END_OF_S
                    LORA_DIR, SAMPLE_RATE, START_OF_HUMAN, START_OF_SPEECH, VOICE, load_base_model,
                    synthesize)
 
-HERE = Path(__file__).resolve().parent
-CLIPS = HERE / "voice_data" / "clips"
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+CLIPS = ROOT / "voice_data" / "clips"
 BASE_MODEL = "unsloth/orpheus-3b-0.1-ft"
 MAX_TOKENS = 2048
 START_OF_AI, END_OF_AI, PAD = 128261, 128262, 128263
@@ -167,7 +170,7 @@ def main():
             logging_steps=5,
             save_strategy="no",
             seed=3407,
-            output_dir=str(HERE / "training_runs"),
+            output_dir=str(OUTPUTS / "training_runs"),
             report_to="none",
         ),
     )
@@ -181,7 +184,7 @@ def main():
 
     print("Speaking test sentences...")
     model.eval()
-    out_dir = HERE / "test_outputs"
+    out_dir = OUTPUTS / "test_outputs"
     out_dir.mkdir(exist_ok=True)
     for i, line in enumerate(TEST_LINES, 1):
         try:

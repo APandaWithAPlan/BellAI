@@ -8,7 +8,7 @@ Setup (once):
     pip install sounddevice
     python export_voice.py            puts your voice into Ollama as "bellai-voice"
 
-Run (from the Voice Training folder), with Ollama running:
+Run (from the orpheus folder), with Ollama running:
     python fast_speak.py              keeps running: type a line, press Enter, hear it
     python fast_speak.py "Good morning! The coffee is ready."
 
@@ -35,7 +35,10 @@ from pathlib import Path
 
 from speak import AUDIO_OFFSET, CODEBOOK, SAMPLE_RATE, VOICE, split_text
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 TOKEN = re.compile(r"<custom_token_(\d+)>")
 FIRST_CODE = AUDIO_OFFSET - 128256          # custom_token_10 is the first audio code

@@ -11,7 +11,7 @@ three of your REAL recordings through the codec and back, so you can hear that l
 If the "through_codec" files have the same compressed sound you hear in the generated
 voice, that part comes from the codec and no amount of training will remove it.
 
-Run (from the Voice Training folder):
+Run (from the orpheus folder):
     python codec_check.py
 """
 
@@ -19,9 +19,12 @@ import csv
 import random
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-CLIPS = HERE / "voice_data" / "clips"
-OUT = HERE / "test_outputs"
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+CLIPS = ROOT / "voice_data" / "clips"
+OUT = OUTPUTS / "test_outputs"
 
 
 def main():

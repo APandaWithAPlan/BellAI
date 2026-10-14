@@ -4,7 +4,7 @@ compare_voice.py - measure how close generated speech is to your real recordings
 It measures the same acoustic properties on your real clips and on generated clips,
 then shows where the generated voice falls outside the range of the real one.
 
-Run (from the Voice Training folder):
+Run (from the orpheus folder):
     python compare_voice.py                       compare every epoch in tune_outputs
     python compare_voice.py test_outputs          compare one folder of WAV files
     python compare_voice.py my.wav other.wav      compare specific files
@@ -30,9 +30,12 @@ from pathlib import Path
 
 import numpy as np
 
-HERE = Path(__file__).resolve().parent
-REAL_DIR = HERE / "voice_data" / "clips"
-TUNE_DIR = HERE / "tune_outputs"
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+REAL_DIR = ROOT / "voice_data" / "clips"
+TUNE_DIR = OUTPUTS / "tune_outputs"
 WIN, HOP = 0.04, 0.01                      # analysis window and step, in seconds
 BANDS = np.geomspace(100, 11000, 25)       # band edges for the average-tone measurement
 
