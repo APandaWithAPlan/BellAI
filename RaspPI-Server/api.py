@@ -6,8 +6,8 @@
 # https://fastapi.tiangolo.com/reference/uploadfile/#fastapi.UploadFile
 
 
-from fastapi import FastAPI, UploadFile, File
-from pydantic import BaseModel, Field, field_validator
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from pydantic import BaseModel, Field, field_validator, ValidationError
 import ollama
 from pathlib import Path
 import tempfile
@@ -44,6 +44,9 @@ def receive_chat_prompt(prompt: Prompt):
 
 @app.post("/audio")
 def receive_audio_prompt(audio_file: UploadFile = File(...)):
+    if audio_file.content_type not in ["audio/webm", "video/webm"]:
+        raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm file is expected.")
+    
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = Path(temp_dir) / "input_audio.webm" 
         output_path = Path(temp_dir) / "output_audio.wav"
@@ -54,7 +57,11 @@ def receive_audio_prompt(audio_file: UploadFile = File(...)):
         # Transcribe audio to text
         transcript = transcribe_audio(output_path)
 
-        validated_prompt = Prompt(request=transcript)
+        try:
+            validated_prompt = Prompt(request=transcript)
+
+        except ValidationError as e:
+            raise HTTPException(status_code=422, detail="The audio prompt is invalid or empty.")
 
     # Send transcript to AI server
     response = forward_request(validated_prompt.request)
@@ -64,18 +71,33 @@ def receive_audio_prompt(audio_file: UploadFile = File(...)):
 
 # Create function to send the prompt to the AI server
 def forward_request(request):
-    response = client.chat(model="qwen3:8b", messages=[{'role': 'user', 'content': request}])
+    try:
+        response = client.chat(model="qwen3:8b", messages=[{'role': 'user', 'content': request}])
+
+    except ollama.ResponseError as e:
+        raise HTTPException(status_code=502, detail="Ollama encountered an error while processing the request.")
+    
+    except ollama.RequestError as e:
+        raise HTTPException(status_code=503, detail="The Ollama server is unavailable/unreachable.")
 
     return response
 
 def convert_audio(audio_file, input_path, output_path):
         with open(input_path, "wb") as f:
             shutil.copyfileobj(audio_file, f)
+        try:
+            subprocess.run(["ffmpeg", "-y", "-i", str(input_path), "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(output_path)], check=True, capture_output=True, text=True, timeout=120)
 
-        subprocess.run(["ffmpeg", "-y", "-i", str(input_path), "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(output_path)], check=True, capture_output=True, text=True, timeout=120)
+        except subprocess.CalledProcessError as e:
+            raise HTTPException(status_code=500, detail="There was an error formatting the audio.")
 
 def transcribe_audio(output_path):
     transcript_path = output_path.with_suffix(".txt")
-    subprocess.run([str(whisper_cli), "-m", str(whisper_model), "-f", str(output_path), "-l", "en", "-t", "4", "-otxt", "-of", str(transcript_path.with_suffix(""))], check=True, capture_output=True, text=True, timeout=120)
+
+    try:
+        subprocess.run([str(whisper_cli), "-m", str(whisper_model), "-f", str(output_path), "-l", "en", "-t", "4", "-otxt", "-of", str(transcript_path.with_suffix(""))], check=True, capture_output=True, text=True, timeout=120)
+
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail="There was an error transcribing the audio.")
 
     return transcript_path.read_text(encoding="utf-8").strip()
