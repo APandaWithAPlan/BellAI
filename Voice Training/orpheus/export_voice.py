@@ -20,6 +20,9 @@ at a cost in quality. Use it with:  python fast_speak.py --model bellai-voice-q4
 In-between sizes (better than 4-bit, faster than the normal 8-bit):
     python export_voice.py --q6      ->  "bellai-voice-q6"  (6-bit, closest to the 8-bit sound)
     python export_voice.py --q5      ->  "bellai-voice-q5"  (5-bit)
+
+Full quality (no shrinking, about twice as slow as 8-bit, so live playback may stutter):
+    python export_voice.py --f16     ->  "bellai-voice-f16" (16-bit)
 """
 
 import io
@@ -221,6 +224,13 @@ def main():
         merge()
     else:
         print("Merged model is up to date, skipping that step.")
+    if "--f16" in sys.argv:
+        if redo or not newer(GGUF_F16, merged_weights):
+            convert(GGUF_F16, "f16", "16-bit")
+        else:
+            print("16-bit GGUF is up to date, skipping that step.")
+        import_into_ollama(GGUF_F16, f"{OLLAMA_NAME}-f16", MODELS / "Modelfile.f16")
+        return
     chosen = [flag for flag in SIZES if flag in sys.argv]
     if chosen:
         kind, short, label = SIZES[chosen[0]]
