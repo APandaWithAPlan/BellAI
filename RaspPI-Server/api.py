@@ -14,6 +14,10 @@ import tempfile
 import shutil
 import subprocess
 
+client = ollama.Client(host="http://ip:port")
+whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
+whisper_model = Path.home() / "whisper.cpp/models/ggml-tiny.en.bin"
+
 # Format user request
 class Prompt(BaseModel):
     request: str = Field(min_length=1, max_length=10000)
@@ -27,7 +31,6 @@ class Prompt(BaseModel):
         
         return v
 
-client = ollama.Client(host="http://ip:port")
 app = FastAPI()
 
 # Create an endpoint to listen for and receive user prompts
@@ -41,7 +44,7 @@ def receive_chat_prompt(prompt: Prompt):
 
 @app.post("/audio")
 def receive_audio_prompt(audio_file: UploadFile = File(...)):
-    with tempfile.TemporaryFile() as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         input_path = Path(temp_dir) / "input_audio.webm" 
         output_path = Path(temp_dir) / "output_audio.wav"
 
@@ -51,15 +54,17 @@ def receive_audio_prompt(audio_file: UploadFile = File(...)):
         # Transcribe audio to text
         transcript = transcribe_audio(output_path)
 
+        validated_prompt = Prompt(request=transcript)
+
     # Send transcript to AI server
-    response = forward_request(transcript)
+    response = forward_request(validated_prompt.request)
 
     # Return the AI server's response to the user
     return {"response": response.message.content}
 
 # Create function to send the prompt to the AI server
 def forward_request(request):
-    response = client.chat(model="", messages=[{'role': 'user', 'content': request}])
+    response = client.chat(model="qwen3:8b", messages=[{'role': 'user', 'content': request}])
 
     return response
 
@@ -67,9 +72,10 @@ def convert_audio(audio_file, input_path, output_path):
         with open(input_path, "wb") as f:
             shutil.copyfileobj(audio_file, f)
 
-        subprocess.run(["ffmpeg", "-y", str(input_path), "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(output_path)], check=True, capture_output=True, text=True, timeout=120)
+        subprocess.run(["ffmpeg", "-y", "-i", str(input_path), "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(output_path)], check=True, capture_output=True, text=True, timeout=120)
 
 def transcribe_audio(output_path):
-    whisper_output = subprocess.run(["/home/whisper.cpp/build/bin/whisper-cli", "-m", "/home/whisper.cpp/models/ggml-tiny.en.bin", "-f", str(output_path), "-l", "en", "-t", "4"], check=True, capture_output=True, text=True, timeout=120)
+    transcript_path = output_path.with_suffix(".txt")
+    subprocess.run([str(whisper_cli), "-m", str(whisper_model), "-f", str(output_path), "-l", "en", "-t", "4", "-otxt", "-of", str(transcript_path.with_suffix(""))], check=True, capture_output=True, text=True, timeout=120)
 
-    return whisper_output.stdout.strip()
+    return transcript_path.read_text(encoding="utf-8").strip()
