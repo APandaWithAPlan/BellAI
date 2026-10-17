@@ -11,10 +11,10 @@ What it does
 Setup (once)
     pip install faster-whisper soundfile
 
-Run (from the folder that contains voice_data)
+Run (from the orpheus folder)
     python prepare_dataset.py
 
-Clip edges are checked against the sound itself (tools/fix_clips.py), because Whisper's word
+Clip edges are checked against the sound itself (fix_clips.py), because Whisper's word
 timings run early: without that, clips start with silence and cut off the last word.
 
 Adding more recordings later
@@ -40,7 +40,8 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+ROOT = Path(__file__).resolve().parent.parent   # the Voice Training folder
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fix_clips import refine  # noqa: E402  - Whisper's word timings run early; this fixes clip edges
 
 SAMPLE_RATE = 24000          # Orpheus (SNAC codec) expects 24 kHz audio
@@ -179,15 +180,15 @@ def transcribe_words(model, path, language):
 
 def main():
     parser = argparse.ArgumentParser(description="Split and transcribe voice recordings.")
-    parser.add_argument("--raw", default="voice_data/raw", help="folder with your recordings")
-    parser.add_argument("--out", default="voice_data/clips", help="folder for clips + metadata.csv")
+    parser.add_argument("--raw", default=str(ROOT / "voice_data" / "raw"), help="folder with your recordings")
+    parser.add_argument("--out", default=str(ROOT / "voice_data" / "clips"), help="folder for clips + metadata.csv")
     parser.add_argument("--model", default="large-v3", help="Whisper model size")
     parser.add_argument("--language", default="en")
     parser.add_argument("--cpu", action="store_true", help="do not use the GPU")
     parser.add_argument("--overwrite", action="store_true", help="replace an existing dataset")
     parser.add_argument("--add", action="store_true",
                         help="add the recordings in voice_data/new_recordings to the existing dataset")
-    parser.add_argument("--new", default="voice_data/new_recordings", help="folder used by --add")
+    parser.add_argument("--new", default=str(ROOT / "voice_data" / "new_recordings"), help="folder used by --add")
     args = parser.parse_args()
     if args.add and args.overwrite:
         sys.exit("Use either --add or --overwrite, not both.")
@@ -251,7 +252,7 @@ def main():
             kept += 1
             name = f"{stem}_{kept:04d}.wav"
             samples = audio[int(start * SAMPLE_RATE): int(end * SAMPLE_RATE)]
-            try:                                   # tighten the cut using the sound itself (see tools/fix_clips.py)
+            try:                                   # tighten the cut using the sound itself (see fix_clips.py)
                 refined, _ = refine(audio, int(start * SAMPLE_RATE), len(samples), "<" in text)
                 if len(refined) >= SAMPLE_RATE:
                     samples = refined

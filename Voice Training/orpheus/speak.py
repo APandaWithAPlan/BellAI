@@ -19,8 +19,11 @@ import argparse
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-LORA_DIR = HERE / "bella_voice_lora"      # where train_voice.py saves your voice
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+LORA_DIR = MODELS / "bella_voice_lora"      # where train_voice.py saves your voice
 VOICE = "bella"                           # the speaker name used during training
 SAMPLE_RATE = 24000
 
@@ -164,7 +167,7 @@ def play(path):
 def main():
     parser = argparse.ArgumentParser(description="Speak text in your trained voice.")
     parser.add_argument("text", nargs="?", help="what to say (in quotes). Leave it out to keep typing lines.")
-    parser.add_argument("--out", default=str(HERE / "test_outputs" / "speak.wav"))
+    parser.add_argument("--out", default=str(OUTPUTS / "test_outputs" / "speak.wav"))
     parser.add_argument("--quiet", action="store_true", help="save the file without playing it")
     args = parser.parse_args()
 

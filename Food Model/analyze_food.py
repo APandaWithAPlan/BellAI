@@ -85,6 +85,28 @@ class ModelNotLoaded(Exception):
 
 # ---------------------------------------------------------------- model
 
+def check_gpu_memory(model_id):
+    """
+    Warn if other programs are already using the GPU memory this model needs.
+    On Windows, running out doesn't crash: the driver silently spills into system RAM,
+    which makes everything (including the desktop) crawl at 99% GPU.
+    """
+    import torch
+    free, total = torch.cuda.mem_get_info()
+    free_gb, total_gb = free / 1024**3, total / 1024**3
+    need_gb = 9 if "3B" in model_id else 19      # weights + room to work on an image
+    print(f"GPU memory free: {free_gb:.1f} of {total_gb:.1f} GB (this model needs about {need_gb} GB)",
+          file=sys.stderr)
+    if free_gb < need_gb:
+        print("\n" + "!" * 70 +
+              f"\nWARNING: not enough free GPU memory ({free_gb:.1f} GB free, ~{need_gb} GB needed)."
+              "\nSomething else is using the GPU - often an Ollama model (run: ollama ps / ollama stop <name>),"
+              "\nanother copy of this server, or a game/app. If you continue, everything will be VERY slow."
+              "\nFree the memory and restart, or use the smaller model:"
+              "\n    powershell -ExecutionPolicy Bypass -File start_server.ps1 -Small\n" + "!" * 70 + "\n",
+              file=sys.stderr)
+
+
 def load_model(model_id=MODEL_ID, lora_dir=None):
     """Load Qwen2.5-VL onto the GPU in bfloat16 (7B needs about 17 GB of VRAM)."""
     import torch

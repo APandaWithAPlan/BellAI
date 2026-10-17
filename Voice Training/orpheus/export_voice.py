@@ -6,7 +6,7 @@ What it does
   2. Converts that to a single GGUF file, the format Ollama runs           -> bella_voice.gguf
   3. Asks Ollama to import it as the model "bellai-voice"
 
-Run (from the Voice Training folder), with Ollama installed and running:
+Run (from the orpheus folder), with Ollama installed and running:
     python export_voice.py
 
 Run it again whenever you pick a different epoch or retrain. Then use fast_speak.py.
@@ -20,6 +20,9 @@ at a cost in quality. Use it with:  python fast_speak.py --model bellai-voice-q4
 In-between sizes (better than 4-bit, faster than the normal 8-bit):
     python export_voice.py --q6      ->  "bellai-voice-q6"  (6-bit, closest to the 8-bit sound)
     python export_voice.py --q5      ->  "bellai-voice-q5"  (5-bit)
+
+Full quality (no shrinking, about twice as slow as 8-bit, so live playback may stutter):
+    python export_voice.py --f16     ->  "bellai-voice-f16" (16-bit)
 """
 
 import io
@@ -33,10 +36,13 @@ from pathlib import Path
 
 from speak import LORA_DIR
 
-HERE = Path(__file__).resolve().parent
-MERGED = HERE / "bella_voice_merged"
-GGUF = HERE / "bella_voice.gguf"
-MODELFILE = HERE / "Modelfile"
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+MERGED = MODELS / "bella_voice_merged"
+GGUF = MODELS / "bella_voice.gguf"
+MODELFILE = MODELS / "Modelfile"
 OLLAMA_NAME = "bellai-voice"
 
 # The GGUF converter comes from the llama.cpp project. Only its Python converter is downloaded.
@@ -45,7 +51,7 @@ LLAMA_ZIP = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{LLAMA_TAG
 TOOLS = HERE / "tools" / f"llama_cpp_{LLAMA_TAG}"
 WANTED = ("convert_hf_to_gguf.py", "conversion/", "gguf-py/gguf/")
 
-GGUF_F16 = HERE / "bella_voice_f16.gguf"
+GGUF_F16 = MODELS / "bella_voice_f16.gguf"
 SIZES = {  # flag: (llama.cpp type, short name, description)
     "--fast": ("Q4_K_M", "q4", "4-bit"),
     "--q5": ("Q5_K_M", "q5", "5-bit"),
@@ -199,7 +205,7 @@ def import_into_ollama(gguf=GGUF, name=OLLAMA_NAME, modelfile=MODELFILE):
         print(f"then run this from the Voice Training folder:\n    {command}")
         return
     print(f"\nImporting '{name}' into Ollama...")
-    result = subprocess.run([ollama, "create", name, "-f", str(modelfile)], cwd=str(HERE))
+    result = subprocess.run([ollama, "create", name, "-f", str(modelfile)], cwd=str(MODELS))
     if result.returncode == 0:
         extra = "" if name == OLLAMA_NAME else f" --model {name}"
         print(f"\nDone. Ollama now has the model '{name}'. Next: python fast_speak.py{extra}")
@@ -218,10 +224,17 @@ def main():
         merge()
     else:
         print("Merged model is up to date, skipping that step.")
+    if "--f16" in sys.argv:
+        if redo or not newer(GGUF_F16, merged_weights):
+            convert(GGUF_F16, "f16", "16-bit")
+        else:
+            print("16-bit GGUF is up to date, skipping that step.")
+        import_into_ollama(GGUF_F16, f"{OLLAMA_NAME}-f16", MODELS / "Modelfile.f16")
+        return
     chosen = [flag for flag in SIZES if flag in sys.argv]
     if chosen:
         kind, short, label = SIZES[chosen[0]]
-        target = HERE / f"bella_voice_{short}.gguf"
+        target = MODELS / f"bella_voice_{short}.gguf"
         if redo or not newer(GGUF_F16, merged_weights):
             convert(GGUF_F16, "f16", "16-bit, the starting point for shrinking")
         else:
@@ -230,7 +243,7 @@ def main():
             quantize(kind, target, label)
         else:
             print(f"{label} GGUF is up to date, skipping that step.")
-        import_into_ollama(target, f"{OLLAMA_NAME}-{short}", HERE / f"Modelfile.{short}")
+        import_into_ollama(target, f"{OLLAMA_NAME}-{short}", MODELS / f"Modelfile.{short}")
         return
     if redo or not newer(GGUF, merged_weights):
         convert()

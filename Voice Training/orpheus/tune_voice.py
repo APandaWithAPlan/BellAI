@@ -9,7 +9,7 @@ Since nobody can sit and listen after every round, this script does the judging 
 
 Every epoch's test audio is kept in tune_outputs/epoch_N so you can still judge by ear.
 
-Run (from the Voice Training folder):
+Run (from the orpheus folder):
     python tune_voice.py                 train 8 epochs and keep the best
     python tune_voice.py --epochs 12     try more epochs
     python tune_voice.py --use-epoch 5   switch your saved voice to epoch 5 (no training)
@@ -30,9 +30,12 @@ from speak import BEGIN_OF_TEXT, LORA_DIR, SAMPLE_RATE, VOICE, load_base_model, 
 from train_voice import (BASE_MODEL, CLIPS, MAX_TOKENS, build_example, collate,
                          drop_repeated_frames, interleave, read_metadata)
 
-HERE = Path(__file__).resolve().parent
-RUNS = HERE / "training_runs"
-OUT = HERE / "tune_outputs"
+HERE = Path(__file__).resolve().parent          # the orpheus folder
+ROOT = HERE.parent                               # the Voice Training folder
+MODELS = HERE / "models"
+OUTPUTS = HERE / "outputs"
+RUNS = OUTPUTS / "training_runs"
+OUT = OUTPUTS / "tune_outputs"
 
 # Sentences the model has never seen, with no numbers (so Whisper's spelling can't differ).
 EVAL_LINES = [
