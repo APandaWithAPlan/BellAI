@@ -125,15 +125,15 @@ struct OllamaSubmissionChecks {
         configuration.protocolClasses = [StubURLProtocol.self]
         let session = URLSession(configuration: configuration)
         defer { session.invalidateAndCancel() }
-        let service = HTTPBellAIService(apiKey: "test-key", session: session)
+        let service = HTTPBellAIService(session: session)
         let request = ChatRequest(model: "test-model", messages: [ChatMessage(role: "user", content: "Hello")], stream: false)
-        StubURLProtocol.payload = Data(#"{"model":"test-model","message":{"role":"assistant","content":"Hello from mock Ollama"},"done":true}"#.utf8)
+        StubURLProtocol.payload = Data(#"{"model":"test-model","choices":[{"message":{"role":"assistant","content":"Hello from mock server"},"finish_reason":"stop"}]}"#.utf8)
         let result = try await service.send(request)
-        precondition(result.message.content == "Hello from mock Ollama")
+        precondition(result.message.content == "Hello from mock server")
         let sent = StubURLProtocol.capturedRequest!
-        precondition(sent.url?.absoluteString == "https://ollama.com/api/chat")
+        precondition(sent.url?.absoluteString == "http://ai-server:11434/v1/chat/completions")
         precondition(sent.httpMethod == "POST")
-        precondition(sent.value(forHTTPHeaderField: "Authorization") == "Bearer test-key")
+        precondition(sent.value(forHTTPHeaderField: "Authorization") == nil)
         precondition(sent.value(forHTTPHeaderField: "Content-Type") == "application/json")
         var body = sent.httpBody ?? Data()
         if let stream = sent.httpBodyStream {
@@ -158,20 +158,33 @@ struct OllamaSubmissionChecks {
                 precondition(actual == code)
             }
         }
+        StubURLProtocol.status = 404
+        for payload in [
+            #"{"error":{"message":"model 'missing' not found","type":"not_found_error"}}"#,
+            #"{"error":"model 'missing' not found"}"#
+        ] {
+            StubURLProtocol.payload = Data(payload.utf8)
+            do {
+                _ = try await service.send(request)
+                preconditionFailure("Expected server error")
+            } catch BellAIServiceError.server(let code, let message) {
+                precondition(code == 404 && message == "model 'missing' not found")
+            }
+        }
         StubURLProtocol.status = 200
-        for payload in ["not JSON", #"{"model":"test","message":{"role":"assistant","content":"partial"},"done":false}"#] {
+        for payload in [
+            "not JSON",
+            #"{"model":"test","choices":[]}"#,
+            #"{"model":"test","choices":[{"message":{"role":"assistant","content":"partial"},"finish_reason":null}]}"#,
+            #"{"model":"test","choices":[{"message":{"role":"user","content":"wrong role"},"finish_reason":"stop"}]}"#,
+            #"{"model":"test","message":{"role":"assistant","content":"old format"},"done":true}"#
+        ] {
             StubURLProtocol.payload = Data(payload.utf8)
             do {
                 _ = try await service.send(request)
                 preconditionFailure("Expected invalid response")
             } catch BellAIServiceError.invalidResponse {}
         }
-        StubURLProtocol.capturedRequest = nil
-        do {
-            _ = try await HTTPBellAIService(apiKey: "", session: session).send(request)
-            preconditionFailure("Expected missing key")
-        } catch BellAIServiceError.missingKey {}
-        precondition(StubURLProtocol.capturedRequest == nil)
         print("All Ollama submission checks passed.")
     }
 }

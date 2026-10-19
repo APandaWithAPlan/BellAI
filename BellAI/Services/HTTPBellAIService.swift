@@ -6,48 +6,39 @@ protocol BellAIService {
 }
 
 enum BellAIServiceError: LocalizedError {
-    case missingKey
     case invalidResponse
     case http(Int)
+    case server(Int, String)
 
     var errorDescription: String? {
         switch self {
-        case .missingKey:
-            "Ollama API key is missing. Configure OLLAMA_API_KEY in your local Debug configuration."
+        case .server(let code, let message):
+            "The AI server request failed (HTTP \(code)): \(message)"
         case .invalidResponse:
-            "Ollama returned an invalid or incomplete response. Please try again."
+            "The AI server returned an invalid or incomplete response. Please try again."
         case .http(401), .http(403):
-            "Ollama rejected the request. Check your API key and model access."
+            "The AI server rejected the request. Check your server permissions and model access."
         case .http(429):
-            "Ollama's usage limit was reached. Please try again later."
+            "The AI server's usage limit was reached. Please try again later."
         case .http(let code):
-            "Ollama request failed (HTTP \(code)). Please try again."
+            "The AI server request failed (HTTP \(code)). Please try again."
         }
     }
 }
 
 @MainActor
 struct HTTPBellAIService: BellAIService {
-    private let apiKey: String
     private let session: URLSession
 
-    init(apiKey: String? = nil, session: URLSession = .shared) {
-        // Personal development key only; distributed apps should use a backend.
-        self.apiKey = apiKey ?? (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_API_KEY") as? String ?? "")
+    init(session: URLSession = .shared) {
         self.session = session
     }
 
     func send(_ request: ChatRequest) async throws -> ChatResponse {
-        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty, !key.hasPrefix("$(") else {
-            throw BellAIServiceError.missingKey
-        }
-
-        var urlRequest = URLRequest(url: URL(string: "https://ollama.com/api/chat")!)
+        var urlRequest = URLRequest(url: URL(string: "http://ai-server:11434/v1/chat/completions")!)
         urlRequest.httpMethod = "POST"
         urlRequest.timeoutInterval = 90
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         urlRequest.httpBody = try JSONEncoder().encode(request)
 
         let (data, response) = try await session.data(for: urlRequest)
@@ -55,12 +46,31 @@ struct HTTPBellAIService: BellAIService {
             throw BellAIServiceError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = (json["error"] as? [String: Any])?["message"] as? String
+                    ?? json["error"] as? String,
+               !message.isEmpty {
+                throw BellAIServiceError.server(http.statusCode, String(message.prefix(1_000)))
+            }
             throw BellAIServiceError.http(http.statusCode)
         }
-        guard let result = try? JSONDecoder().decode(ChatResponse.self, from: data),
-              result.done, result.message.role == "assistant" else {
+        guard let result = try? JSONDecoder().decode(ChatCompletionResponse.self, from: data),
+              let choice = result.choices.first,
+              choice.finish_reason != nil, choice.message.role == "assistant" else {
             throw BellAIServiceError.invalidResponse
         }
-        return result
+        return ChatResponse(model: result.model, message: choice.message, done: true)
+    }
+}
+
+
+// Wire format for the server's OpenAI-compatible /v1/chat/completions endpoint.
+private struct ChatCompletionResponse: Decodable {
+    let model: String
+    let choices: [Choice]
+
+    struct Choice: Decodable {
+        let message: ChatMessage
+        let finish_reason: String?
     }
 }

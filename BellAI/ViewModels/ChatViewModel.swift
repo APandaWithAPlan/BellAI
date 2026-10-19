@@ -16,8 +16,9 @@ final class ChatViewModel {
 
     init(service: (any BellAIService)? = nil, model: String? = nil) {
         self.service = service ?? HTTPBellAIService()
-        let configuredModel = Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String
-        self.model = model ?? (configuredModel?.isEmpty == false ? configuredModel! : "gemma4:31b")
+        let configuredModel = (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        self.model = model ?? (configuredModel?.isEmpty == false && configuredModel?.hasPrefix("$(") == false ? configuredModel! : "qwen3:8b")
     }
 
     /// Validates and snapshots a request in memory, reserving one submission at a time.
