@@ -7,22 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		000000000000000000000030 /* Config/Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		000000000000000000000120 /* BellAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BellAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		000000000000000000000030 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Debug.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-        000000000000000000000031 /* Local configuration exclusions */ = {
-            isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-            membershipExceptions = (Config/Secrets.xcconfig,);
-            target = 000000000000000100000000 /* BellAI */;
-        };
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		000000000000000000000010 /* BellAI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-            exceptions = (000000000000000000000031,);
 			path = BellAI;
 			sourceTree = "<group>";
 		};
@@ -42,7 +33,7 @@
 			children = (
 				000000000000000000000010 /* BellAI */,
 				000000000000000000000020 /* Products */,
-                000000000000000000000030 /* Debug.xcconfig */,
+				000000000000000000000030 /* Config/Debug.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -260,7 +251,7 @@
 		};
 		000000000000000111000000 /* Debug configuration for PBXNativeTarget "BellAI" */ = {
 			isa = XCBuildConfiguration;
-            baseConfigurationReference = 000000000000000000000030 /* Debug.xcconfig */;
+			baseConfigurationReference = 000000000000000000000030 /* Config/Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -268,7 +259,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-                INFOPLIST_FILE = Config/App-Info.plist;
+				INFOPLIST_FILE = "Config/App-Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -306,7 +297,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-                INFOPLIST_FILE = Config/App-Info.plist;
+				INFOPLIST_FILE = "Config/App-Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
