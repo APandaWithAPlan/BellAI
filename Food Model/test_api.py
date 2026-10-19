@@ -1,13 +1,6 @@
-"""
-test_api.py - send a photo or a typed meal to the running server.py, the same way the app will.
+"""Send a photo or meal description to the running server.
 
-Run in a SECOND terminal while server.py is running (with the .venv active):
-    python test_api.py photos/lunch.jpg
-    python test_api.py photos/lunch.jpg --text "half portion"
-    python test_api.py --text "2 eggs and a slice of toast"
-    python test_api.py --text "a big bowl of chicken alfredo" --url http://192.168.1.50:8000
-
-If you set FOOD_API_KEY for the server, this script sends the same key automatically.
+Usage: python test_api.py photo.jpg [--text "..."]
 """
 
 import argparse

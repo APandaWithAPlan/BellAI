@@ -1,28 +1,6 @@
-"""
-export_voice.py - package your trained voice for Ollama, so it can speak in real time.
+"""Merge the trained LoRA into Orpheus, convert it to GGUF and import it into Ollama.
 
-What it does
-  1. Bakes your saved voice (bella_voice_lora) into the Orpheus base model  -> bella_voice_merged
-  2. Converts that to a single GGUF file, the format Ollama runs           -> bella_voice.gguf
-  3. Asks Ollama to import it as the model "bellai-voice"
-
-Run (from the orpheus folder), with Ollama installed and running:
-    python export_voice.py
-
-Run it again whenever you pick a different epoch or retrain. Then use fast_speak.py.
-Steps that are already done are skipped. Use --redo to force everything again.
-
-A smaller, faster version:
-    python export_voice.py --fast
-This also builds a 4-bit model called "bellai-voice-q4" (about 2 GB). It generates faster,
-at a cost in quality. Use it with:  python fast_speak.py --model bellai-voice-q4
-
-In-between sizes (better than 4-bit, faster than the normal 8-bit):
-    python export_voice.py --q6      ->  "bellai-voice-q6"  (6-bit, closest to the 8-bit sound)
-    python export_voice.py --q5      ->  "bellai-voice-q5"  (5-bit)
-
-Full quality (no shrinking, about twice as slow as 8-bit, so live playback may stutter):
-    python export_voice.py --f16     ->  "bellai-voice-f16" (16-bit)
+Usage: python export_voice.py [--q5 | --q6 | --fast | --f16] [--redo]
 """
 
 import io
@@ -36,8 +14,8 @@ from pathlib import Path
 
 from speak import LORA_DIR
 
-HERE = Path(__file__).resolve().parent          # the orpheus folder
-ROOT = HERE.parent                               # the Voice Training folder
+HERE = Path(__file__).resolve().parent  # the orpheus folder
+ROOT = HERE.parent  # the Voice Training folder
 MODELS = HERE / "models"
 OUTPUTS = HERE / "outputs"
 MERGED = MODELS / "bella_voice_merged"
@@ -45,7 +23,7 @@ GGUF = MODELS / "bella_voice.gguf"
 MODELFILE = MODELS / "Modelfile"
 OLLAMA_NAME = "bellai-voice"
 
-# The GGUF converter comes from the llama.cpp project. Only its Python converter is downloaded.
+# The GGUF converter comes from the llama.cpp project.
 LLAMA_TAG = "b11559"
 LLAMA_ZIP = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{LLAMA_TAG}.zip"
 TOOLS = HERE / "tools" / f"llama_cpp_{LLAMA_TAG}"
@@ -70,7 +48,7 @@ PARAMETER num_predict 1200
 PARAMETER stop <custom_token_2>
 """
 
-# Runs llama.cpp's converter with two small safety nets for this model's tokenizer.
+# Runs llama.cpp's converter with two small safety nets
 RUNNER = r'''
 import runpy, sys, types
 root = sys.argv[1]

@@ -1,20 +1,4 @@
-"""
-nutrition.py - turn food labels into calories, protein, carbs, fat and more using USDA FoodData Central.
-
-The vision model only says WHAT the food is and HOW MANY GRAMS. This file looks the
-food up in the USDA database and does the nutrition math, so the numbers always
-come from real nutrition data instead of the model's imagination.
-
-API key (free): sign up at https://fdc.nal.usda.gov/api-key-signup then, in a new terminal:
-    setx FDC_API_KEY "your-key-here"
-Without a key it uses DEMO_KEY, which only allows a few requests per hour.
-
-Lookups are cached in cache/fdc_cache_v2.json, so each food is only fetched once.
-If a food keeps matching the wrong USDA entry, delete its line from that file
-(or the whole file) and it will be looked up again.
-
-Quick test:
-    python nutrition.py "white rice, cooked"
+"""USDA FoodData Central lookups and nutrition math. Set FDC_API_KEY for a real key.
 """
 
 import json
@@ -29,11 +13,10 @@ HERE = Path(__file__).resolve().parent
 CACHE_FILE = HERE / "cache" / "fdc_cache_v2.json"
 FDC_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 
-# Survey (FNDDS) covers prepared dishes ("lasagna", "chicken burrito");
-# Foundation and SR Legacy cover single ingredients. All report nutrients per 100 g.
+# Survey (FNDDS) covers prepared dishes ("lasagna", "chicken burrito")
 DATA_TYPES = ["Survey (FNDDS)", "Foundation", "SR Legacy"]
 
-# Energy in kcal: Energy, then the two Atwater values (some Foundation foods only have those)
+# Energy in kcal: Energy, then the two Atwater values
 ENERGY_NUTRIENT_IDS = [1008, 2047, 2048]
 
 # output name -> (USDA nutrient id, unit)
@@ -47,14 +30,14 @@ NUTRIENTS = {
 }
 NUTRIENT_KEYS = ["kcal"] + list(NUTRIENTS)
 
-# Words that usually mean "not what the photo shows" unless the label asked for them
+# Words that usually mean "not what the photo shows" unless the label
 ODD_WORDS = {"baby", "infant", "toddler", "glutinous", "dry", "dehydrated", "powder",
              "mix", "frozen", "canned", "raw", "unprepared", "formula", "imitation"}
 ODD_WORDS = {w.rstrip("s") for w in ODD_WORDS}  # same normalization as _words()
 
 
 def clean_label(text):
-    """Lowercase, strip odd characters and extra spaces: ' Grilled  Chicken!! ' -> 'grilled chicken'."""
+    """Lowercase, strip odd characters and extra spaces: ' Grilled Chicken!!"""
     text = str(text or "").lower()
     text = re.sub(r"[^a-z0-9 ,'()\-]", " ", text)
     text = re.sub(r"\s+", " ", text).strip(" ,-")
@@ -78,7 +61,7 @@ def _save_cache(cache):
 
 
 def _nutrient_table(food):
-    """{(nutrient id, UNIT): value} for one USDA search result."""
+    """{(nutrient id, UNIT): value} for one USDA search result"""
     table = {}
     for n in food.get("foodNutrients", []):
         nested = n.get("nutrient") or {}
@@ -91,7 +74,7 @@ def _nutrient_table(food):
 
 
 def per_100g(food):
-    """Nutrition per 100 g for one USDA result, or None if it has no calorie value."""
+    """Nutrition per 100 g for one USDA result, or None if it has no calorie value"""
     table = _nutrient_table(food)
     kcal = next((table[(i, "KCAL")] for i in ENERGY_NUTRIENT_IDS if (i, "KCAL") in table), None)
     if kcal is None:
@@ -104,13 +87,7 @@ def per_100g(food):
 
 
 def _best_match(label, foods):
-    """
-    Pick the USDA result that best fits the label:
-      - it must contain every word of the label
-      - fewer extra words is better ("rice, white, cooked" beats "rice, white, cooked, glutinous")
-      - odd words like "baby food" or "dry" are heavily penalized unless the label used them
-    Falls back to USDA's top result if nothing contains all the words.
-    """
+    """Pick the USDA result that best fits the label"""
     want = set(_words(label))
     usable = [f for f in foods if per_100g(f) is not None]
     best, best_score = None, None
@@ -126,7 +103,7 @@ def _best_match(label, foods):
 
 
 def search_usda(label, api_key=None):
-    """Ask the USDA API for a label. Returns the raw list of matching foods."""
+    """Ask the USDA API for a label"""
     api_key = api_key or os.environ.get("FDC_API_KEY", "DEMO_KEY")
     resp = requests.post(
         FDC_SEARCH_URL,
@@ -139,13 +116,7 @@ def search_usda(label, api_key=None):
 
 
 def lookup(label, use_cache=True):
-    """
-    Look up one cleaned label. Returns
-        {"fdc_id": 168932, "fdc_description": "Rice, white, ... cooked",
-         "usda_category": "Cereal Grains and Pasta",
-         "per_100g": {"kcal": 130.0, "protein_g": 2.69, "carbs_g": 28.2, ...}}
-    or None if USDA has nothing usable.
-    """
+    """Look up one cleaned label"""
     label = clean_label(label)
     if not label:
         return None
@@ -172,7 +143,7 @@ def lookup(label, use_cache=True):
 
 
 def scale(per_100, grams):
-    """Nutrition for a given weight: per-100 g values x grams / 100."""
+    """Nutrition for a given weight: per-100 g values x grams / 100"""
     out = {}
     for key in NUTRIENT_KEYS:
         v = per_100.get(key) if per_100 else None

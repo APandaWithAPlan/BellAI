@@ -1,23 +1,4 @@
-"""
-quick_parse.py - the fast path for simple typed meals, no AI model needed.
-
-Handles text like:
-    "2 eggs and a slice of toast"
-    "150 g rice, 6 oz chicken breast"
-    "a banana"
-    "1 cup of milk + 2 tbsp peanut butter"
-
-Every food needs an amount we can turn into grams:
-  - a weight (g, kg, oz, lb), which works for any food, or
-  - a count or household unit (2 eggs, 1 cup rice, a slice of pizza) for the foods in
-    PORTIONS below.
-If ANY part of the text can't be turned into food + grams, parse() returns None and
-the caller sends the text to the AI model instead. Fast when it's sure, model when it isn't.
-
-Add your own common foods to PORTIONS to make more meals take the fast path.
-
-Quick test:
-    python quick_parse.py "2 eggs and a slice of toast"
+"""Parse simple meals like "150 g rice" or "2 eggs" without the vision model.
 """
 
 import json
@@ -50,7 +31,6 @@ NUMBER_WORDS = {
 }
 
 # food keyword -> (type, USDA search text, {unit: grams})
-# Weights are typical USDA reference portions; "each" = one whole item.
 PORTIONS = {
     "egg":            ("protein",   "egg, whole, cooked",          {"each": 50}),
     "banana":         ("fruit",     "banana, raw",                 {"each": 118}),
@@ -88,7 +68,7 @@ PORTIONS = {
     "beer":           ("beverage",  "beer",                        {"can": 356, "each": 356}),
 }
 
-# for weight-only foods we don't know: guess the type from the USDA category
+# for weight-only foods we don't know: guess the type from the USDA
 CATEGORY_TYPES = [
     (("fruit",), "fruit"),
     (("vegetable",), "vegetable"),
@@ -127,21 +107,21 @@ def _singular(word):
 
 
 def _read_number(text):
-    """Leading amount -> (number, rest of text). '2 eggs' -> (2, 'eggs'); 'a slice of' -> (1, 'slice of')."""
-    m = re.match(r"^(\d+(?:\.\d+)?)\s*/\s*(\d+)\s*(.*)$", text)          # 1/2
+    """Leading amount -> (number, rest of text)"""
+    m = re.match(r"^(\d+(?:\.\d+)?)\s*/\s*(\d+)\s*(.*)$", text)  # 1/2
     if m:
         return float(m.group(1)) / float(m.group(2)), m.group(3)
-    m = re.match(r"^(\d+(?:\.\d+)?)\s*(.*)$", text)                      # 2, 1.5, 150g
+    m = re.match(r"^(\d+(?:\.\d+)?)\s*(.*)$", text)  # 2, 1.5, 150g
     if m:
         return float(m.group(1)), m.group(2)
-    for words in sorted(NUMBER_WORDS, key=len, reverse=True):            # "a couple of" before "a"
+    for words in sorted(NUMBER_WORDS, key=len, reverse=True):  # "a couple of" before "a"
         if text == words or text.startswith(words + " "):
             return NUMBER_WORDS[words], text[len(words):].strip()
     return None, text
 
 
 def _find_food(name):
-    """Match a food name to a PORTIONS key (longest key first, so 'peanut butter' beats 'butter')."""
+    """Match a food name to a PORTIONS key"""
     words = [_singular(w) for w in re.findall(r"[a-z]+", name)]
     joined = " ".join(words)
     for key in sorted(PORTIONS, key=len, reverse=True):
@@ -151,13 +131,13 @@ def _find_food(name):
 
 
 def parse_part(part):
-    """One food phrase -> {"label", "grams", "type", "usda_query"} or None if unsure."""
+    """One food phrase -> {"label", "grams", "type", "usda_query"} or None if unsure"""
     text = FILLER_RE.sub("", part.lower().strip(" .!?"))
     if not text:
         return None
     qty, rest = _read_number(text)
     if qty is None or qty <= 0:
-        return None                                    # "some rice" - let the model guess
+        return None  # "some rice" - let the model guess
     rest = rest.strip()
 
     unit_word = None
@@ -169,23 +149,23 @@ def parse_part(part):
         return None
 
     if SIZE_WORDS_RE.search(name):
-        return None                                     # "a big banana" - let the model judge the size
+        return None  # "a big banana" - let the model judge the size
     key = _find_food(name)
     label = re.sub(r"\s+", " ", name)
-    # bare food name ("rice", "eggs") -> our USDA search text; more detail ("brown rice") -> their words
+    # bare food name ("rice", "eggs") -> our USDA search text
     bare = bool(key) and (_singular(label) == key or label == key)
 
-    if unit_word in WEIGHT_UNITS:                       # any food with a weight works
+    if unit_word in WEIGHT_UNITS:  # any food with a weight works
         grams = qty * WEIGHT_UNITS[unit_word]
-        food_type = PORTIONS[key][0] if key else None   # filled from USDA category later
+        food_type = PORTIONS[key][0] if key else None  # filled from USDA category later
         query = PORTIONS[key][1] if bare else label
     else:
         if not key:
-            return None                                 # "2 burritos" - unknown size, use the model
+            return None  # "2 burritos" - unknown size, use the model
         food_type, default_query, units = PORTIONS[key]
         unit = OTHER_UNITS.get(unit_word, "each") if unit_word else "each"
         if unit not in units:
-            return None                                 # "a cup of eggs" - not a known portion
+            return None  # "a cup of eggs" - not a known portion
         grams = qty * units[unit]
         query = default_query if bare else label
 
@@ -195,7 +175,7 @@ def parse_part(part):
 
 
 def parse(text):
-    """Whole message -> list of parsed foods, or None if any part needs the AI model."""
+    """Whole message -> list of parsed foods, or None if any part needs the AI model"""
     text = (text or "").strip()
     if not text or len(text) > 300:
         return None

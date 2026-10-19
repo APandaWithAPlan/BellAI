@@ -1,29 +1,7 @@
-"""
-analyze_food.py - turn a food photo OR a typed description into food labels plus nutrition, as JSON.
+"""Food photo or text description -> foods, portions and nutrition as JSON.
 
-Run (from the Food Model folder, with the .venv active):
-    python analyze_food.py photos/lunch.jpg
-    python analyze_food.py photos/lunch.jpg --note "half portion, fried in butter"
-    python analyze_food.py --text "2 eggs and a slice of toast"
-    python analyze_food.py --text "a big bowl of chicken alfredo"
-
-For the website/app, run server.py instead - it uses the same code behind a web API.
-
-How it works
-  Photo:  Qwen2.5-VL looks at the photo (plus an optional note) and lists each food
-          with a type and an estimated weight in grams.
-  Text:   FAST PATH first (quick_parse.py): simple text like "2 eggs and toast" or
-          "150 g rice" is understood without the AI model, in well under a second.
-          If any part is vague ("a big bowl of pasta", "some fries") the AI model handles it.
-  Both:   Labels are sanitized, matched to USDA FoodData Central (nutrition.py), and
-          calories/protein/carbs/fat/fiber/sugar/sodium = grams x USDA values per gram.
-          The model never makes up nutrition numbers.
-
-The first model run downloads the model (about 16 GB) into your Hugging Face cache.
-
-Options
-    --model Qwen/Qwen2.5-VL-3B-Instruct   smaller, faster, less accurate (default is 7B)
-    --lora food_lora                      use a fine-tuned adapter once you've trained one
+Usage: python analyze_food.py photo.jpg [--note "..."]
+       python analyze_food.py --text "2 eggs and toast"
 """
 
 import argparse
@@ -41,14 +19,14 @@ HERE = Path(__file__).resolve().parent
 RESULTS_DIR = HERE / "results"
 MODEL_ID = "Qwen/Qwen2.5-VL-7B-Instruct"
 
-# Image size the model sees (Qwen works in 28x28 patches). Bigger = more detail but more VRAM.
+# Image size the model sees (Qwen works in 28x28 patches)
 MIN_PIXELS = 256 * 28 * 28
 MAX_PIXELS = 1024 * 28 * 28
 
-MAX_GRAMS = 3000      # anything bigger than 3 kg for one item is treated as a model mistake
+MAX_GRAMS = 3000  # anything bigger than 3 kg for one item is treated
 MAX_TEXT_CHARS = 500  # longest typed description accepted
 
-# The only food types the API will ever return; anything else becomes "other"
+# The only food types the API will ever return
 FOOD_TYPES = ["fruit", "vegetable", "grain", "protein", "dairy", "fat_oil", "sweet",
               "snack", "beverage", "mixed_dish", "condiment", "other"]
 
@@ -67,7 +45,10 @@ Reply with JSON only, in exactly this shape:
 {{"items": [{{"name": "...", "type": "...", "grams": 0, "confidence": 0.0}}]}}
 If there is no food or drink, reply {{"items": []}}."""
 
-PHOTO_PROMPT = "Look at this photo and list every distinct food or drink you can see.\n" + ITEM_RULES.format(
+PHOTO_PROMPT = ("Look at this photo and list every distinct food or drink you can see.\n"
+                "Only list real, edible food or drink that is actually in the photo. Do not guess. "
+                "If the photo shows no real food or drink (for example a pet, a person, a room, an object, "
+                "a toy or a drawing), reply {\"items\": []}.\n") + ITEM_RULES.format(
     grams_rule="your best estimate of the edible weight in grams. Use the plate, bowl, utensils, "
                "hands or packaging for scale.")
 
@@ -80,21 +61,17 @@ TEXT_PROMPT = ("The user described what they ate or drank. List every distinct f
 
 
 class ModelNotLoaded(Exception):
-    """Text was too vague for the fast path, and the AI model isn't loaded (yet)."""
+    """Text was too vague for the fast path, and the AI model isn't loaded (yet)"""
 
 
-# ---------------------------------------------------------------- model
+# model
 
 def check_gpu_memory(model_id):
-    """
-    Warn if other programs are already using the GPU memory this model needs.
-    On Windows, running out doesn't crash: the driver silently spills into system RAM,
-    which makes everything (including the desktop) crawl at 99% GPU.
-    """
+    """Warn if other programs are already using the GPU memory this model needs"""
     import torch
     free, total = torch.cuda.mem_get_info()
     free_gb, total_gb = free / 1024**3, total / 1024**3
-    need_gb = 9 if "3B" in model_id else 19      # weights + room to work on an image
+    need_gb = 9 if "3B" in model_id else 19  # weights + room to work on an image
     print(f"GPU memory free: {free_gb:.1f} of {total_gb:.1f} GB (this model needs about {need_gb} GB)",
           file=sys.stderr)
     if free_gb < need_gb:
@@ -107,8 +84,23 @@ def check_gpu_memory(model_id):
               file=sys.stderr)
 
 
+def check_venv():
+    """Stop early with a clear message if this isn't running in the Food Model's own .venv."""
+    import os
+    venv = HERE / ".venv"
+    if not venv.exists() or os.environ.get("FOOD_ALLOW_ANY_PYTHON"):
+        return
+    if Path(sys.prefix).resolve() != venv.resolve():
+        sys.exit("\nThis is running with a different Python, not the Food Model's .venv:\n"
+                 f"    {sys.executable}\n"
+                 "Its packages (GPU PyTorch, qwen-vl-utils) won't be found. Activate the venv first:\n"
+                 "    .venv\\Scripts\\activate\n"
+                 "Your prompt should then start with (.venv). Or use start_server.ps1, which always uses it.\n")
+
+
 def load_model(model_id=MODEL_ID, lora_dir=None):
     """Load Qwen2.5-VL onto the GPU in bfloat16 (7B needs about 17 GB of VRAM)."""
+    check_venv()
     import torch
     from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
@@ -129,7 +121,7 @@ def load_model(model_id=MODEL_ID, lora_dir=None):
 
 
 def open_image(image):
-    """Accept a file path or an already-open PIL image; return an upright RGB image."""
+    """Accept a file path or an already-open PIL image"""
     from PIL import Image, ImageOps
     if not isinstance(image, Image.Image):
         image = Image.open(image)
@@ -138,10 +130,7 @@ def open_image(image):
 
 
 def ask_model(model, processor, image=None, note=None, text=None, max_new_tokens=768):
-    """
-    Ask the model about a photo (path or PIL image, with an optional note) or a typed
-    description (text, no image). Returns the model's raw text answer.
-    """
+    """Ask the model about a photo"""
     import torch
     from qwen_vl_utils import process_vision_info
 
@@ -169,10 +158,10 @@ def ask_model(model, processor, image=None, note=None, text=None, max_new_tokens
     return processor.batch_decode(new_tokens, skip_special_tokens=True)[0]
 
 
-# ---------------------------------------------------------------- parsing + sanitizing
+# parsing + sanitizing
 
 def parse_model_json(text):
-    """Pull the JSON object out of the model's reply (handles ```json fences and chatter)."""
+    """Pull the JSON object out of the model's reply"""
     text = re.sub(r"```(?:json)?", "", text or "")
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end <= start:
@@ -196,7 +185,7 @@ def _food_type(value):
 
 
 def sanitize_items(parsed):
-    """Keep only well-formed items: clean label, known type, grams in 1..MAX_GRAMS, confidence 0..1."""
+    """Keep only well-formed items: clean label, known type, grams in 1..MAX_GRAMS"""
     items = parsed.get("items", []) if isinstance(parsed, dict) else []
     clean = []
     for item in items if isinstance(items, list) else []:
@@ -217,7 +206,7 @@ def sanitize_items(parsed):
 
 
 def add_nutrition(items):
-    """Attach the USDA match and scaled nutrition to each item. Returns (items, unmatched_labels)."""
+    """Attach the USDA match and scaled nutrition to each item"""
     unmatched = []
     for item in items:
         query = item.pop("usda_query", None) or item["label"]
@@ -240,7 +229,7 @@ def add_nutrition(items):
 
 
 def totals(items):
-    """Sum each nutrient over the matched items (None-valued nutrients are skipped)."""
+    """Sum each nutrient over the matched items (None-valued nutrients are skipped)"""
     out = {}
     for key in NUTRIENT_KEYS:
         values = [i["nutrition"][key] for i in items if i["nutrition"][key] is not None]
@@ -253,7 +242,7 @@ def totals(items):
 
 
 def make_summary(items, total, status):
-    """One friendly sentence for the chat bubble and for BellAi to say out loud."""
+    """One friendly sentence for the chat bubble and for BellAi to say out loud"""
     if status == "unparseable_model_output":
         return "Sorry, I couldn't work out what that was. Could you try again?"
     if not items:
@@ -275,13 +264,13 @@ def make_summary(items, total, status):
 
 def finish_result(items, unmatched, *, parsed_ok, input_kind, source, model_id, note=None,
                   text=None, image_name=None, raw_text=None, timing=None):
-    """Everything the backend needs, in one JSON-ready dict."""
+    """Everything the backend needs, in one JSON-ready dict"""
     if not parsed_ok:
         status = "unparseable_model_output"
     elif not items:
         status = "no_food_found"
     elif unmatched:
-        status = "partial"        # some foods had no USDA match; totals exclude them
+        status = "partial"  # some foods had no USDA match
     else:
         status = "ok"
     total = totals(items)
@@ -289,8 +278,8 @@ def finish_result(items, unmatched, *, parsed_ok, input_kind, source, model_id, 
         "type": "food",
         "status": status,
         "summary": make_summary(items, total, status),
-        "input": input_kind,                        # "image" or "text"
-        "source": source,                           # "model" or "quick_parse"
+        "input": input_kind,  # "image" or "text"
+        "source": source,  # "model" or "quick_parse"
         "image": Path(str(image_name)).name if image_name else None,
         "text": text,
         "note": note,
@@ -305,7 +294,7 @@ def finish_result(items, unmatched, *, parsed_ok, input_kind, source, model_id, 
 
 
 def build_result(image_name, raw_text, model_id, note=None, text=None, timing=None):
-    """Model answer -> result dict (used for both photo and text requests that went to the model)."""
+    """Model answer -> result dict"""
     t0 = time.perf_counter()
     parsed = parse_model_json(raw_text)
     items, unmatched = add_nutrition(sanitize_items(parsed))
@@ -317,10 +306,10 @@ def build_result(image_name, raw_text, model_id, note=None, text=None, timing=No
                          raw_text=raw_text, timing=timing)
 
 
-# ---------------------------------------------------------------- entry points
+# entry points
 
 def analyze(model, processor, image, note=None, model_id=MODEL_ID, image_name=None):
-    """Photo (path or PIL image) -> result dict."""
+    """Photo (path or PIL image) -> result dict"""
     t0 = time.perf_counter()
     raw = ask_model(model, processor, image=image, note=note)
     model_ms = round((time.perf_counter() - t0) * 1000)
@@ -331,7 +320,7 @@ def analyze(model, processor, image, note=None, model_id=MODEL_ID, image_name=No
 
 
 def try_quick_path(text):
-    """Fast path for simple text. Returns a finished result, or None if the model is needed."""
+    """Fast path for simple text"""
     t0 = time.perf_counter()
     foods = quick_parse.parse(text)
     if not foods:
@@ -340,17 +329,14 @@ def try_quick_path(text):
               "confidence": 1.0, "usda_query": f["usda_query"]} for f in foods]
     items, unmatched = add_nutrition(items)
     if unmatched or any("lookup_error" in i for i in items):
-        return None        # let the model rephrase foods USDA didn't recognise
+        return None  # let the model rephrase foods USDA didn't recognise
     ms = round((time.perf_counter() - t0) * 1000)
     return finish_result(items, unmatched, parsed_ok=True, input_kind="text", source="quick_parse",
                          model_id=None, text=text, timing={"quick_parse": ms, "total": ms})
 
 
 def analyze_text(model, processor, text, model_id=MODEL_ID, get_model_lock=None):
-    """
-    Typed description -> result dict. Tries the fast path first; uses the model only if needed.
-    get_model_lock: optional context manager (the server's GPU lock) taken only for the model.
-    """
+    """Typed description -> result dict"""
     text = (text or "").strip()[:MAX_TEXT_CHARS]
     t0 = time.perf_counter()
     quick = try_quick_path(text)
@@ -373,7 +359,7 @@ def analyze_text(model, processor, text, model_id=MODEL_ID, get_model_lock=None)
     return result
 
 
-# ---------------------------------------------------------------- command line
+# command line
 
 def main():
     ap = argparse.ArgumentParser(description="Estimate foods and nutrition from a photo or a description.")

@@ -1,25 +1,6 @@
-"""
-fast_speak.py - speak in your trained voice in real time, through Ollama.
+"""Real-time speech from the Ollama version of the voice.
 
-Unlike speak.py, this streams: the first words start playing while the rest is still
-being generated.
-
-Setup (once):
-    pip install sounddevice
-    python export_voice.py            puts your voice into Ollama as "bellai-voice"
-
-Run (from the orpheus folder), with Ollama running:
-    python fast_speak.py              keeps running: type a line, press Enter, hear it
-    python fast_speak.py "Good morning! The coffee is ready."
-
-Options
-    --out FILE     also save the audio to a WAV file (nothing is saved unless you ask)
-    --quiet        don't play (use with --out)
-    --model NAME   Ollama model to use (default: bellai-voice)
-    --volume N     loudness boost (default 1; try 2 if it's too quiet)
-
-After each line it prints how long the first sound took and how fast it generated.
-"1.0x" means exactly real time; higher is faster than real time.
+Usage: python fast_speak.py ["text"] [--model NAME] [--out file.wav] [--whole]
 """
 
 import argparse
@@ -35,30 +16,30 @@ from pathlib import Path
 
 from speak import AUDIO_OFFSET, CODEBOOK, SAMPLE_RATE, VOICE, split_text
 
-HERE = Path(__file__).resolve().parent          # the orpheus folder
-ROOT = HERE.parent                               # the Voice Training folder
+HERE = Path(__file__).resolve().parent  # the orpheus folder
+ROOT = HERE.parent  # the Voice Training folder
 MODELS = HERE / "models"
 OUTPUTS = HERE / "outputs"
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 TOKEN = re.compile(r"<custom_token_(\d+)>")
-FIRST_CODE = AUDIO_OFFSET - 128256          # custom_token_10 is the first audio code
-FRAME_SAMPLES = 2048                        # one 7-token frame is 2048 samples (about 85 ms)
+FIRST_CODE = AUDIO_OFFSET - 128256  # custom_token_10 is the first audio code
+FRAME_SAMPLES = 2048  # one 7-token frame is 2048 samples (about 85 ms)
 
 
 def build_prompt(text, voice=VOICE):
-    """The same layout the model was trained on, written with Orpheus's marker tokens."""
+    """The same layout the model was trained on, written with Orpheus's marker tokens"""
     spoken = f"{voice}: {text}" if voice else text
     return f"<custom_token_3><|begin_of_text|>{spoken}<|eot_id|><custom_token_4><custom_token_5><custom_token_1>"
 
 
 class Framer:
-    """Turns the stream of text pieces from Ollama into complete 7-code audio frames."""
+    """Turns the stream of text pieces from Ollama into complete 7-code audio frames"""
 
     def __init__(self):
         self.text = ""
         self.codes = []
-        self.count = 0          # valid audio codes seen so far
-        self.raw = ""           # first part of the raw output, kept for troubleshooting
+        self.count = 0  # valid audio codes seen so far
+        self.raw = ""  # first part of the raw output
 
     def feed(self, piece):
         if len(self.raw) < 400:
@@ -73,12 +54,12 @@ class Framer:
                 self.count += 1
                 if self.count % 7 == 0:
                     frames.append(self.codes[-7:])
-        self.text = self.text[last:][-40:]     # keep only an unfinished token, if any
+        self.text = self.text[last:][-40:]  # keep only an unfinished token, if any
         return frames
 
 
 def stream_frames(text, model, stats=None):
-    """Ask Ollama to speak `text`; yields audio frames as they arrive."""
+    """Ask Ollama to speak `text`"""
     body = json.dumps({
         "model": model, "prompt": build_prompt(text), "raw": True, "stream": True, "keep_alive": "30m",
         "options": {"temperature": 0.6, "top_p": 0.95, "repeat_penalty": 1.1, "num_predict": 1200,
@@ -108,7 +89,7 @@ def stream_frames(text, model, stats=None):
 
 
 class Decoder:
-    """Turns frames into sound with the SNAC codec, a few frames at a time."""
+    """Turns frames into sound with the SNAC codec, a few frames at a time"""
 
     def __init__(self):
         import torch
@@ -119,7 +100,7 @@ class Decoder:
         self.snac = SNAC.from_pretrained("hubertsiuzdak/snac_24khz").to(self.device).eval()
 
     def decode(self, frames):
-        """Decode a list of frames. Returns float32 samples, 2048 per frame."""
+        """Decode a list of frames"""
         torch = self.torch
         layer1 = [f[0] for f in frames]
         layer2 = [c for f in frames for c in (f[1], f[4])]
@@ -130,20 +111,18 @@ class Decoder:
 
 
 class Chunker:
-    """Decodes frames in batches. Each batch is decoded together with the frames before it and a
-    few frames after it, and neighbouring pieces are blended over 10 ms, so the joins are smooth.
-    If decoding ever falls behind, the next batch is simply bigger, so it always catches up."""
+    """Decodes frames in batches"""
 
     BEFORE, AFTER, BLEND = 8, 3, 240
 
     def __init__(self, decoder):
         self.decoder = decoder
         self.frames = []
-        self.done = 0           # frames already turned into sound
-        self.overlap = None     # how the previous decode began the piece that comes next
+        self.done = 0  # frames already turned into sound
+        self.overlap = None  # how the previous decode began the piece that comes
 
     def feed(self, new_frames, final=False):
-        """Add frames; returns the sound that is now ready (or None)."""
+        """Add frames"""
         import numpy as np
 
         self.frames.extend(new_frames)
@@ -165,7 +144,7 @@ class Chunker:
 
 
 class Player:
-    """Plays chunks through the speakers on a background thread, so generation never waits."""
+    """Plays chunks through the speakers on a background thread"""
 
     def __init__(self, head_start=0.5):
         import sounddevice as sd
@@ -179,7 +158,7 @@ class Player:
 
     def _run(self):
         waiting, held, finished = [], 0, False
-        while held < self.head_start and not finished:      # gather a little before starting
+        while held < self.head_start and not finished:  # gather a little before starting
             chunk = self.queue.get()
             if chunk is None:
                 finished = True
@@ -217,7 +196,7 @@ def say(text, decoder, model, out=None, quiet=False, volume=1.0, head_start=0.5,
     stats, inbox = {}, queue.Queue()
     END_OF_PART, END = object(), object()
 
-    def read():                                   # runs alongside, so decoding never slows the model
+    def read():  # runs alongside, so decoding never slows the model
         try:
             for part in split_text(text):
                 for frame in stream_frames(part, model, stats):
@@ -234,13 +213,13 @@ def say(text, decoder, model, out=None, quiet=False, volume=1.0, head_start=0.5,
     chunker = Chunker(decoder)
 
     need_gap = False
-    held_frames = []                              # --whole: one sentence's frames, decoded together
+    held_frames = []  # for --whole: one sentence's frames, decoded together
 
     def emit(chunk):
         nonlocal first_sound, need_gap
         if chunk is None or not len(chunk):
             return
-        if need_gap:                              # a short pause between sentences
+        if need_gap:  # a short pause between sentences
             need_gap = False
             emit(gap / max(volume, 1e-6))
         if first_sound is None:
@@ -254,7 +233,7 @@ def say(text, decoder, model, out=None, quiet=False, volume=1.0, head_start=0.5,
         finished = False
         while not finished:
             items = [inbox.get()]
-            while True:                           # take everything that has arrived so far
+            while True:  # take everything that has arrived so far
                 try:
                     items.append(inbox.get_nowait())
                 except queue.Empty:

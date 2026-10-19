@@ -1,16 +1,6 @@
-"""
-fix_clips.py - repair clip boundaries using the original recordings.
+"""Re-cut clip edges using the original recording (Whisper timestamps run early).
 
-The first clip-cutting pass trusted Whisper's word timings, which run early: many clips began
-with about half a second of silence and ended while the last word was still fading out.
-This finds every clip inside its original recording and re-cuts it so that it
-  * starts just before the first sound (keeping about 0.12 s of lead-in)
-  * ends after the last word has actually finished
-  * has very long silent gaps (over 0.6 s) shortened to 0.4 s, in clips without sound tags
-The text in metadata.csv is not changed.
-
-    python tools/fix_clips.py locate <recording.wav> <clip name prefix>
-    python tools/fix_clips.py cut    <recording.wav> <clip name prefix>
+Usage: python fix_clips.py locate|cut <recording.wav> <clip prefix>
 """
 import csv, json, sys, wave
 from pathlib import Path
@@ -19,7 +9,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent / "voice_data"
 CLIPS, FIXED = ROOT / "clips", ROOT / "clips_fixed"
 SR = 24000
-HOP = 240                                    # 10 ms
+HOP = 240  # 10 ms
 
 
 def read(path):
@@ -79,7 +69,7 @@ def locate(recording, prefix):
     for name, _ in rows_for(prefix):
         clip, _ = read(CLIPS / name)
         start, q = locate_one(raw, clip, max(0, pos - SR), min(len(raw), pos + len(clip) + SR * 8))
-        if q < 0.9:                           # not where expected: search the whole recording
+        if q < 0.9:  # not where expected: search the whole recording
             start, q = locate_one(raw, clip, 0, len(raw))
         out[name] = [int(start), int(len(clip)), round(q, 4)]
         if q >= 0.9:
@@ -95,15 +85,14 @@ def frame_levels(x):
 
 
 def refine(raw, start, length, has_tag):
-    """Return the re-cut audio for one clip, plus what was changed."""
+    """Return the re-cut audio for one clip, plus what was changed"""
     end = start + length
     levels = frame_levels(raw[start:end])
     speech = float(np.percentile(levels, 90))
     quiet = max(0.07 * speech, 0.0015)
     info = {}
 
-    # --- end: carry on until the sound has really stopped, at most 0.6 s. Loudness alone misses a
-    # trailing "s" (a quiet hiss), so high-frequency energy has to die away too.
+    # end: carry on until the sound has really stopped, at most 0.6 s.
     def hiss_levels(x):
         return frame_levels(np.diff(x, prepend=x[:1]))
     around = raw[max(0, end - 3 * SR):end + 3 * SR]
@@ -115,18 +104,18 @@ def refine(raw, start, length, has_tag):
     if frame_levels(tail_raw).max() > quiet or hiss_levels(tail_raw).max() > hiss_quiet:
         stop = None
         for i in range(len(after) - 3):
-            if after[i:i + 4].max() < 1.0:    # 40 ms where neither loudness nor hiss is left
+            if after[i:i + 4].max() < 1.0:  # 40 ms where neither loudness nor hiss is left
                 stop = i
                 break
         if stop is not None and stop * HOP <= int(0.6 * SR):
             new_end = end + (stop + 3) * HOP
             info["end_extended_ms"] = round((new_end - end) / SR * 1000)
-        else:                                 # speech runs straight on: cut at the quietest nearby point
+        else:  # speech runs straight on: cut at the quietest nearby
             window = frame_levels(raw[end - 8 * HOP:end + 8 * HOP])
             new_end = end - 8 * HOP + (int(np.argmin(window)) + 1) * HOP
             info["end_moved_ms"] = round((new_end - end) / SR * 1000)
 
-    # --- start: trim long lead-in silence, or reach back if the first sound was cut
+    # start: trim long lead-in silence
     loud = np.where(levels > max(0.12 * speech, quiet))[0]
     first = int(loud[0]) if len(loud) else 0
     new_start = start
@@ -144,7 +133,7 @@ def refine(raw, start, length, has_tag):
 
     audio = raw[new_start:new_end].copy()
 
-    # --- very long silent gaps -> 0.4 s (not in clips with sound tags, where a quiet sigh may hide)
+    # very long silent gaps -> 0.4 s
     if not has_tag:
         lv = frame_levels(audio)
         silent = lv < max(0.035 * speech, 0.001)
@@ -172,8 +161,8 @@ def refine(raw, start, length, has_tag):
             audio = joined
             info["pause_removed_ms"] = round(removed / SR * 1000)
 
-    audio[:120] *= np.linspace(0, 1, 120, dtype=np.float32)      # 5 ms fade in
-    audio[-240:] *= np.linspace(1, 0, 240, dtype=np.float32)     # 10 ms fade out
+    audio[:120] *= np.linspace(0, 1, 120, dtype=np.float32)  # 5 ms fade in
+    audio[-240:] *= np.linspace(1, 0, 240, dtype=np.float32)  # 10 ms fade out
     return audio, info
 
 
@@ -187,11 +176,11 @@ def cut(recording, prefix):
         start, length, q = offsets[name]
         original, _ = read(CLIPS / name)
         before += len(original) / SR
-        if q < 0.9 or start < 0:              # hand-edited or not found: leave exactly as it is
+        if q < 0.9 or start < 0:  # hand-edited or not found: leave exactly as it is
             write(FIXED / name, original); kept_as_is += 1; after += len(original) / SR
             continue
         audio, info = refine(raw, start, length, "<" in text)
-        if len(audio) < SR:                   # never produce a clip under one second
+        if len(audio) < SR:  # never produce a clip under one second
             write(FIXED / name, original); kept_as_is += 1; after += len(original) / SR
             continue
         write(FIXED / name, audio); after += len(audio) / SR

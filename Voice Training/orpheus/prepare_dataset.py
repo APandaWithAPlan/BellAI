@@ -1,35 +1,6 @@
-"""
-prepare_dataset.py - turn long voice recordings into a training dataset for Orpheus.
+"""Split recordings into short clips and transcribe them with Whisper.
 
-What it does
-  1. Reads every audio file in voice_data/raw  (wav, flac, mp3, ogg)
-  2. Transcribes each one with Whisper, with a timestamp for every word
-  3. Cuts the recording into roughly 4-14 second clips at natural pauses
-  4. Saves the clips as 24 kHz mono WAV files in voice_data/clips
-  5. Writes voice_data/clips/metadata.csv with two columns: file_name,text
-
-Setup (once)
-    pip install faster-whisper soundfile
-
-Run (from the orpheus folder)
-    python prepare_dataset.py
-
-Clip edges are checked against the sound itself (fix_clips.py), because Whisper's word
-timings run early: without that, clips start with silence and cut off the last word.
-
-Adding more recordings later
-    Put the new files in voice_data/new_recordings, then run:
-        python prepare_dataset.py --add
-    This splits and transcribes only the new files and adds them to the existing
-    clips and metadata.csv. Nothing already in the dataset is changed.
-
-Useful options
-    python prepare_dataset.py --overwrite     rebuild clips (erases transcript edits!)
-    python prepare_dataset.py --cpu           skip the GPU if it crashes on startup
-    python prepare_dataset.py --model medium  smaller/faster Whisper model
-
-After it finishes, open metadata.csv and fix any transcription mistakes.
-The text must match what you actually said, word for word.
+Usage: python prepare_dataset.py [--add] [--overwrite] [--cpu]
 """
 
 import argparse
@@ -40,24 +11,24 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent.parent   # the Voice Training folder
+ROOT = Path(__file__).resolve().parent.parent  # the Voice Training folder
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fix_clips import refine  # noqa: E402  - Whisper's word timings run early; this fixes clip edges
+from fix_clips import refine  # noqa: E402
 
-SAMPLE_RATE = 24000          # Orpheus (SNAC codec) expects 24 kHz audio
-WHISPER_RATE = 16000         # Whisper expects 16 kHz audio
+SAMPLE_RATE = 24000  # Orpheus (SNAC codec) expects 24 kHz audio
+WHISPER_RATE = 16000  # Whisper expects 16 kHz audio
 AUDIO_TYPES = {".wav", ".flac", ".mp3", ".ogg"}
 
-MIN_LEN = 4.0                # try not to end a clip before this many seconds
-TARGET_LEN = 10.0            # past this, cut at the next comma or small pause
-MAX_LEN = 14.0               # never let a clip run longer than this
-SHORTEST_KEPT = 1.5          # clips shorter than this are thrown away
-LONG_PAUSE = 1.5             # a silence this long always ends the clip
-PAD = 0.15                   # seconds of breathing room kept around each clip
+MIN_LEN = 4.0  # try not to end a clip before this many seconds
+TARGET_LEN = 10.0  # past this, cut at the next comma or small pause
+MAX_LEN = 14.0  # never let a clip run longer than this
+SHORTEST_KEPT = 1.5  # clips shorter than this are thrown away
+LONG_PAUSE = 1.5  # a silence this long always ends the clip
+PAD = 0.15  # seconds of breathing room kept around each clip
 
 
 def chunk_words(words, min_len=MIN_LEN, target_len=TARGET_LEN, max_len=MAX_LEN):
-    """Group (start, end, text) words into clips that end at natural pauses."""
+    """Group (start, end, text) words into clips that end at natural pauses"""
     chunks, current = [], []
     for i, (start, end, text) in enumerate(words):
         current.append((start, end, text))
@@ -82,7 +53,7 @@ def chunk_words(words, min_len=MIN_LEN, target_len=TARGET_LEN, max_len=MAX_LEN):
 
 
 def clip_bounds(chunk, prev_end, next_start, total):
-    """Pad a clip slightly without bleeding into the neighbouring words."""
+    """Pad a clip slightly without bleeding into the neighbouring words"""
     first, last = chunk[0][0], chunk[-1][1]
     lo = 0.0 if prev_end is None else (prev_end + first) / 2
     hi = total if next_start is None else (last + next_start) / 2
@@ -90,7 +61,7 @@ def clip_bounds(chunk, prev_end, next_start, total):
 
 
 def resample(audio, rate_in, rate_out):
-    """Change the sample rate, using whichever resampling library is installed."""
+    """Change the sample rate, using whichever resampling library is installed"""
     if rate_in == rate_out:
         return audio
     try:
@@ -106,7 +77,7 @@ def resample(audio, rate_in, rate_out):
         return resample_poly(audio, rate_out // g, rate_in // g).astype(np.float32)
     except Exception:
         pass
-    # Last resort: smooth, then pick samples. Fine for speech going to a lower rate.
+    # Last resort: smooth, then pick samples
     if rate_out < rate_in:
         width = max(1, round(rate_in / rate_out))
         audio = np.convolve(audio, np.ones(width, dtype=np.float32) / width, mode="same")
@@ -115,7 +86,7 @@ def resample(audio, rate_in, rate_out):
 
 
 def load_audio(path, rate):
-    """Read a recording as mono float32 at the given sample rate."""
+    """Read a recording as mono float32 at the given sample rate"""
     import soundfile as sf
 
     try:
@@ -131,7 +102,7 @@ def load_audio(path, rate):
 def load_model(name, force_cpu):
     if not force_cpu:
         try:
-            import torch  # noqa: F401  (loads PyTorch's CUDA files so Whisper can use them)
+            import torch  # noqa: F401
             has_gpu = torch.cuda.is_available()
         except Exception:
             has_gpu = False
@@ -143,7 +114,7 @@ def load_model(name, force_cpu):
     if has_gpu:
         try:
             model = WhisperModel(name, device="cuda", compute_type="float16")
-            # Tiny test run so a broken GPU setup fails here, not halfway through.
+            # Tiny test run so a broken GPU setup fails here, not halfway through
             segments, _ = model.transcribe(np.zeros(WHISPER_RATE, dtype=np.float32), language="en")
             list(segments)
             print(f"Whisper '{name}' loaded on the GPU.")
@@ -252,7 +223,7 @@ def main():
             kept += 1
             name = f"{stem}_{kept:04d}.wav"
             samples = audio[int(start * SAMPLE_RATE): int(end * SAMPLE_RATE)]
-            try:                                   # tighten the cut using the sound itself (see fix_clips.py)
+            try:  # tighten the cut using the sound itself
                 refined, _ = refine(audio, int(start * SAMPLE_RATE), len(samples), "<" in text)
                 if len(refined) >= SAMPLE_RATE:
                     samples = refined

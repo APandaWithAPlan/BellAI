@@ -1,29 +1,6 @@
-"""
-bellai_voice_server.py - the BellAi voice as a small web API, for the app, the website and the Pi.
+"""Small web API for the BellAi voice. POST /tts returns a streaming WAV.
 
-Send it text, get BellAi's voice back as a WAV stream that starts playing within about a second.
-It uses a voice pack exported from BellAi Studio (gpt.ckpt, sovits.pth, reference.wav, voice.json)
-and needs GPT-SoVITS installed on the same machine, plus an NVIDIA GPU for real-time speed.
-
-Run it with GPT-SoVITS's Python, from the unzipped voice pack folder:
-
-    Windows (GPT-SoVITS package):
-        "C:\\path\\to\\GPT-SoVITS-v3lora-20250228\\runtime\\python.exe" bellai_voice_server.py --gpt-sovits "C:\\path\\to\\GPT-SoVITS-v3lora-20250228"
-    Linux (GPT-SoVITS installed from GitHub):
-        python bellai_voice_server.py --gpt-sovits ~/GPT-SoVITS
-
-Options
-    --pack PATH        voice pack folder or .zip (default: the folder this file is in)
-    --host 0.0.0.0     let other devices on the network reach it (default: this computer only)
-    --port 9880
-    --key SECRET       require this key (header "X-API-Key: SECRET" or ?key=SECRET). Also read from
-                       the BELLAI_KEY environment variable. Use one whenever --host is not 127.0.0.1.
-
-API
-    GET  /health                       {"ready": true, "voice": "...", "sample_rate": 32000}
-    POST /tts   {"text": "Hello!"}     streams audio/wav as it is generated
-    GET  /tts?text=Hello!              same thing, handy for testing in a browser
-         optional fields: "speed" (0.6-1.6), "stream" (false = wait and return one complete WAV)
+Usage: <GPT-SoVITS python> bellai_voice_server.py --gpt-sovits <folder> [--host 0.0.0.0 --key KEY]
 """
 
 import argparse
@@ -106,7 +83,7 @@ class Voice:
         }}
         self.tts = TTS(TTS_Config(config))
         self.rate = int(self.tts.configs.sampling_rate)
-        self._free = self.tts.empty_cache          # clean up once when idle, not after every line
+        self._free = self.tts.empty_cache  # clean up once when idle, not after every line
         self.tts.empty_cache = lambda: None
         for _ in self.tts.run(self.request("Hi there. Ready when you are.", fragment=False)):
             pass
@@ -127,7 +104,7 @@ class Voice:
         self._cleanup_token = None
         if self.lock.acquire(timeout=0.02):
             return True
-        self.tts.stop()                             # a new request interrupts the one still talking
+        self.tts.stop()  # a new request interrupts the one still talking
         return self.lock.acquire(timeout=wait)
 
     def release(self):
@@ -151,7 +128,7 @@ app = FastAPI(title="BellAi voice")
 
 
 def wav_header(rate, data_bytes=None):
-    """A WAV header. Without a length it says 'unknown/streaming', which players accept."""
+    """A WAV header"""
     size = 0xFFFFFFFF - 36 if data_bytes is None else data_bytes
     return (b"RIFF" + struct.pack("<I", min(size + 36, 0xFFFFFFFF)) + b"WAVEfmt "
             + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16) + b"data" + struct.pack("<I", size))

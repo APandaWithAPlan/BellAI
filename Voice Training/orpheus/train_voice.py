@@ -1,22 +1,6 @@
-"""
-train_voice.py - fine-tune Orpheus 3B on your voice clips.
+"""Fine-tune Orpheus 3B on the voice clips with LoRA.
 
-Setup (once):
-    pip install snac soundfile peft
-
-Run (from the orpheus folder):
-    python train_voice.py
-
-What it does
-  1. Reads voice_data/clips/metadata.csv and the WAV clips next to it
-  2. Turns each clip into audio tokens with the SNAC codec
-  3. Fine-tunes unsloth/orpheus-3b-0.1-ft with LoRA (using transformers + peft)
-  4. Saves your voice to the folder bella_voice_lora
-  5. Speaks a few test sentences into test_outputs/ so you can hear the result
-
-Options
-    python train_voice.py --epochs 5     train longer (default 3)
-    python train_voice.py --rank 32      smaller LoRA (default 64)
+Usage: python train_voice.py [--epochs N] [--rank R]
 """
 
 import argparse
@@ -28,8 +12,8 @@ from speak import (AUDIO_OFFSET, BEGIN_OF_TEXT, CODEBOOK, END_OF_HUMAN, END_OF_S
                    LORA_DIR, SAMPLE_RATE, START_OF_HUMAN, START_OF_SPEECH, VOICE, load_base_model,
                    synthesize)
 
-HERE = Path(__file__).resolve().parent          # the orpheus folder
-ROOT = HERE.parent                               # the Voice Training folder
+HERE = Path(__file__).resolve().parent  # the orpheus folder
+ROOT = HERE.parent  # the Voice Training folder
 MODELS = HERE / "models"
 OUTPUTS = HERE / "outputs"
 CLIPS = ROOT / "voice_data" / "clips"
@@ -61,7 +45,7 @@ def read_metadata():
 
 
 def interleave(layer1, layer2, layer3):
-    """SNAC's 3 code layers -> Orpheus's flat token order, 7 tokens per frame."""
+    """SNAC's 3 code layers -> Orpheus's flat token order, 7 tokens per frame"""
     tokens = []
     for i in range(len(layer1)):
         frame = [layer1[i], layer2[2 * i], layer3[4 * i], layer3[4 * i + 1],
@@ -71,7 +55,7 @@ def interleave(layer1, layer2, layer3):
 
 
 def drop_repeated_frames(tokens):
-    """Remove frames whose first code repeats the previous frame's (as the Orpheus recipe does)."""
+    """Remove frames whose first code repeats the previous frame's"""
     kept = tokens[:7]
     for i in range(7, len(tokens), 7):
         if tokens[i] != kept[-7]:
