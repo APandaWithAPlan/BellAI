@@ -45,6 +45,31 @@ struct OllamaSubmissionChecks {
     static func main() async throws {
         let stub = StubService()
         let viewModel = ChatViewModel(service: stub, model: "test-model")
+        await testValidationAndSuccessfulSubmission(stub: stub, viewModel: viewModel)
+        await testFailedSubmissionClearsPreviousResponse(stub: stub, viewModel: viewModel)
+        await testCancellationClearsPreviousError(stub: stub, viewModel: viewModel)
+        await testPendingSubmissionPreventsDuplicates()
+
+        let historyService = StubService()
+        let historyModel = ChatViewModel(service: historyService, model: "test-model")
+        await testFollowUpHistoryAndInvalidSessionReset(historyModel: historyModel)
+        await testHistoryRecoveryAndNewSession(historyService: historyService, historyModel: historyModel)
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let service = HTTPBellAIService(session: session)
+        let request = ChatRequest(model: "test-model", messages: [ChatMessage(role: "user", content: "Hello")], stream: false)
+        try await testHTTPRequestAndResponse(service: service, request: request)
+        try await testHTTPStatusErrors(service: service, request: request)
+        try await testServerErrorMessages(service: service, request: request)
+        try await testInvalidResponses(service: service, request: request)
+        print("All Ollama submission checks passed.")
+    }
+
+    @MainActor
+    private static func testValidationAndSuccessfulSubmission(stub: StubService, viewModel: ChatViewModel) async {
         precondition(!viewModel.validateAndStoreRequest(" \n "))
         precondition(viewModel.pendingRequest == nil && !viewModel.isSubmitting)
         precondition(!viewModel.validateAndStoreRequest(String(repeating: "a", count: 4_001)))
@@ -57,7 +82,10 @@ struct OllamaSubmissionChecks {
         precondition(viewModel.response?.message.content == "Mock reply")
         precondition(viewModel.responseError == nil)
         precondition(viewModel.pendingRequest?.messages.first?.content == "Hello BellAI!")
+    }
 
+    @MainActor
+    private static func testFailedSubmissionClearsPreviousResponse(stub: StubService, viewModel: ChatViewModel) async {
         stub.shouldFail = true
         precondition(viewModel.validateAndStoreRequest("Try again"))
         precondition(viewModel.response == nil && viewModel.responseError == nil)
@@ -65,7 +93,10 @@ struct OllamaSubmissionChecks {
         precondition(viewModel.responseError != nil && !viewModel.isSubmitting)
         precondition(viewModel.response == nil && viewModel.errorMessage == nil)
         precondition(viewModel.pendingRequest?.messages.last?.content == "Try again")
+    }
 
+    @MainActor
+    private static func testCancellationClearsPreviousError(stub: StubService, viewModel: ChatViewModel) async {
         stub.shouldFail = false
         stub.shouldCancel = true
         precondition(viewModel.validateAndStoreRequest("Cancel this"))
@@ -73,7 +104,10 @@ struct OllamaSubmissionChecks {
         await viewModel.submitStoredRequest()
         precondition(!viewModel.isSubmitting && viewModel.response == nil)
         precondition(viewModel.responseError?.contains("cancelled") == true)
+    }
 
+    @MainActor
+    private static func testPendingSubmissionPreventsDuplicates() async {
         let delayed = DelayedService()
         let delayedModel = ChatViewModel(service: delayed, model: "test-model")
         precondition(delayedModel.validateAndStoreRequest("Wait for it"))
@@ -88,9 +122,10 @@ struct OllamaSubmissionChecks {
         await submission.value
         precondition(!delayedModel.isSubmitting)
         precondition(delayedModel.response?.message.content == "Delayed reply")
+    }
 
-        let historyService = StubService()
-        let historyModel = ChatViewModel(service: historyService, model: "test-model")
+    @MainActor
+    private static func testFollowUpHistoryAndInvalidSessionReset(historyModel: ChatViewModel) async {
         precondition(historyModel.startNewSession(with: "First question"))
         await historyModel.submitStoredRequest()
         precondition(historyModel.conversation.map(\.kind) == [.user, .assistant])
@@ -102,7 +137,10 @@ struct OllamaSubmissionChecks {
         let savedHistory = historyModel.conversation
         precondition(!historyModel.startNewSession(with: "  "))
         precondition(historyModel.conversation == savedHistory)
+    }
 
+    @MainActor
+    private static func testHistoryRecoveryAndNewSession(historyService: StubService, historyModel: ChatViewModel) async {
         historyService.shouldFail = true
         precondition(historyModel.validateAndStoreRequest("Fail this request"))
         await historyModel.submitStoredRequest()
@@ -120,13 +158,10 @@ struct OllamaSubmissionChecks {
         precondition(historyModel.response == nil && historyModel.responseError == nil)
         await historyModel.submitStoredRequest()
         precondition(historyModel.conversation.count == 2)
+    }
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [StubURLProtocol.self]
-        let session = URLSession(configuration: configuration)
-        defer { session.invalidateAndCancel() }
-        let service = HTTPBellAIService(session: session)
-        let request = ChatRequest(model: "test-model", messages: [ChatMessage(role: "user", content: "Hello")], stream: false)
+    @MainActor
+    private static func testHTTPRequestAndResponse(service: HTTPBellAIService, request: ChatRequest) async throws {
         StubURLProtocol.payload = Data(#"{"model":"test-model","choices":[{"message":{"role":"assistant","content":"Hello from mock server"},"finish_reason":"stop"}]}"#.utf8)
         let result = try await service.send(request)
         precondition(result.message.content == "Hello from mock server")
@@ -148,7 +183,10 @@ struct OllamaSubmissionChecks {
         }
         let decodedRequest = try JSONDecoder().decode(ChatRequest.self, from: body)
         precondition(decodedRequest == request)
+    }
 
+    @MainActor
+    private static func testHTTPStatusErrors(service: HTTPBellAIService, request: ChatRequest) async throws {
         for code in [401, 403, 429, 500] {
             StubURLProtocol.status = code
             do {
@@ -158,6 +196,10 @@ struct OllamaSubmissionChecks {
                 precondition(actual == code)
             }
         }
+    }
+
+    @MainActor
+    private static func testServerErrorMessages(service: HTTPBellAIService, request: ChatRequest) async throws {
         StubURLProtocol.status = 404
         for payload in [
             #"{"error":{"message":"model 'missing' not found","type":"not_found_error"}}"#,
@@ -171,6 +213,10 @@ struct OllamaSubmissionChecks {
                 precondition(code == 404 && message == "model 'missing' not found")
             }
         }
+    }
+
+    @MainActor
+    private static func testInvalidResponses(service: HTTPBellAIService, request: ChatRequest) async throws {
         StubURLProtocol.status = 200
         for payload in [
             "not JSON",
@@ -185,6 +231,5 @@ struct OllamaSubmissionChecks {
                 preconditionFailure("Expected invalid response")
             } catch BellAIServiceError.invalidResponse {}
         }
-        print("All Ollama submission checks passed.")
     }
 }
