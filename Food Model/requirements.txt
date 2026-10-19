@@ -1,0 +1,13 @@
+# Install PyTorch with CUDA FIRST (see README step 2), then:
+#   pip install -r requirements.txt
+transformers>=4.50,<5
+accelerate>=1.0
+qwen-vl-utils>=0.0.8
+peft>=0.13
+pillow
+requests
+
+# web API (server.py)
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
