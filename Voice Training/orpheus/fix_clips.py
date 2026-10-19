@@ -102,18 +102,24 @@ def refine(raw, start, length, has_tag):
     quiet = max(0.07 * speech, 0.0015)
     info = {}
 
-    # --- end: carry on until the sound has really stopped (3 quiet frames in a row), at most 0.45 s
-    after = frame_levels(raw[end:end + int(0.6 * SR)])
-    tail = frame_levels(raw[end - 3 * HOP:end])
+    # --- end: carry on until the sound has really stopped, at most 0.6 s. Loudness alone misses a
+    # trailing "s" (a quiet hiss), so high-frequency energy has to die away too.
+    def hiss_levels(x):
+        return frame_levels(np.diff(x, prepend=x[:1]))
+    around = raw[max(0, end - 3 * SR):end + 3 * SR]
+    hiss_quiet = 4 * float(np.percentile(hiss_levels(around), 10))
+    after_raw = raw[end:end + int(0.7 * SR)]
+    after = np.maximum(frame_levels(after_raw) / quiet, hiss_levels(after_raw) / hiss_quiet)
+    tail_raw = raw[end - 3 * HOP:end]
     new_end = end
-    if tail.max() > quiet:                    # the clip ends while something is still sounding
+    if frame_levels(tail_raw).max() > quiet or hiss_levels(tail_raw).max() > hiss_quiet:
         stop = None
-        for i in range(len(after) - 2):
-            if after[i:i + 3].max() < quiet:
+        for i in range(len(after) - 3):
+            if after[i:i + 4].max() < 1.0:    # 40 ms where neither loudness nor hiss is left
                 stop = i
                 break
-        if stop is not None and stop * HOP <= int(0.45 * SR):
-            new_end = end + (stop + 4) * HOP
+        if stop is not None and stop * HOP <= int(0.6 * SR):
+            new_end = end + (stop + 3) * HOP
             info["end_extended_ms"] = round((new_end - end) / SR * 1000)
         else:                                 # speech runs straight on: cut at the quietest nearby point
             window = frame_levels(raw[end - 8 * HOP:end + 8 * HOP])
@@ -166,9 +172,8 @@ def refine(raw, start, length, has_tag):
             audio = joined
             info["pause_removed_ms"] = round(removed / SR * 1000)
 
-    fade = 120                                # 5 ms fade in and out
-    audio[:fade] *= np.linspace(0, 1, fade, dtype=np.float32)
-    audio[-fade:] *= np.linspace(1, 0, fade, dtype=np.float32)
+    audio[:120] *= np.linspace(0, 1, 120, dtype=np.float32)      # 5 ms fade in
+    audio[-240:] *= np.linspace(1, 0, 240, dtype=np.float32)     # 10 ms fade out
     return audio, info
 
 

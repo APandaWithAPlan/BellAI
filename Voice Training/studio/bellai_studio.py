@@ -20,6 +20,7 @@ import csv
 import difflib
 import glob
 import json
+import math
 import os
 import random
 import re
@@ -121,6 +122,44 @@ def natural_key(text):
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
 
 
+def sentences(text, shortest=3, longest=200):
+    """Split text into whole sentences, so each piece ends on a full stop instead of a comma.
+    Very short sentences ("Okay.") are joined to the next one; very long ones are split at commas."""
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return []
+    parts = [p.strip() for p in re.split(r"(?<=[.!?\u2026])[\"')\]]*\s+", text) if p.strip()]
+    pieces, carry = [], ""
+    for part in parts:
+        part = (carry + " " + part).strip() if carry else part
+        if len(part.split()) < shortest:
+            carry = part
+            continue
+        carry = ""
+        if len(part) > longest:                       # break a run-on sentence at commas
+            chunk = ""
+            for bit in re.split(r"(?<=[,;:])\s+", part):
+                if chunk and len(chunk) + len(bit) > longest // 2:
+                    pieces.append(chunk)
+                    chunk = bit
+                else:
+                    chunk = (chunk + " " + bit).strip()
+            part = chunk
+        pieces.append(part)
+    if carry:
+        if pieces:
+            pieces[-1] = pieces[-1] + " " + carry
+        else:
+            pieces.append(carry)
+    fixed = []
+    for piece in pieces:
+        piece = piece.rstrip(" ,;:-")
+        if piece and piece[-1] not in ".!?\u2026\"')":
+            piece += "."                              # every piece ends like a sentence
+        fixed.append(piece)
+    return fixed
+
+
 def clean_text(text):
     text = re.sub(r"<[a-zA-Z]+>", " ", text or "")   # <laugh> and friends are Orpheus-only
     return re.sub(r"\s+", " ", text).strip()
@@ -205,6 +244,38 @@ class Clips:
 CLIP_DATA = Clips()
 
 
+# ---------------------------------------------------------------- finishing the last sound
+
+TAIL_TOKENS = 3        # how long to hold the final sound: 3 speech tokens is about 0.12 s
+
+
+def install_tail_hold(tts, tokens=TAIL_TOKENS):
+    """GPT-SoVITS's GPT tends to stop right as a final "s" or "sh" begins, so the hiss is never made.
+    This holds the last speech token a little longer before the audio is rendered, then fades
+    that extra bit out, so trailing sounds can finish instead of being cut off."""
+    model = tts.vits_model
+    if model is None or getattr(model, "_tail_hold", False) or tokens <= 0:
+        return
+    original = model.decode
+    try:
+        samples_per_token = 2 * int(math.prod(model.upsample_rates))
+    except Exception:
+        samples_per_token = 1280
+
+    def decode(codes, text, refer, *args, **kwargs):
+        held = torch.cat([codes] + [codes[..., -1:]] * tokens, dim=-1)
+        audio = original(held, text, refer, *args, **kwargs).detach().clone()
+        speed = float(kwargs.get("speed", args[1] if len(args) > 1 else 1.0) or 1.0)
+        n = min(int(tokens * samples_per_token / speed), audio.shape[-1])
+        if n > 0:
+            ramp = torch.cos(torch.linspace(0, math.pi / 2, n, device=audio.device)).to(audio.dtype)
+            audio[..., -n:] = audio[..., -n:] * ramp
+        return audio
+
+    model.decode = decode
+    model._tail_hold = True
+
+
 # ---------------------------------------------------------------- the voice engine
 
 class Engine:
@@ -219,6 +290,7 @@ class Engine:
         self.settings = self.load_settings()
         self.last = {}
         self._free = None                       # GPT-SoVITS's own memory cleanup
+        self.speak_id = 0
         self._cleanup_token = None
 
     # ---- settings
@@ -252,7 +324,8 @@ class Engine:
             self.owner = owner
             return True
         if owner == "speak" and self.owner == "speak" and self.tts is not None:
-            self.tts.stop()                     # a new line interrupts the one still talking
+            self.speak_id += 1                  # a new line interrupts the one still talking
+            self.tts.stop()
         if self.lock.acquire(timeout=wait):
             self.owner = owner
             return True
@@ -285,6 +358,7 @@ class Engine:
             self.acquire("load")
             try:
                 self.tts = TTS(TTS_Config(config))
+                install_tail_hold(self.tts)
                 # GPT-SoVITS clears GPU memory at the end of every line. Skip that, and
                 # clean up once instead, when BellAi has finished talking.
                 self._free = self.tts.empty_cache
@@ -337,12 +411,14 @@ class Engine:
             "top_k": int(self.settings["top_k"]),
             "top_p": 1.0,
             "temperature": float(self.settings["temperature"]),
-            "text_split_method": "cut5",           # split at punctuation, so the first piece is short
+            "text_split_method": "cut0",           # the studio splits into whole sentences itself
             "batch_size": 1,
             "batch_threshold": 0.75,
             "split_bucket": not fragment,
             "return_fragment": fragment,
-            "speed_factor": float(self.settings["speed"]),
+            # exactly 1.0 makes GPT-SoVITS cut each piece to its original length, which would
+            # drop the held ending, so nudge it imperceptibly
+            "speed_factor": float(self.settings["speed"]) if float(self.settings["speed"]) != 1.0 else 1.0001,
             "fragment_interval": 0.2,
             "seed": seed,
             "parallel_infer": True,
@@ -355,12 +431,25 @@ class Engine:
             self.tts.init_t2s_weights(gpt)
         if sovits and sovits != self.tts.configs.vits_weights_path:
             self.tts.init_vits_weights(sovits)
+            install_tail_hold(self.tts)               # a new SoVITS model needs it too
             self.tts.prompt_cache["ref_audio_path"] = None   # reference features depend on SoVITS
+
+    def speak_sentences(self, text, fragment=True, seed=-1, ref=None, still_wanted=lambda: True):
+        """Yields (rate, int16 audio) one whole sentence at a time."""
+        for sentence in sentences(text):
+            if not still_wanted():
+                return
+            for rate, chunk in self.tts.run(self.request(sentence, fragment=fragment, seed=seed, ref=ref)):
+                if not still_wanted():
+                    return
+                yield rate, chunk
 
     def synth(self, text, seed=1234, ref=None):
         """Whole-utterance synthesis for testing. Call while holding the lock."""
-        sr, audio = next(self.tts.run(self.request(text, fragment=False, seed=seed, ref=ref)))
-        return sr, np.asarray(audio, dtype=np.float32) / 32768.0
+        parts, sr = [], 32000
+        for sr, audio in self.speak_sentences(text, fragment=False, seed=seed, ref=ref):
+            parts.append(np.asarray(audio, dtype=np.float32) / 32768.0)
+        return sr, (np.concatenate(parts) if parts else np.zeros(sr, dtype=np.float32))
 
 
 ENGINE = Engine()
@@ -766,13 +855,14 @@ def speak(body: dict = Body(...)):
         raise HTTPException(409, "BellAi is busy testing voices. Try again when that finishes.")
     if not ENGINE.acquire("speak", wait=15):
         raise HTTPException(409, "BellAi is busy. Try again in a moment.")
-    request = ENGINE.request(text)
+    ENGINE.speak_id += 1
+    my_id = ENGINE.speak_id
     rate = int(ENGINE.tts.configs.sampling_rate)
 
     def stream():
         started, first, samples = time.time(), None, 0
         try:
-            for _, chunk in ENGINE.tts.run(request):
+            for _, chunk in ENGINE.speak_sentences(text, still_wanted=lambda: ENGINE.speak_id == my_id):
                 chunk = np.asarray(chunk)
                 if chunk.dtype != np.int16:
                     chunk = (np.clip(chunk, -1, 1) * 32767).astype(np.int16)
