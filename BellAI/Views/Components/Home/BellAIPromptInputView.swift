@@ -31,7 +31,7 @@ struct BellAIPromptInputView: View {
             .submitLabel(.send)
             .onSubmit { if !isSubmitting { onSubmit() } }
             .tint(accent)
-            .accessibilityLabel("Message Bell AI")
+            .accessibilityLabel("Message BellAI")
 
             Button {
                 if text.isEmpty {

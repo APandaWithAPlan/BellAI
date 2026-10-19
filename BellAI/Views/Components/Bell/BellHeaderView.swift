@@ -17,10 +17,10 @@ struct BellHeaderView: View {
                     .background(buttonBackground, in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Close Bell")
+            .accessibilityLabel("Close BellAI")
 
             VStack(spacing: 4) {
-                Text("Bell")
+                Text("BellAI")
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
 
@@ -51,7 +51,7 @@ struct BellHeaderView: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .accessibilityLabel("More Bell options")
+            .accessibilityLabel("More BellAI options")
         }
         .foregroundStyle(foreground)
     }

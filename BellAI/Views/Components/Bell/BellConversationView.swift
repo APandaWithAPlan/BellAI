@@ -34,8 +34,8 @@ struct BellConversationView: View {
     private func title(for entry: ConversationEntry) -> String {
         switch entry.kind {
         case .user: "YOU"
-        case .assistant: "BELL"
-        case .error: "BELL · REQUEST FAILED"
+        case .assistant: "BellAI"
+        case .error: "BellAI · REQUEST FAILED"
         }
     }
 }
@@ -43,7 +43,7 @@ struct BellConversationView: View {
 #Preview {
     ScrollView {
         BellConversationView(conversation: [
-            ConversationEntry(kind: .user, content: "Hello Bell"),
+            ConversationEntry(kind: .user, content: "Hello BellAI"),
             ConversationEntry(kind: .assistant, content: "Hello! How can I help?"),
             ConversationEntry(kind: .user, content: "Suggest a cozy evening routine.")
         ])

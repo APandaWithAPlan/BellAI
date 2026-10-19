@@ -48,15 +48,15 @@ struct OllamaSubmissionChecks {
         precondition(!viewModel.validateAndStoreRequest(" \n "))
         precondition(viewModel.pendingRequest == nil && !viewModel.isSubmitting)
         precondition(!viewModel.validateAndStoreRequest(String(repeating: "a", count: 4_001)))
-        precondition(viewModel.validateAndStoreRequest("  Hello Bell!\n"))
-        precondition(viewModel.pendingRequest?.messages.first?.content == "Hello Bell!")
+        precondition(viewModel.validateAndStoreRequest("  Hello BellAI!\n"))
+        precondition(viewModel.pendingRequest?.messages.first?.content == "Hello BellAI!")
         precondition(!viewModel.validateAndStoreRequest("duplicate"))
         await viewModel.submitStoredRequest()
         precondition(stub.requests.count == 1 && !viewModel.isSubmitting)
         precondition(viewModel.errorMessage == nil)
         precondition(viewModel.response?.message.content == "Mock reply")
         precondition(viewModel.responseError == nil)
-        precondition(viewModel.pendingRequest?.messages.first?.content == "Hello Bell!")
+        precondition(viewModel.pendingRequest?.messages.first?.content == "Hello BellAI!")
 
         stub.shouldFail = true
         precondition(viewModel.validateAndStoreRequest("Try again"))

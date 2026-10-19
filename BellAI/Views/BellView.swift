@@ -25,7 +25,6 @@ struct BellView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 16) {
-                        BellListeningView(isWaiting: isSubmitting)
                         BellConversationView(conversation: conversation)
                         Color.clear.frame(height: 1).id("conversationEnd")
                     }
@@ -57,7 +56,7 @@ struct BellView: View {
                             .focused($isPromptFocused)
                             .submitLabel(.send)
                             .onSubmit(submitFollowUp)
-                            .accessibilityLabel("Message Bell AI")
+                            .accessibilityLabel("Message BellAI")
                             .task { isPromptFocused = true }
 
                         Button(action: submitFollowUp) {
