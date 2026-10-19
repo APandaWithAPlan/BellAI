@@ -9,7 +9,6 @@ Needs Windows, Python 3.10 to 3.12, an NVIDIA GPU (24 GB for 7B, 12 GB for 3B), 
 ```powershell
 cd "BellAI\Food Model"
 powershell -ExecutionPolicy Bypass -File setup.ps1
-powershell -ExecutionPolicy Bypass -File start_server.ps1
 ```
 
 Open http://127.0.0.1:8000 once it says `Model ready.` Add `-Small` for the 3B model or `-Lan` to allow other devices.

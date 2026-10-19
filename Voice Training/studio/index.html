@@ -193,6 +193,12 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:26px}
           <label class="field"><div class="name">GPT (rhythm)</div><select id="gpt"></select></label>
         </div>
       </details>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="exportBtn" title="Package this exact voice for the BellAi app, website and Pi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>Export voice pack
+        </button>
+        <span class="hint" id="exportMsg">One download with this voice and a ready-to-run voice server.</span>
+      </div>
     </section>
 
     <section class="card">
@@ -433,6 +439,14 @@ $("refSearch").addEventListener("input", renderRefs);
 $("refPlay").addEventListener("click",()=>{ ensureAudio(); const a=new Audio("/api/clip/"+encodeURIComponent($("ref").value)); a.play(); });
 $("gpt").addEventListener("change",()=>changeHeavy({gpt:$("gpt").value},"Loading GPT model..."));
 $("sovits").addEventListener("change",()=>changeHeavy({sovits:$("sovits").value},"Loading SoVITS model..."));
+$("exportBtn").addEventListener("click",async()=>{
+  const b=$("exportBtn"); b.disabled=true; $("exportMsg").textContent="Packing the voice (about 250 MB)\u2026";
+  try{
+    const r = await api("/api/export",{});
+    $("exportMsg").innerHTML = `Saved <b>${esc(r.name)}</b> (${r.mb} MB) in voice_packs. <a href="${r.url}" download>Download</a>`;
+  }catch(e){ $("exportMsg").textContent = e.message; }
+  b.disabled=false;
+});
 
 /* ---------- training ---------- */
 const presetText = {quick:"About 15 min", balanced:"About 25 min", best:"About 45 min · most accurate"};
