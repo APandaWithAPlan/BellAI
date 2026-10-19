@@ -1,20 +1,6 @@
-"""
-tune_voice.py - train your voice for several epochs and score every epoch automatically.
+"""Train for several epochs, score each one, and keep the best.
 
-Since nobody can sit and listen after every round, this script does the judging itself:
-  * after each epoch it speaks the same test sentences with the model so far
-  * a speaker-recognition model scores how close each one sounds to your real clips
-  * Whisper checks the words came out right
-  * the best-scoring epoch is saved as your voice (bella_voice_lora)
-
-Every epoch's test audio is kept in tune_outputs/epoch_N so you can still judge by ear.
-
-Run (from the orpheus folder):
-    python tune_voice.py                 train 8 epochs and keep the best
-    python tune_voice.py --epochs 12     try more epochs
-    python tune_voice.py --use-epoch 5   switch your saved voice to epoch 5 (no training)
-
-Needs about 4 GB of free disk space (one saved copy per epoch in training_runs).
+Usage: python tune_voice.py [--epochs N] [--use-epoch N]
 """
 
 import argparse
@@ -30,14 +16,14 @@ from speak import BEGIN_OF_TEXT, LORA_DIR, SAMPLE_RATE, VOICE, load_base_model, 
 from train_voice import (BASE_MODEL, CLIPS, MAX_TOKENS, build_example, collate,
                          drop_repeated_frames, interleave, read_metadata)
 
-HERE = Path(__file__).resolve().parent          # the orpheus folder
-ROOT = HERE.parent                               # the Voice Training folder
+HERE = Path(__file__).resolve().parent  # the orpheus folder
+ROOT = HERE.parent  # the Voice Training folder
 MODELS = HERE / "models"
 OUTPUTS = HERE / "outputs"
 RUNS = OUTPUTS / "training_runs"
 OUT = OUTPUTS / "tune_outputs"
 
-# Sentences the model has never seen, with no numbers (so Whisper's spelling can't differ).
+# Sentences the model has never seen, with no numbers
 EVAL_LINES = [
     "Good evening. I turned off the kitchen lights and locked the back door for you.",
     "It looks like rain this afternoon, so you might want to take a jacket with you.",
@@ -57,7 +43,7 @@ def word_accuracy(expected, heard):
 
 
 class VoiceJudge:
-    """Scores generated speech against your real recordings."""
+    """Scores generated speech against your real recordings"""
 
     def __init__(self, real_clips):
         import torch
@@ -70,7 +56,7 @@ class VoiceJudge:
         embeddings = torch.stack([self.embed(clip) for clip in real_clips])
         total = embeddings.sum(dim=0)
         self.centroid = torch.nn.functional.normalize(total, dim=0)
-        # How similar your real clips are to each other: the best score a model could hope for.
+        # How similar your real clips are to each other: the best score a model
         others = torch.nn.functional.normalize(total.unsqueeze(0) - embeddings, dim=1)
         self.ceiling = float((embeddings * others).sum(dim=1).mean())
 
@@ -173,7 +159,7 @@ def main():
         folder = OUT / f"epoch_{epoch}"
         folder.mkdir(parents=True, exist_ok=True)
         sims, accs = [], []
-        torch.manual_seed(1234)                 # same randomness every epoch, for a fair comparison
+        torch.manual_seed(1234)  # same randomness every epoch, for a fair comparison
         for i, line in enumerate(EVAL_LINES, 1):
             try:
                 audio = synthesize(model, tokenizer, snac_model, line)
@@ -189,7 +175,7 @@ def main():
                 accs.append(acc)
         sim = sum(sims) / len(sims)
         acc = sum(accs) / len(accs) if accs else None
-        score = sim - (0.5 if acc is not None and acc < 0.85 else 0.0)   # garbled speech can't win
+        score = sim - (0.5 if acc is not None and acc < 0.85 else 0.0)  # garbled speech can't win
         results.append({"epoch": epoch, "sim": sim, "acc": acc, "score": score})
         shown = "n/a" if acc is None else f"{acc:.0%}"
         print(f"  epoch {epoch}: sounds-like-you {sim:.3f} (target {judge.ceiling:.3f}), words right {shown}")

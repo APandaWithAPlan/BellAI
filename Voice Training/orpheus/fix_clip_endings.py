@@ -1,14 +1,6 @@
-"""
-fix_clip_endings.py - let every clip finish its last sound.
+"""Extend clips so trailing sounds like "s" don't get cut off.
 
-The clip cutter judged "silence" by loudness only. A trailing "s", "sh" or "f" is a quiet hiss,
-so many clips were cut while that hiss was still going, and the voice models learned to chop
-the ends off words. This finds where each clip ends inside the original recording and extends
-it until both the loudness AND the hiss have died away (at most 0.6 s). Nothing else in the
-clip changes.
-
-    python fix_clip_endings.py "..\\voice_data\\raw\\<recording>.wav"            (dry run, report only)
-    python fix_clip_endings.py "..\\voice_data\\raw\\<recording>.wav" --apply    (originals backed up first)
+Usage: python fix_clip_endings.py <recording.wav> [--apply]
 """
 import csv, shutil, sys
 from pathlib import Path
@@ -18,7 +10,7 @@ from fix_clips import raw_at_24k, read, write, SR, HOP
 ROOT = Path(__file__).resolve().parent.parent / "voice_data"
 CLIPS = ROOT / "clips"
 BACKUP = ROOT / "removed_clips" / "before_ending_fix"
-FADE = 240                                     # 10 ms fade-out at the new end
+FADE = 240  # 10 ms fade-out at the new end
 
 
 def levels(x):
@@ -26,12 +18,12 @@ def levels(x):
     return np.sqrt((x[:n * HOP].reshape(n, HOP) ** 2).mean(axis=1) + 1e-12)
 
 
-def hiss(x):                                   # high-frequency energy, where "s" lives
+def hiss(x):  # high-frequency energy, where "s" lives
     return levels(np.diff(x, prepend=x[:1]))
 
 
 def find_end(raw, clip, lo, hi):
-    """Where the end of `clip` sits in raw[lo:hi]. Returns (raw index of clip end, match quality)."""
+    """Where the end of `clip` sits in raw[lo:hi]"""
     P = min(12000, len(clip) - 2 * FADE)
     probe = clip[-(P + FADE):-FADE]
     seg = raw[lo:hi]
@@ -47,7 +39,7 @@ def find_end(raw, clip, lo, hi):
 
 
 def new_ending(raw, end):
-    """How many samples to add after `end` so the last sound (including hiss) has finished."""
+    """How many samples to add after `end` so the last sound finishes"""
     around = raw[max(0, end - 3 * SR):end + 3 * SR]
     loud_floor = np.percentile(levels(around), 10)
     hiss_floor = np.percentile(hiss(around), 10)
@@ -55,12 +47,12 @@ def new_ending(raw, end):
     lv, hv = levels(after), hiss(after)
     sounding = (lv > loud_floor * 4) | (hv > hiss_floor * 4)
     if not sounding[:3].any():
-        return 0                               # already ends in silence
+        return 0  # already ends in silence
     for i in range(2, len(sounding) - 4):
-        if not sounding[i:i + 4].any():        # 40 ms of real quiet
-            add = (i - 2 + 3) * HOP            # plus 30 ms of the quiet itself
+        if not sounding[i:i + 4].any():  # 40 ms of real quiet
+            add = (i - 2 + 3) * HOP  # plus 30 ms of the quiet itself
             return add if add <= int(0.6 * SR) else None
-    return None                                # never went quiet: speech runs straight on, leave it
+    return None  # never went quiet: speech runs straight on, leave it
 
 
 def main():

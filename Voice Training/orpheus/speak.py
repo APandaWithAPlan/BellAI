@@ -1,47 +1,35 @@
-"""
-speak.py - make your trained voice say something.
+"""Generate speech with the trained Orpheus LoRA (slow, no Ollama needed).
 
-Fastest way to try lots of lines: run it with no text. The model loads once and stays
-loaded, and each line you type is spoken out loud:
-    python speak.py
-
-One-off use (from the Voice Training folder):
-    python speak.py "Good morning! Beanie is asleep on the couch."
-    python speak.py "Hello <laugh> that tickles." --out hello.wav
-
-There is no length limit: long text is spoken a few sentences at a time and joined together.
-
-The audio is saved as a WAV file (default: test_outputs/speak.wav).
-Sound tags you can use in the text: <laugh> <chuckle> <sigh> <gasp> <yawn> <groan> <cough> <sniffle>
+Usage: python speak.py ["text"] [--out file.wav]
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent          # the orpheus folder
-ROOT = HERE.parent                               # the Voice Training folder
+HERE = Path(__file__).resolve().parent  # the orpheus folder
+ROOT = HERE.parent  # the Voice Training folder
 MODELS = HERE / "models"
 OUTPUTS = HERE / "outputs"
-LORA_DIR = MODELS / "bella_voice_lora"      # where train_voice.py saves your voice
-VOICE = "bella"                           # the speaker name used during training
+LORA_DIR = MODELS / "bella_voice_lora"  # where train_voice.py saves your voice
+VOICE = "bella"  # the speaker name used during training
 SAMPLE_RATE = 24000
 
-# Orpheus special tokens (Llama-3 vocabulary is 128256 tokens; these come after it)
+# Orpheus special tokens
 START_OF_HUMAN, END_OF_HUMAN = 128259, 128260
 START_OF_SPEECH, END_OF_SPEECH = 128257, 128258
 BEGIN_OF_TEXT, END_OF_TEXT = 128000, 128009
-AUDIO_OFFSET = 128266                     # first audio-code token
-CODEBOOK = 4096                           # codes per SNAC codebook slot
+AUDIO_OFFSET = 128266  # first audio-code token
+CODEBOOK = 4096  # codes per SNAC codebook slot
 
 
 def frames_to_snac_layers(tokens):
-    """Turn a flat list of Orpheus audio tokens (7 per frame) into SNAC's 3 code layers."""
+    """Turn a flat list of Orpheus audio tokens"""
     layer1, layer2, layer3 = [], [], []
     for i in range(len(tokens) // 7):
         frame = [tokens[7 * i + slot] - AUDIO_OFFSET - slot * CODEBOOK for slot in range(7)]
         if any(c < 0 or c >= CODEBOOK for c in frame):
-            continue                       # skip a malformed frame instead of crashing
+            continue  # skip a malformed frame instead of crashing
         layer1.append(frame[0])
         layer2.extend([frame[1], frame[4]])
         layer3.extend([frame[2], frame[3], frame[5], frame[6]])
@@ -49,7 +37,7 @@ def frames_to_snac_layers(tokens):
 
 
 def synthesize(model, tokenizer, snac_model, text, voice=VOICE, max_new_tokens=1200):
-    """Generate speech for `text`. Returns a float32 numpy array at 24 kHz."""
+    """Generate speech for `text`"""
     import torch
 
     prompt = f"{voice}: {text}" if voice else text
@@ -63,7 +51,7 @@ def synthesize(model, tokenizer, snac_model, text, voice=VOICE, max_new_tokens=1
         out = model.generate(
             input_ids=ids,
             attention_mask=torch.ones_like(ids),
-            max_new_tokens=max_new_tokens,   # 1200 tokens is about 14 seconds of speech
+            max_new_tokens=max_new_tokens,  # 1200 tokens is about 14 seconds of speech
             do_sample=True,
             temperature=0.6,
             top_p=0.95,
@@ -72,7 +60,7 @@ def synthesize(model, tokenizer, snac_model, text, voice=VOICE, max_new_tokens=1
             use_cache=True,
         )[0].tolist()
 
-    if START_OF_SPEECH in out:               # keep only what comes after "start of speech"
+    if START_OF_SPEECH in out:  # keep only what comes after "start of speech"
         out = out[len(out) - out[::-1].index(START_OF_SPEECH):]
     audio_tokens = [t for t in out if t >= AUDIO_OFFSET]
     layer1, layer2, layer3 = frames_to_snac_layers(audio_tokens)
@@ -87,14 +75,14 @@ def synthesize(model, tokenizer, snac_model, text, voice=VOICE, max_new_tokens=1
 
 
 def split_text(text, limit=160):
-    """Break long text into sentence-sized pieces the model can speak in one go."""
+    """Break long text into sentence-sized pieces the model can speak in one go"""
     import re
 
     sentences = re.findall(r"[^.!?]+[.!?]+[\"')\]]*|[^.!?]+$", text.strip())
     pieces, current = [], ""
     for sentence in (s.strip() for s in sentences):
         chunks = []
-        while len(sentence) > limit:                 # a single huge sentence: cut at a comma or space
+        while len(sentence) > limit:  # a single huge sentence: cut at a comma or space
             cut = max(sentence.rfind(", ", 0, limit), sentence.rfind(" ", 0, limit))
             cut = cut if cut > 0 else limit - 1
             chunks.append(sentence[:cut + 1].strip())
@@ -113,7 +101,7 @@ def split_text(text, limit=160):
 
 
 def speak_long(model, tokenizer, snac_model, text, voice=VOICE, pause=0.3):
-    """Speak text of any length by generating it a few sentences at a time."""
+    """Speak text of any length by generating it a few sentences at a time"""
     import numpy as np
 
     gap = np.zeros(int(pause * SAMPLE_RATE), dtype=np.float32)
@@ -124,19 +112,19 @@ def speak_long(model, tokenizer, snac_model, text, voice=VOICE, pause=0.3):
 
 
 def load_base_model(name):
-    """Load the Orpheus language model onto the GPU in bfloat16."""
+    """Load the Orpheus language model onto the GPU in bfloat16"""
     import torch
     from transformers import AutoModelForCausalLM
 
     try:
         model = AutoModelForCausalLM.from_pretrained(name, dtype=torch.bfloat16)
-    except TypeError:                        # older transformers versions use the old argument name
+    except TypeError:  # older transformers versions use the old argument
         model = AutoModelForCausalLM.from_pretrained(name, torch_dtype=torch.bfloat16)
     return model.to("cuda")
 
 
 def load_voice():
-    """Load the fine-tuned model, its tokenizer, and the SNAC audio decoder."""
+    """Load the fine-tuned model, its tokenizer, and the SNAC audio decoder"""
     import json
     import torch
     from peft import PeftModel
@@ -156,7 +144,7 @@ def load_voice():
 
 
 def play(path):
-    """Play a WAV file through the speakers (Windows only; elsewhere it is just saved)."""
+    """Play a WAV file through the speakers"""
     try:
         import winsound
         winsound.PlaySound(str(path), winsound.SND_FILENAME)

@@ -1,30 +1,6 @@
-"""
-server.py - BellAi Food API: the app sends a food photo or a typed description, gets nutrition JSON back.
+"""Food API: POST a photo or text to /analyze and get nutrition JSON back.
 
-Run (from the Food Model folder, with the .venv active):
-    python server.py
-
-Then open http://127.0.0.1:8000 for a test page (upload a photo, see the results),
-or http://127.0.0.1:8000/docs for the raw API docs.
-
-Endpoints
-    GET  /          -> test page (static/index.html)
-    GET  /health    -> {"status": "ok", "model": "...", "ready": true}
-    POST /analyze   -> multipart form, send at least one of:
-                         image=<file>   a food photo (text is then used as a note, e.g. "half portion")
-                         text=<string>  a description, e.g. "2 eggs and a slice of toast"
-                       returns the same JSON as analyze_food.py
-                       Simple text skips the AI model entirely (fast path, well under a second).
-
-Settings (environment variables, all optional)
-    FOOD_API_KEY      if set, every /analyze request must send header  X-API-Key: <value>
-    ALLOWED_ORIGINS   comma-separated website origins allowed to call the API from a browser
-                      (default: http://localhost:3000,http://localhost:5173)
-    FOOD_MODEL        model id (default Qwen/Qwen2.5-VL-7B-Instruct)
-    FOOD_LORA         folder with a fine-tuned LoRA adapter
-    HOST / PORT       where to listen (default 127.0.0.1:8000 - only this computer)
-
-Uploaded photos are processed in memory and never saved to disk.
+Usage: python server.py   (then open http://127.0.0.1:8000)
 """
 
 import hmac
@@ -51,14 +27,14 @@ API_KEY = os.environ.get("FOOD_API_KEY", "")
 ALLOWED_ORIGINS = [o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",") if o.strip()]
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024          # 10 MB
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
-Image.MAX_IMAGE_PIXELS = 40_000_000           # refuse "decompression bomb" images
+Image.MAX_IMAGE_PIXELS = 40_000_000  # refuse "decompression bomb" images
 MAX_NOTE_CHARS = 300
 TEST_PAGE = Path(__file__).resolve().parent / "static" / "index.html"
 
 state = {"model": None, "processor": None}
-gpu_lock = threading.Lock()                   # one photo at a time on the GPU
+gpu_lock = threading.Lock()  # one photo at a time on the GPU
 
 
 @asynccontextmanager
@@ -86,7 +62,7 @@ def check_api_key(x_api_key: str = Header(default="")):
 
 
 def read_image(upload: UploadFile):
-    """Read the upload with a size cap and make sure it really is a JPEG/PNG/WEBP image."""
+    """Read the upload with a size cap and make sure it really is a JPEG/PNG/WEBP"""
     data = upload.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Image is larger than 10 MB.")
@@ -97,7 +73,7 @@ def read_image(upload: UploadFile):
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             probe = Image.open(io.BytesIO(data))
             fmt = probe.format
-            probe.verify()                       # catches truncated/corrupt files
+            probe.verify()  # catches truncated/corrupt files
             image = Image.open(io.BytesIO(data))
             image.load()
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError,
@@ -127,7 +103,7 @@ def health():
 def analyze_food(image: Optional[UploadFile] = File(default=None, description="Food photo (JPEG, PNG or WEBP, max 10 MB)"),
                  text: str = Form(default="", description="Meal description, or a note for the photo"),
                  note: str = Form(default="", description="Older name for text when sending a photo")):
-    # A plain "def" endpoint runs in a worker thread, so a slow photo doesn't freeze /health.
+    # A plain "def" endpoint runs in a worker thread
     text = (text or note or "").strip()
     has_image = image is not None and bool(image.filename)
 
@@ -145,7 +121,7 @@ def analyze_food(image: Optional[UploadFile] = File(default=None, description="F
     if len(text) > MAX_TEXT_CHARS:
         raise HTTPException(status_code=400, detail=f"Description is longer than {MAX_TEXT_CHARS} characters.")
     try:
-        # the fast path needs no model; the GPU lock is only taken if the model is needed
+        # the fast path needs no model
         return analyze_text(state["model"], state["processor"], text, model_id=MODEL, get_model_lock=gpu_lock)
     except ModelNotLoaded:
         raise HTTPException(status_code=503, detail="Model is still loading, try again shortly.")

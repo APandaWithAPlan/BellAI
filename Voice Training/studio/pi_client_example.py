@@ -1,18 +1,6 @@
-"""
-pi_client_example.py - make the BellAi voice speak from another device (Raspberry Pi, laptop, ...).
+"""Send text to the voice server and play it (for the Pi or any other device).
 
-It sends text to the BellAi voice server and plays the audio while it is still arriving,
-so speech starts within about a second. Only uses Python's standard library.
-
-    python3 pi_client_example.py "Good morning! The coffee is ready."
-    python3 pi_client_example.py --server http://192.168.1.50:9880 --key SECRET "Hello"
-
-Playback uses `aplay` on Linux / Raspberry Pi (preinstalled on Raspberry Pi OS),
-`ffplay` if it is installed, or saves bellai.wav on other systems.
-
-To use it from your own code:
-    from pi_client_example import say
-    say("Your timer is done!")
+Usage: python3 pi_client_example.py "Hello" [--server URL] [--key KEY]
 """
 
 import argparse
@@ -29,7 +17,7 @@ KEY = os.environ.get("BELLAI_KEY", "")
 
 
 def say(text, server=SERVER, key=KEY, save_to=None):
-    """Speak `text` out loud through the BellAi voice server."""
+    """Speak `text` out loud through the BellAi voice server"""
     request = urllib.request.Request(
         server.rstrip("/") + "/tts",
         data=json.dumps({"text": text}).encode(),

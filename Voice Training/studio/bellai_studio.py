@@ -1,19 +1,6 @@
-"""
-BellAi Studio - a one-page voice studio for your GPT-SoVITS voice.
+"""BellAi Studio: local web page for speaking and training the GPT-SoVITS voice.
 
-Start it by double-clicking "BellAi Studio.bat" in the Voice Training folder.
-It opens http://localhost:9890 in your browser.
-
-  * Type a line, press Enter, and hear it. The voice stays loaded, and audio streams
-    back sentence by sentence, so the first sound usually arrives in well under a second.
-  * "Train new voice" rebuilds the training list from voice_data/clips/metadata.csv,
-    prepares the data, trains SoVITS and GPT, then tests every saved version and a few
-    reference clips, and keeps whichever sounds most like you (it never replaces a
-    better voice with a worse one).
-  * "Find best settings" runs only that testing step on the voice you already have.
-
-It runs on the Python that ships inside the GPT-SoVITS folder, so nothing else
-needs to be installed.
+Start it with "BellAi Studio.bat" (opens http://localhost:9890).
 """
 
 import csv
@@ -35,14 +22,14 @@ import zipfile
 from collections import deque
 from pathlib import Path
 
-try:  # the Windows console can choke on the Chinese log lines GPT-SoVITS prints
+try:  # the Windows console can choke on the Chinese log
     sys.stdout.reconfigure(errors="replace")
     sys.stderr.reconfigure(errors="replace")
 except Exception:
     pass
 
 STUDIO_DIR = Path(__file__).resolve().parent
-VOICE_DIR = STUDIO_DIR.parent                       # the Voice Training folder
+VOICE_DIR = STUDIO_DIR.parent  # the Voice Training folder
 CLIPS = VOICE_DIR / "voice_data" / "clips"
 METADATA = CLIPS / "metadata.csv"
 LIST_FILE = VOICE_DIR / "voice_data" / "gpt_sovits" / "bella.list"
@@ -61,7 +48,7 @@ TEST_LINES = [
     "Oh my gosh, your friends are here! Should I turn the music up in the living room?",
 ]
 
-PRESETS = {  # SoVITS epochs, GPT epochs (saved every 4 and every 5 epochs)
+PRESETS = {  # SoVITS epochs, GPT epochs
     "quick": (8, 15),
     "balanced": (12, 20),
     "best": (16, 30),
@@ -79,7 +66,7 @@ def find_gpt_sovits():
 
 
 SOVITS_DIR = find_gpt_sovits()
-os.chdir(SOVITS_DIR)                                  # GPT-SoVITS uses paths relative to its folder
+os.chdir(SOVITS_DIR)  # GPT-SoVITS uses paths relative to its folder
 sys.path.insert(0, str(SOVITS_DIR))
 sys.path.insert(1, str(SOVITS_DIR / "GPT_SoVITS"))
 os.environ["version"] = "v2"
@@ -100,9 +87,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Streamin
 
 HAS_GPU = torch.cuda.is_available()
 
-# GPT-SoVITS swaps PyTorch's attention function for its own version when it loads, which
-# breaks other models that use it (like the voice-similarity checker). Keep the original
-# so it can be put back while those models run.
+# GPT-SoVITS swaps PyTorch's attention function for its own version
 import contextlib  # noqa: E402
 import torch.nn.functional as _F  # noqa: E402
 _TORCH_ATTENTION = _F.multi_head_attention_forward
@@ -118,15 +103,14 @@ def torch_attention():
         _F.multi_head_attention_forward = patched
 
 
-# ---------------------------------------------------------------- small helpers
+# small helpers
 
 def natural_key(text):
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
 
 
 def sentences(text, shortest=3, longest=200):
-    """Split text into whole sentences, so each piece ends on a full stop instead of a comma.
-    Very short sentences ("Okay.") are joined to the next one; very long ones are split at commas."""
+    """Split text into whole sentences"""
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
@@ -138,7 +122,7 @@ def sentences(text, shortest=3, longest=200):
             carry = part
             continue
         carry = ""
-        if len(part) > longest:                       # break a run-on sentence at commas
+        if len(part) > longest:  # break a run-on sentence at commas
             chunk = ""
             for bit in re.split(r"(?<=[,;:])\s+", part):
                 if chunk and len(chunk) + len(bit) > longest // 2:
@@ -157,13 +141,13 @@ def sentences(text, shortest=3, longest=200):
     for piece in pieces:
         piece = piece.rstrip(" ,;:-")
         if piece and piece[-1] not in ".!?\u2026\"')":
-            piece += "."                              # every piece ends like a sentence
+            piece += "."  # every piece ends like a sentence
         fixed.append(piece)
     return fixed
 
 
 def clean_text(text):
-    text = re.sub(r"<[a-zA-Z]+>", " ", text or "")   # <laugh> and friends are Orpheus-only
+    text = re.sub(r"<[a-zA-Z]+>", " ", text or "")  # <laugh> and friends are Orpheus-only
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -203,7 +187,7 @@ def short_name(path):
     return Path(path).stem if path else ""
 
 
-# ---------------------------------------------------------------- your clips
+# your clips
 
 class Clips:
     """Reads metadata.csv once and remembers which clips work as a reference (3-10 s)."""
@@ -246,15 +230,13 @@ class Clips:
 CLIP_DATA = Clips()
 
 
-# ---------------------------------------------------------------- finishing the last sound
+# finishing the last sound
 
-TAIL_TOKENS = 3        # how long to hold the final sound: 3 speech tokens is about 0.12 s
+TAIL_TOKENS = 3  # how long to hold the final sound: 3 speech tokens
 
 
 def install_tail_hold(tts, tokens=TAIL_TOKENS):
-    """GPT-SoVITS's GPT tends to stop right as a final "s" or "sh" begins, so the hiss is never made.
-    This holds the last speech token a little longer before the audio is rendered, then fades
-    that extra bit out, so trailing sounds can finish instead of being cut off."""
+    """GPT-SoVITS's GPT tends to stop right as a final "s" or "sh" begins"""
     model = tts.vits_model
     if model is None or getattr(model, "_tail_hold", False) or tokens <= 0:
         return
@@ -278,24 +260,24 @@ def install_tail_hold(tts, tokens=TAIL_TOKENS):
     model._tail_hold = True
 
 
-# ---------------------------------------------------------------- the voice engine
+# the voice engine
 
 class Engine:
-    """Keeps one GPT-SoVITS pipeline loaded on the GPU and hands out turns to use it."""
+    """Keeps one GPT-SoVITS pipeline loaded on the GPU and hands out turns to use it"""
 
     def __init__(self):
         self.tts = None
         self.status = "Starting up..."
         self.ready = False
         self.lock = threading.Lock()
-        self.owner = None                       # "speak", "test" or "load"
+        self.owner = None  # "speak", "test" or "load"
         self.settings = self.load_settings()
         self.last = {}
-        self._free = None                       # GPT-SoVITS's own memory cleanup
+        self._free = None  # GPT-SoVITS's own memory cleanup
         self.speak_id = 0
         self._cleanup_token = None
 
-    # ---- settings
+    # settings
     def load_settings(self):
         gpt, sovits = list_weights()
         chosen = read_json(SOVITS_DIR / "weight.json", {})
@@ -319,14 +301,14 @@ class Engine:
     def save_settings(self):
         write_json(SETTINGS_FILE, self.settings)
 
-    # ---- taking turns on the GPU
+    # taking turns on the GPU
     def acquire(self, owner, wait=600.0):
-        self._cleanup_token = None              # any new work cancels a pending cleanup
+        self._cleanup_token = None  # any new work cancels a pending cleanup
         if self.lock.acquire(timeout=0.02):
             self.owner = owner
             return True
         if owner == "speak" and self.owner == "speak" and self.tts is not None:
-            self.speak_id += 1                  # a new line interrupts the one still talking
+            self.speak_id += 1  # a new line interrupts the one still talking
             self.tts.stop()
         if self.lock.acquire(timeout=wait):
             self.owner = owner
@@ -340,7 +322,7 @@ class Engine:
         except RuntimeError:
             pass
 
-    # ---- loading
+    # loading
     def start(self):
         threading.Thread(target=self._load, daemon=True).start()
 
@@ -361,8 +343,7 @@ class Engine:
             try:
                 self.tts = TTS(TTS_Config(config))
                 install_tail_hold(self.tts)
-                # GPT-SoVITS clears GPU memory at the end of every line. Skip that, and
-                # clean up once instead, when BellAi has finished talking.
+                # GPT-SoVITS clears GPU memory at the end of every line
                 self._free = self.tts.empty_cache
                 self.tts.empty_cache = lambda: None
                 self.status = "Warming up..."
@@ -377,12 +358,12 @@ class Engine:
             self.status = f"Couldn't load the voice: {err}"
 
     def free_memory(self):
-        """One memory cleanup. Call while holding the lock (or when nothing else runs)."""
+        """One memory cleanup"""
         if self._free:
             self._free()
 
     def cleanup_when_idle(self, delay=4.0):
-        """Clean up once BellAi has been quiet for a few seconds."""
+        """Clean up once BellAi has been quiet for a few seconds"""
         self._cleanup_token = token = object()
 
         def run():
@@ -413,13 +394,12 @@ class Engine:
             "top_k": int(self.settings["top_k"]),
             "top_p": 1.0,
             "temperature": float(self.settings["temperature"]),
-            "text_split_method": "cut0",           # the studio splits into whole sentences itself
+            "text_split_method": "cut0",  # the studio splits into whole sentences itself
             "batch_size": 1,
             "batch_threshold": 0.75,
             "split_bucket": not fragment,
             "return_fragment": fragment,
-            # exactly 1.0 makes GPT-SoVITS cut each piece to its original length, which would
-            # drop the held ending, so nudge it imperceptibly
+            # exactly 1.0 makes GPT-SoVITS cut each piece to its original length
             "speed_factor": float(self.settings["speed"]) if float(self.settings["speed"]) != 1.0 else 1.0001,
             "fragment_interval": 0.2,
             "seed": seed,
@@ -428,16 +408,16 @@ class Engine:
         }
 
     def use_models(self, gpt=None, sovits=None):
-        """Switch weights. Call while holding the lock."""
+        """Switch weights"""
         if gpt and gpt != self.tts.configs.t2s_weights_path:
             self.tts.init_t2s_weights(gpt)
         if sovits and sovits != self.tts.configs.vits_weights_path:
             self.tts.init_vits_weights(sovits)
-            install_tail_hold(self.tts)               # a new SoVITS model needs it too
-            self.tts.prompt_cache["ref_audio_path"] = None   # reference features depend on SoVITS
+            install_tail_hold(self.tts)  # a new SoVITS model needs it too
+            self.tts.prompt_cache["ref_audio_path"] = None  # reference features depend on SoVITS
 
     def speak_sentences(self, text, fragment=True, seed=-1, ref=None, still_wanted=lambda: True):
-        """Yields (rate, int16 audio) one whole sentence at a time."""
+        """Yields (rate, int16 audio) one whole sentence at a time"""
         for sentence in sentences(text):
             if not still_wanted():
                 return
@@ -447,7 +427,7 @@ class Engine:
                 yield rate, chunk
 
     def synth(self, text, seed=1234, ref=None):
-        """Whole-utterance synthesis for testing. Call while holding the lock."""
+        """Whole-utterance synthesis for testing"""
         parts, sr = [], 32000
         for sr, audio in self.speak_sentences(text, fragment=False, seed=seed, ref=ref):
             parts.append(np.asarray(audio, dtype=np.float32) / 32768.0)
@@ -457,11 +437,10 @@ class Engine:
 ENGINE = Engine()
 
 
-# ---------------------------------------------------------------- scoring
+# scoring
 
 class Judge:
-    """Scores how much a voice sounds like you (speaker similarity) and how clearly it says
-    the words (Whisper word accuracy)."""
+    """Scores how much a voice sounds like you"""
 
     def __init__(self, log):
         import librosa
@@ -508,7 +487,7 @@ class Judge:
         return difflib.SequenceMatcher(None, words(text), words(heard)).ratio()
 
     def score(self, clips):
-        """clips: list of (sr, audio, text). Returns similarity, accuracy, overall score."""
+        """clips: list of (sr, audio, text)"""
         sims, accs = [], []
         for sr, audio, text in clips:
             sims.append(float(torch.dot(self.embed(audio, sr), self.target)))
@@ -524,13 +503,13 @@ class Judge:
         del self.sv, self.asr
 
 
-# ---------------------------------------------------------------- training + testing
+# training + testing
 
 class Trainer:
     STAGES = ["Prepare data", "Train SoVITS", "Train GPT", "Test & pick best"]
 
     def __init__(self):
-        self.state = "idle"          # idle, running, done, failed, stopped
+        self.state = "idle"  # idle, running, done, failed, stopped
         self.stage = -1
         self.progress = 0.0
         self.message = ""
@@ -541,7 +520,7 @@ class Trainer:
         self.results = saved.get("results", [])
         self.summary = saved.get("summary", "")
 
-    # ---- public
+    # public
     def status(self):
         return {"state": self.state, "stage": self.stage, "stages": self.STAGES,
                 "progress": round(self.progress, 3), "message": self.message,
@@ -566,7 +545,7 @@ class Trainer:
             else:
                 self.proc.kill()
 
-    # ---- internals
+    # internals
     def log(self, line):
         line = line.rstrip()
         if line:
@@ -591,7 +570,7 @@ class Trainer:
         self.proc = subprocess.Popen([sys.executable] + args, cwd=str(SOVITS_DIR), env=env,
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                      encoding="utf-8", errors="replace", bufsize=1, creationflags=flags)
-        for line in self.proc.stdout:          # text mode turns tqdm's \r updates into lines too
+        for line in self.proc.stdout:  # text mode turns tqdm's \r updates into lines too
             self.log(line)
             if epochs:
                 found = re.findall(r"Epoch[: ]+(\d+)", line)
@@ -630,7 +609,7 @@ class Trainer:
         opt_dir = f"logs/{run}"
         os.makedirs(opt_dir, exist_ok=True)
 
-        # 1. prepare
+        # 1
         self.set_stage(0, "Preparing your clips")
         count = CLIP_DATA.write_training_list()
         self.log(f"Training list: {count} clips, {CLIP_DATA.minutes:.0f} minutes, run name {run}")
@@ -645,9 +624,9 @@ class Trainer:
                       dict(common, pretrained_s2G=PRETRAINED_S2G, s2config_path="GPT_SoVITS/configs/s2.json"))
         self._merge(f"{opt_dir}/6-name2semantic-0.tsv", f"{opt_dir}/6-name2semantic.tsv", header="item_name\tsemantic_audio")
 
-        # 2. SoVITS
+        # 2
         self.set_stage(1, f"Training SoVITS ({sovits_epochs} epochs)")
-        if ENGINE.acquire("load", wait=30):    # give training as much GPU memory as possible
+        if ENGINE.acquire("load", wait=30):  # give training as much GPU memory as possible
             try:
                 ENGINE.free_memory()
             finally:
@@ -666,7 +645,7 @@ class Trainer:
         write_json("TEMP/studio_s2.json", s2)
         self.run_step(["GPT_SoVITS/s2_train.py", "--config", "TEMP/studio_s2.json"], {}, epochs=sovits_epochs)
 
-        # 3. GPT
+        # 3
         self.set_stage(2, f"Training GPT ({gpt_epochs} epochs)")
         import yaml
         with open("GPT_SoVITS/configs/s1longer-v2.yaml", encoding="utf-8") as f:
@@ -684,7 +663,7 @@ class Trainer:
         self.run_step(["GPT_SoVITS/s1_train.py", "--config_file", "TEMP/studio_s1.yaml"], {"hz": "25hz"},
                       epochs=gpt_epochs)
 
-        # 4. test
+        # 4
         self.evaluate(run)
 
     @staticmethod
@@ -747,7 +726,7 @@ class Trainer:
             # the voice you have now is the one to beat
             baseline = trial(before["gpt"], before["sovits"], ref, TEST_LINES, "current",
                              f"Current voice ({short_name(before['sovits'])} + {short_name(before['gpt'])})")
-            # every SoVITS save with the last GPT save, then every GPT save with the best SoVITS
+            # every SoVITS save with the last GPT save
             best_s = max((trial(gpt_list[-1], s, ref, TEST_LINES, "sovits",
                                 f"SoVITS epoch {sovits_epoch(s)}") for s in sovits_list),
                          key=lambda r: r["score"])["sovits"]
@@ -780,7 +759,7 @@ class Trainer:
         finally:
             if judge is not None:
                 judge.close()
-            ENGINE.free_memory()               # one cleanup, after all the testing
+            ENGINE.free_memory()  # one cleanup, after all the testing
             ENGINE.release()
 
         if winner is baseline:
@@ -802,7 +781,7 @@ class Trainer:
 TRAINER = Trainer()
 
 
-# ---------------------------------------------------------------- web server
+# web server
 
 app = FastAPI(title="BellAi Studio")
 
@@ -874,7 +853,7 @@ def speak(body: dict = Body(...)):
                 yield chunk.tobytes()
         finally:
             ENGINE.release()
-            ENGINE.cleanup_when_idle()         # one cleanup after she's done talking
+            ENGINE.cleanup_when_idle()  # one cleanup after she's done talking
             took = time.time() - started
             ENGINE.last = {"first": round(first or took, 3), "total": round(took, 2),
                            "seconds": round(samples / rate, 2)}
@@ -905,8 +884,8 @@ def update_settings(body: dict = Body(...)):
             ENGINE.use_models(new_models.get("gpt"), new_models.get("sovits"))
             ENGINE.settings.update(new_models)
             ENGINE.settings.update(changed)
-            ENGINE._warm_up()                  # loads the new reference, so the next line is quick
-            ENGINE.free_memory()               # let go of the old model's memory
+            ENGINE._warm_up()  # loads the new reference, so the next line is quick
+            ENGINE.free_memory()  # let go of the old model's memory
         finally:
             ENGINE.release()
     else:
@@ -970,7 +949,7 @@ def export_pack():
         "exported": time.strftime("%Y-%m-%d %H:%M"), "test_summary": TRAINER.summary,
     }
     partial = PACKS_DIR / (name + ".partial")
-    with zipfile.ZipFile(partial, "w", zipfile.ZIP_STORED) as z:   # the models don't compress anyway
+    with zipfile.ZipFile(partial, "w", zipfile.ZIP_STORED) as z:  # the models don't compress anyway
         z.write(gpt, "gpt.ckpt")
         z.write(sovits, "sovits.pth")
         z.write(str(CLIPS / ref), "reference.wav")
@@ -997,7 +976,7 @@ def reload_clips():
     return status()
 
 
-# ---------------------------------------------------------------- start
+# start
 
 def already_running():
     with socket.socket() as s:
