@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HomeView: View {
+    var isSubmitting = false
+    var onSubmitPrompt: (String) -> Bool = { _ in false }
     @State private var prompt = ""
 
     var body: some View {
@@ -8,7 +10,13 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HomeHeaderView()
                 HomeFeatureCardsView()
-                BellAIPromptInputView(text: $prompt)
+                BellAIPromptInputView(
+                    text: $prompt,
+                    isSubmitting: isSubmitting,
+                    onSubmit: {
+                        if onSubmitPrompt(prompt) { prompt = "" }
+                    }
+                )
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)

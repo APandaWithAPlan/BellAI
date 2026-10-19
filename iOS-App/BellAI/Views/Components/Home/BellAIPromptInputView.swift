@@ -2,6 +2,8 @@ import SwiftUI
 
 struct BellAIPromptInputView: View {
     @Binding var text: String
+    var isSubmitting = false
+    var onSubmit: () -> Void = {}
     var onMicrophoneTap: (() -> Void)? = nil
 
     @ScaledMetric(relativeTo: .body) private var avatarSize = 38.0
@@ -21,28 +23,32 @@ struct BellAIPromptInputView: View {
                 "What can I help with?",
                 text: $text,
                 prompt: Text("What can I help with?")
-                    .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46)),
-                axis: .vertical
+                    .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46))
             )
             .font(.subheadline)
             .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
             .textFieldStyle(.plain)
-            .lineLimit(1...4)
+            .submitLabel(.send)
+            .onSubmit { if !isSubmitting { onSubmit() } }
             .tint(accent)
-            .accessibilityLabel("Message Bell AI")
+            .accessibilityLabel("Message BellAI")
 
             Button {
-                onMicrophoneTap?()
+                if text.isEmpty {
+                    onMicrophoneTap?()
+                } else {
+                    onSubmit()
+                }
             } label: {
-                Image(systemName: "mic")
+                Image(systemName: text.isEmpty ? "mic" : "arrow.up.circle.fill")
                     .font(.system(size: 19, weight: .light))
                     .foregroundStyle(accent)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(onMicrophoneTap == nil)
-            .accessibilityLabel("Use microphone")
+            .disabled(isSubmitting || (text.isEmpty && onMicrophoneTap == nil))
+            .accessibilityLabel(text.isEmpty ? "Use microphone" : "Send message")
         }
         .padding(.leading, 9)
         .padding(.trailing, 1)

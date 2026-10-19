@@ -2,7 +2,7 @@ import SwiftUI
 
 enum BellAITab: String, CaseIterable, Identifiable {
     case home = "Home"
-    case bell = "Bell"
+    case bell = "BellAI"
     case activity = "Activity"
     case settings = "Settings"
 
