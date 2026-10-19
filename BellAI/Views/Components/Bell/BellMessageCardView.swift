@@ -18,6 +18,13 @@ struct BellMessageCardView<Actions: View>: View {
     private let accent = Color(red: 0.92, green: 0.24, blue: 0.49)
     private let secondary = Color(red: 0.48, green: 0.43, blue: 0.46)
 
+    private var formattedMessage: AttributedString {
+        (try? AttributedString(
+            markdown: message,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        )) ?? AttributedString(message)
+    }
+
     var body: some View {
         Group {
             if position == .trailing {
@@ -64,7 +71,7 @@ struct BellMessageCardView<Actions: View>: View {
                         }
                     }
 
-                    Text(message)
+                    Text(formattedMessage)
                         .font(.body)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
