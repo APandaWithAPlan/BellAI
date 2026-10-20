@@ -1,0 +1,27 @@
+# voice recordings and generated clips (large, personal)
+voice_data/
+
+# training outputs (large)
+bella_voice_lora/
+training_runs/
+test_outputs/
+__pycache__/
+tune_outputs/
+unsloth_compiled_cache/
+bella_voice_merged/
+tools/
+*.gguf
+saved_voices/
+GPT-SoVITS/
+studio/eval/
+studio/studio_results.json
+studio/studio_settings.json
+voice_packs/
+
+# Orpheus model files and training output (large)
+orpheus/models/
+orpheus/outputs/
+
+# files waiting for you to delete
+_to_delete/
+voice_packs/
