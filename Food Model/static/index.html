@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BellAi Food Test</title>
+<style>
+  :root { --bg:#faf8f5; --card:#fff; --ink:#1f1d1a; --muted:#6b665f; --line:#e6e1da; --accent:#c2552d; --ok:#2f7d4f; --warn:#a86b00; --bad:#b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#171614; --card:#211f1c; --ink:#f1ede7; --muted:#a59f96; --line:#35322d; --accent:#e47a52; --ok:#5cc28a; --warn:#e0a63a; --bad:#f07068; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  label { display:block; font-weight:600; font-size:13px; margin:12px 0 4px; }
+  input[type=text], input[type=password] { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:20px; text-align:center; cursor:pointer; color:var(--muted); }
+  .drop.has { border-style:solid; padding:8px; }
+  .drop img { max-width:100%; max-height:320px; border-radius:8px; display:block; margin:0 auto; }
+  button { margin-top:16px; background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 18px; font:600 15px system-ui,sans-serif; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:wait; }
+  .status { font-weight:600; }
+  .ok { color:var(--ok); } .partial { color:var(--warn); } .bad { color:var(--bad); }
+  .totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin:12px 0; }
+  .tile { border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .tile b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+  .tile span { color:var(--muted); font-size:12px; }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:12px; color:var(--muted); font-weight:600; }
+  td.num, th.num { text-align:right; }
+  .muted { color:var(--muted); font-size:13px; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12px; max-height:400px; }
+  details summary { cursor:pointer; font-weight:600; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>BellAi Food Test</h1>
+  <p class="sub">Upload a food photo, type what you ate, or both. This page calls <code>POST /analyze</code> on this server.</p>
+
+  <div class="card">
+    <div class="drop" id="drop">Click or drop a food photo here (JPEG, PNG or WEBP)</div>
+    <input type="file" id="file" accept="image/jpeg,image/png,image/webp" hidden>
+    <label for="note">What you ate, or a note for the photo</label>
+    <input type="text" id="note" maxlength="500" placeholder="e.g. 2 eggs and a slice of toast · or with a photo: half portion">
+    <p class="muted" style="margin:4px 0 0">Try: <a href="#" class="ex">2 eggs and a slice of toast</a> · <a href="#" class="ex">150 g rice and 6 oz chicken breast</a> · <a href="#" class="ex">a big bowl of chicken alfredo</a></p>
+    <p class="muted" id="photoctl" hidden style="margin:4px 0 0"><a href="#" id="clear">Remove photo</a></p>
+    <label for="key">API key (only if the server has FOOD_API_KEY set)</label>
+    <input type="password" id="key" autocomplete="off">
+    <button id="go" disabled>Analyze</button>
+    <span class="muted" id="health"></span>
+  </div>
+
+  <div class="card" id="out" hidden></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let file = null;
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function n(v, unit = "") { return v === null || v === undefined ? "—" : v + unit; }
+
+function pick(f) {
+  if (!f) return;
+  file = f;
+  const drop = $("drop");
+  drop.classList.add("has");
+  drop.innerHTML = "";
+  const img = document.createElement("img");
+  img.src = URL.createObjectURL(f);
+  drop.appendChild(img);
+  $("photoctl").hidden = false;
+  updateGo();
+}
+function updateGo() { $("go").disabled = !file && !$("note").value.trim(); }
+$("note").oninput = updateGo;
+$("note").onkeydown = e => { if (e.key === "Enter" && !$("go").disabled) $("go").click(); };
+document.querySelectorAll(".ex").forEach(a => a.onclick = e => { e.preventDefault(); $("note").value = a.textContent; updateGo(); });
+$("clear").onclick = e => {
+  e.preventDefault(); file = null; $("file").value = "";
+  const drop = $("drop"); drop.classList.remove("has");
+  drop.textContent = "Click or drop a food photo here (JPEG, PNG or WEBP)";
+  $("photoctl").hidden = true; updateGo();
+};
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => pick(e.target.files[0]);
+$("drop").ondragover = e => e.preventDefault();
+$("drop").ondrop = e => { e.preventDefault(); pick(e.dataTransfer.files[0]); };
+
+fetch("/health").then(r => r.json()).then(h => {
+  $("health").textContent = h.ready ? `  Server ready · ${h.model}` : "  Model still loading…";
+}).catch(() => { $("health").textContent = "  Can't reach the server."; });
+
+$("go").onclick = async () => {
+  const out = $("out");
+  out.hidden = false;
+  out.innerHTML = '<p class="muted">Analyzing…</p>';
+  $("go").disabled = true;
+  const form = new FormData();
+  if (file) form.append("image", file);
+  form.append("text", $("note").value);
+  const headers = {};
+  if ($("key").value) headers["X-API-Key"] = $("key").value;
+  const t0 = performance.now();
+  try {
+    const resp = await fetch("/analyze", { method: "POST", body: form, headers });
+    const data = await resp.json();
+    const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    if (!resp.ok) {
+      out.innerHTML = `<p class="status bad">Error ${resp.status}: ${esc(data.detail)}</p>`;
+      return;
+    }
+    render(data, secs);
+  } catch (err) {
+    out.innerHTML = `<p class="status bad">Request failed: ${esc(err.message)}</p>`;
+  } finally {
+    updateGo();
+  }
+};
+
+function render(d, secs) {
+  const cls = d.status === "ok" ? "ok" : d.status === "partial" ? "partial" : "bad";
+  const t = d.totals || {};
+  const tiles = [["kcal","Calories",""],["protein_g","Protein","g"],["carbs_g","Carbs","g"],["fat_g","Fat","g"],
+                 ["fiber_g","Fiber","g"],["sugar_g","Sugar","g"],["sodium_mg","Sodium","mg"]]
+    .map(([k, label, u]) => `<div class="tile"><b>${n(t[k], u ? " " + u : "")}</b><span>${label}</span></div>`).join("");
+  const rows = (d.items || []).map(i => {
+    const x = i.nutrition || {};
+    return `<tr><td>${esc(i.label)}<div class="muted">${esc(i.usda ? i.usda.fdc_description : "no USDA match")}</div></td>
+      <td>${esc(i.type)}</td><td class="num">${n(i.grams)}</td><td class="num">${n(i.confidence)}</td>
+      <td class="num">${n(x.kcal)}</td><td class="num">${n(x.protein_g)}</td><td class="num">${n(x.carbs_g)}</td><td class="num">${n(x.fat_g)}</td></tr>`;
+  }).join("");
+  $("out").innerHTML = `
+    <p><span class="status ${cls}">${esc(d.status)}</span> <span class="muted">· ${secs} s · ${esc(d.input)} via ${d.source === "quick_parse" ? "fast path (no AI model)" : "AI model"}</span></p>
+    <p style="font-size:16px;margin:8px 0">${esc(d.summary)}</p>
+    <div class="totals">${tiles}</div>
+    ${rows ? `<div class="scroll"><table><thead><tr><th>Food</th><th>Type</th><th class="num">Grams</th><th class="num">Conf.</th>
+      <th class="num">kcal</th><th class="num">Protein</th><th class="num">Carbs</th><th class="num">Fat</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` : ""}
+    ${d.unmatched_labels && d.unmatched_labels.length ? `<p class="muted">Not in totals (no USDA match): ${esc(d.unmatched_labels.join(", "))}</p>` : ""}
+    <details><summary>Raw JSON (what the website receives)</summary><pre>${esc(JSON.stringify(d, null, 2))}</pre></details>`;
+}
+</script>
+</body>
+</html>
