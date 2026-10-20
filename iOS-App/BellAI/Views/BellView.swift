@@ -3,11 +3,12 @@ import SwiftUI
 struct BellView: View {
     var conversation: [ConversationEntry] = []
     var isSubmitting = false
+    var isSpeaking = false
+    @Binding var isSpeakerEnabled: Bool
     var onSubmitPrompt: (String) -> Bool = { _ in false }
     let onClose: () -> Void
     let onOpenSettings: () -> Void
 
-    @State private var isSpeakerEnabled = true
     @State private var showsKeyboardInput = false
     @State private var typedPrompt = ""
     @FocusState private var isPromptFocused: Bool
@@ -15,7 +16,7 @@ struct BellView: View {
     var body: some View {
         VStack(spacing: 0) {
             BellHeaderView(
-                subtitle: isSubmitting ? "Thinking…" : "Ready to help",
+                subtitle: isSpeaking ? "Speaking…" : isSubmitting ? "Thinking…" : "Ready to help",
                 onClose: onClose,
                 onOpenSettings: onOpenSettings
             )
@@ -35,6 +36,9 @@ struct BellView: View {
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: conversation.last?.id) { _, _ in
                     proxy.scrollTo("conversationEnd", anchor: .bottom)
+                }
+                .onChange(of: conversation.last?.content) { _, _ in
+                    proxy.scrollTo("conversationEnd", anchor: .bottom) // follow the reply as it streams in
                 }
                 .onChange(of: isPromptFocused) { _, focused in
                     if focused { proxy.scrollTo("conversationEnd", anchor: .bottom) }
@@ -99,6 +103,6 @@ struct BellView: View {
 }
 
 #Preview {
-    BellView(onClose: {}, onOpenSettings: {})
+    BellView(isSpeakerEnabled: .constant(true), onClose: {}, onOpenSettings: {})
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
 }

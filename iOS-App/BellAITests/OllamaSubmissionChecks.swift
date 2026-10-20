@@ -39,6 +39,30 @@ final class DelayedService: BellAIService {
     }
 }
 
+@MainActor
+final class StubVoice: VoiceStreamService {
+    var events: [VoiceEvent] = []
+    var error: Error?
+    var requests: [ChatRequest] = []
+    func stream(_ request: ChatRequest) -> AsyncThrowingStream<VoiceEvent, Error> {
+        requests.append(request)
+        let queued = self.events, failure = self.error
+        return AsyncThrowingStream { continuation in
+            for event in queued { continuation.yield(event) }
+            continuation.finish(throwing: failure)
+        }
+    }
+}
+
+@MainActor
+final class StubSpeech: SpeechPlaying {
+    var isSpeaking = false
+    var clips: [Data] = []
+    var stopCount = 0
+    func enqueue(_ wav: Data) { clips.append(wav) }
+    func stop() { stopCount += 1 }
+}
+
 @main
 struct OllamaSubmissionChecks {
     @MainActor
@@ -54,6 +78,11 @@ struct OllamaSubmissionChecks {
         let historyModel = ChatViewModel(service: historyService, model: "test-model")
         await testFollowUpHistoryAndInvalidSessionReset(historyModel: historyModel)
         await testHistoryRecoveryAndNewSession(historyService: historyService, historyModel: historyModel)
+
+        await testSpokenReplyStreamsTextAndAudio()
+        await testSpeakerOffUsesPlainText()
+        await testVoiceServerDownFallsBackToText()
+        await testVoiceFailureMidReplyKeepsPartialText()
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]
@@ -158,6 +187,78 @@ struct OllamaSubmissionChecks {
         precondition(historyModel.response == nil && historyModel.responseError == nil)
         await historyModel.submitStoredRequest()
         precondition(historyModel.conversation.count == 2)
+    }
+
+    @MainActor
+    private static func spokenViewModel(
+        voice: StubVoice, speech: StubSpeech, text: StubService
+    ) -> ChatViewModel {
+        ChatViewModel(service: text, voiceService: voice, speech: speech, model: "test-model")
+    }
+
+    @MainActor
+    private static func testSpokenReplyStreamsTextAndAudio() async {
+        let voice = StubVoice(), speech = StubSpeech(), text = StubService()
+        voice.events = [
+            .text("Hello "),
+            .sentence(index: 0, text: "Hello there.", audio: Data([1])),
+            .text("there."),
+            .sentence(index: 1, text: "Bye.", audio: Data([2])),
+            .done
+        ]
+        let model = spokenViewModel(voice: voice, speech: speech, text: text)
+        precondition(model.startNewSession(with: "Hi"))
+        await model.submitStoredRequest()
+        precondition(voice.requests.count == 1 && text.requests.isEmpty)
+        precondition(speech.clips == [Data([1]), Data([2])])
+        precondition(model.conversation.map(\.kind) == [.user, .assistant])
+        precondition(model.conversation.last?.content == "Hello there.")
+        precondition(model.response?.message.content == "Hello there.")
+        precondition(!model.isSubmitting && model.responseError == nil)
+    }
+
+    @MainActor
+    private static func testSpeakerOffUsesPlainText() async {
+        let voice = StubVoice(), speech = StubSpeech(), text = StubService()
+        let model = spokenViewModel(voice: voice, speech: speech, text: text)
+        model.isSpeakerEnabled = false
+        precondition(speech.stopCount == 1)
+        precondition(model.startNewSession(with: "Hi"))
+        await model.submitStoredRequest()
+        precondition(voice.requests.isEmpty && text.requests.count == 1)
+        precondition(model.conversation.last?.content == "Mock reply")
+        model.isSpeakerEnabled = true
+        precondition(model.validateAndStoreRequest("Again"))
+        voice.events = [.text("Spoken"), .done]
+        await model.submitStoredRequest()
+        precondition(voice.requests.count == 1 && model.conversation.last?.content == "Spoken")
+    }
+
+    @MainActor
+    private static func testVoiceServerDownFallsBackToText() async {
+        let voice = StubVoice(), speech = StubSpeech(), text = StubService()
+        voice.error = BellAIServiceError.invalidResponse
+        let model = spokenViewModel(voice: voice, speech: speech, text: text)
+        precondition(model.startNewSession(with: "Hi"))
+        await model.submitStoredRequest()
+        precondition(voice.requests.count == 1 && text.requests.count == 1)
+        precondition(model.conversation.map(\.kind) == [.user, .assistant])
+        precondition(model.conversation.last?.content == "Mock reply" && model.responseError == nil)
+        precondition(speech.clips.isEmpty)
+    }
+
+    @MainActor
+    private static func testVoiceFailureMidReplyKeepsPartialText() async {
+        let voice = StubVoice(), speech = StubSpeech(), text = StubService()
+        voice.events = [.text("Part of a reply")]
+        voice.error = VoiceStreamError.endedEarly
+        let model = spokenViewModel(voice: voice, speech: speech, text: text)
+        precondition(model.startNewSession(with: "Hi"))
+        await model.submitStoredRequest()
+        precondition(text.requests.isEmpty)
+        precondition(model.conversation.map(\.kind) == [.user, .assistant, .error])
+        precondition(model.conversation[1].content == "Part of a reply")
+        precondition(model.responseError != nil && !model.isSubmitting)
     }
 
     @MainActor

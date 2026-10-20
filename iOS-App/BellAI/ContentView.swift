@@ -3,7 +3,7 @@ import Playgrounds
 
 struct ContentView: View {
     @State private var selectedTab: BellAITab = .home
-    @State private var chat = ChatViewModel()
+    @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), speech: SpeechPlayer())
 
     var body: some View {
         ZStack {
@@ -16,6 +16,8 @@ struct ContentView: View {
                 BellView(
                     conversation: chat.conversation,
                     isSubmitting: chat.isSubmitting,
+                    isSpeaking: chat.isSpeaking,
+                    isSpeakerEnabled: $chat.isSpeakerEnabled,
                     onSubmitPrompt: submitFollowUpPrompt,
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }

@@ -5,7 +5,7 @@ struct ConversationEntry: Identifiable, Equatable {
 
     let id = UUID()
     let kind: Kind
-    let content: String
+    var content: String // grows while a reply streams in
 
     var apiMessage: ChatMessage? {
         switch kind {

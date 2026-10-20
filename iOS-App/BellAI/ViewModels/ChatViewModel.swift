@@ -11,14 +11,35 @@ final class ChatViewModel {
     private(set) var conversation: [ConversationEntry] = []
     var errorMessage: String?
 
+    // speaker toggle, turning it off stops any audio that's playing
+    var isSpeakerEnabled: Bool {
+        get { speakerOn }
+        set {
+            speakerOn = newValue
+            if !newValue { speech?.stop() }
+        }
+    }
+    var isSpeaking: Bool { speech?.isSpeaking ?? false }
+
+    private var speakerOn = true
     private let service: any BellAIService
+    private let voiceService: (any VoiceStreamService)?
+    private let speech: (any SpeechPlaying)?
     private let model: String
 
-    init(service: (any BellAIService)? = nil, model: String? = nil) {
+    // no voiceService/speech = text only
+    init(
+        service: (any BellAIService)? = nil,
+        voiceService: (any VoiceStreamService)? = nil,
+        speech: (any SpeechPlaying)? = nil,
+        model: String? = nil
+    ) {
         self.service = service ?? HTTPBellAIService()
+        self.voiceService = voiceService
+        self.speech = speech
         let configuredModel = (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        self.model = model ?? (configuredModel?.isEmpty == false && configuredModel?.hasPrefix("$(") == false ? configuredModel! : "qwen3:8b")
+        self.model = model ?? (configuredModel?.isEmpty == false && configuredModel?.hasPrefix("$(") == false ? configuredModel! : "qwen3.5:4b-q4_K_M")
     }
 
     /// Validates and snapshots a request in memory, reserving one submission at a time.
@@ -37,6 +58,7 @@ final class ChatViewModel {
         }
         response = nil
         responseError = nil
+        speech?.stop()
         if startsNewSession { conversation.removeAll() }
         conversation.append(ConversationEntry(kind: .user, content: message))
         pendingRequest = ChatRequest(
@@ -56,6 +78,10 @@ final class ChatViewModel {
     func submitStoredRequest() async {
         guard isSubmitting, let request = pendingRequest else { return }
         defer { isSubmitting = false }
+        // try the voice server first
+        if speakerOn, let voiceService, let speech, await streamSpokenReply(request, from: voiceService, to: speech) {
+            return
+        }
         do {
             let response = try await service.send(request)
             self.response = response
@@ -70,6 +96,52 @@ final class ChatViewModel {
             responseError = error.localizedDescription
             conversation.append(ConversationEntry(kind: .error, content: error.localizedDescription))
             print("[Ollama] error: \(error.localizedDescription)")
+        }
+    }
+
+    // streams text in while the audio plays
+    // returns false if the voice server gave us nothing, so the caller can fall back to plain text
+    private func streamSpokenReply(
+        _ request: ChatRequest,
+        from voiceService: any VoiceStreamService,
+        to speech: any SpeechPlaying
+    ) async -> Bool {
+        var reply = ""
+        var entryIndex: Int?
+        do {
+            for try await event in voiceService.stream(request) {
+                switch event {
+                case .text(let delta):
+                    reply += delta
+                    if let index = entryIndex {
+                        conversation[index].content = reply
+                    } else {
+                        conversation.append(ConversationEntry(kind: .assistant, content: reply))
+                        entryIndex = conversation.count - 1
+                    }
+                case .sentence(_, _, let audio):
+                    if speakerOn { speech.enqueue(audio) } // muted mid reply = drop it
+                case .done:
+                    guard entryIndex != nil else { return false } // done with no text, fall back
+                    response = ChatResponse(
+                        model: request.model,
+                        message: ChatMessage(role: "assistant", content: reply),
+                        done: true
+                    )
+                    print("[Voice] model: \(request.model), reply: \(reply)")
+                    return true
+                }
+            }
+            throw VoiceStreamError.endedEarly
+        } catch {
+            print("[Voice] error: \(error.localizedDescription)")
+            guard entryIndex != nil else { return false } // nothing showed up yet, fall back
+            let message = error is CancellationError
+                ? "The request was cancelled. Please try again."
+                : error.localizedDescription
+            responseError = message
+            conversation.append(ConversationEntry(kind: .error, content: message))
+            return true
         }
     }
 }

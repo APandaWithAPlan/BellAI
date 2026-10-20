@@ -1,3 +1,5 @@
 // Local development only. The included file is ignored by Git.
-OLLAMA_MODEL = qwen3:8b
+OLLAMA_MODEL = qwen3.5:4b-q4_K_M
+// voice server host:port (no ws:// here, // is a comment in xcconfig)
+VOICE_SERVER_HOST = ai-server:8000
 #include? "../BellAI/Config/Secrets.xcconfig"

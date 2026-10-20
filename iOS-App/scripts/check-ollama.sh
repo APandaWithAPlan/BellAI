@@ -5,6 +5,8 @@ check_dir=$(mktemp -d "${TMPDIR:-/tmp}/bellai-checks.XXXXXX")
 xcrun swiftc -D DEBUG -parse-as-library \
   BellAI/Models/ChatRequest.swift \
   BellAI/Services/HTTPBellAIService.swift \
+  BellAI/Services/VoiceStreamService.swift \
+  BellAI/Services/SpeechPlayer.swift \
   BellAI/ViewModels/ChatViewModel.swift \
   BellAITests/OllamaSubmissionChecks.swift \
   -o "$check_dir/check-ollama"

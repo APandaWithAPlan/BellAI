@@ -2,14 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsLocalNetworking</key>
-        <true/>
-    </dict>
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>BellAI connects to your AI server to send messages and receive replies.</string>
-    <key>OLLAMA_MODEL</key>
-    <string>$(OLLAMA_MODEL)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>OLLAMA_MODEL</key>
+	<string>$(OLLAMA_MODEL)</string>
+	<key>VOICE_SERVER_HOST</key>
+	<string>$(VOICE_SERVER_HOST)</string>
 </dict>
 </plist>

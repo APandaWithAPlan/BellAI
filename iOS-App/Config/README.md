@@ -2,7 +2,11 @@
 
 The app connects to the OpenAI-compatible API at `http://ai-server:11434/v1/` without an API key or Authorization header. The device running BellAI must be connected to Tailscale with access to `ai-server` on port 11434.
 
-`OLLAMA_MODEL` defaults to `qwen3:8b`; it must match a model available on the server. Debug builds can override it in the ignored `BellAI/Config/Secrets.xcconfig` included by `Config/Debug.xcconfig`. No API key is required.
+`OLLAMA_MODEL` defaults to `qwen3.5:4b-q4_K_M`; it must match a model available on the server. Debug builds can override it in the ignored `BellAI/Config/Secrets.xcconfig` included by `Config/Debug.xcconfig`. No API key is required.
+
+## Spoken replies
+
+With the speaker on, the app sends the request over a WebSocket to the voice server (`ws://ai-server:8000/ws`). Text streams in as Ollama writes it, and each sentence comes back as a wav clip that `SpeechPlayer` plays in order. Change the host with `VOICE_SERVER_HOST` in `Config/Debug.xcconfig`. If the voice server can't be reached, the app falls back to the plain HTTP request and the reply is text only. Turning the speaker off stops any audio that's playing.
 
 The app permits HTTP connections to local hostnames through `NSAllowsLocalNetworking` and includes a local-network permission description.
 
