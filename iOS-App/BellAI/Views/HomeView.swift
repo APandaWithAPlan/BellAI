@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     var isSubmitting = false
     var onSubmitPrompt: (String) -> Bool = { _ in false }
+    var onSubmitPhoto: (Data, String) -> Bool = { _, _ in false }
     @State private var prompt = ""
 
     var body: some View {
@@ -15,6 +16,9 @@ struct HomeView: View {
                     isSubmitting: isSubmitting,
                     onSubmit: {
                         if onSubmitPrompt(prompt) { prompt = "" }
+                    },
+                    onPhotoPicked: { jpeg in
+                        if onSubmitPhoto(jpeg, prompt) { prompt = "" } // what's typed goes along as the note
                     }
                 )
             }

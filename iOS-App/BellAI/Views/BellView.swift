@@ -6,6 +6,7 @@ struct BellView: View {
     var isSpeaking = false
     @Binding var isSpeakerEnabled: Bool
     var onSubmitPrompt: (String) -> Bool = { _ in false }
+    var onSubmitPhoto: (Data, String) -> Bool = { _, _ in false }
     let onClose: () -> Void
     let onOpenSettings: () -> Void
 
@@ -62,6 +63,10 @@ struct BellView: View {
                             .onSubmit(submitFollowUp)
                             .accessibilityLabel("Message BellAI")
                             .task { isPromptFocused = true }
+
+                        PhotoPickerButton(isDisabled: isSubmitting) { jpeg in
+                            if onSubmitPhoto(jpeg, typedPrompt) { typedPrompt = "" }
+                        }
 
                         Button(action: submitFollowUp) {
                             Image(systemName: "arrow.up.circle.fill")

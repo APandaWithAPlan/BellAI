@@ -5,6 +5,7 @@ struct BellAIPromptInputView: View {
     var isSubmitting = false
     var onSubmit: () -> Void = {}
     var onMicrophoneTap: (() -> Void)? = nil
+    var onPhotoPicked: ((Data) -> Void)? = nil
 
     @ScaledMetric(relativeTo: .body) private var avatarSize = 38.0
 
@@ -32,6 +33,10 @@ struct BellAIPromptInputView: View {
             .onSubmit { if !isSubmitting { onSubmit() } }
             .tint(accent)
             .accessibilityLabel("Message BellAI")
+
+            if let onPhotoPicked {
+                PhotoPickerButton(isDisabled: isSubmitting, onPick: onPhotoPicked)
+            }
 
             Button {
                 if text.isEmpty {

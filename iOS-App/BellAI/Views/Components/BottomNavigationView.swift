@@ -3,6 +3,7 @@ import SwiftUI
 enum BellAITab: String, CaseIterable, Identifiable {
     case home = "Home"
     case bell = "BellAI"
+    case tasks = "Tasks"
     case activity = "Activity"
     case settings = "Settings"
 
@@ -12,6 +13,7 @@ enum BellAITab: String, CaseIterable, Identifiable {
         switch self {
         case .home: "house"
         case .bell: "sparkles"
+        case .tasks: "checklist"
         case .activity: "square.grid.2x2"
         case .settings: "gearshape"
         }

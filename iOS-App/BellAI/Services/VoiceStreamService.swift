@@ -38,11 +38,14 @@ struct WebSocketVoiceService: VoiceStreamService {
     }
 
     // VOICE_SERVER_HOST from Info.plist, else ai-server:8000
-    nonisolated static var configuredURL: URL {
+    nonisolated static var configuredHost: String {
         let configured = (Bundle.main.object(forInfoDictionaryKey: "VOICE_SERVER_HOST") as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let host = configured?.isEmpty == false && configured?.hasPrefix("$(") == false ? configured! : "ai-server:8000"
-        return URL(string: "ws://\(host)/ws")!
+        return configured?.isEmpty == false && configured?.hasPrefix("$(") == false ? configured! : "ai-server:8000"
+    }
+
+    nonisolated static var configuredURL: URL {
+        URL(string: "ws://\(configuredHost)/ws")!
     }
 
     func stream(_ request: ChatRequest) -> AsyncThrowingStream<VoiceEvent, Error> {

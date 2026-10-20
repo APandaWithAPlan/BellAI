@@ -4,7 +4,7 @@
 
 **BellAI** is an iOS assistant designed to extend help beyond the home. The current app lets you send text prompts to an Ollama server, read replies, and continue a conversation with follow-up questions.
 
-The Home screen also previews Lights, Climate, Plan, and Security with static sample values; these cards do not control devices or manage tasks yet. Activity and Settings are placeholder screens, and voice input is disabled. The speaker button turns spoken replies on or off: when on, replies stream in word by word and are read aloud in the BellAI voice by the voice server, which runs separately from this app.
+The Home screen also previews Lights, Climate, Plan, and Security with static sample values; these cards do not control devices or manage tasks yet. The Tasks tab is a to-do list: add, check off and swipe to delete. It is saved to your Firebase account (encrypted, anonymous sign-in) and loads again on launch. Activity and Settings are placeholder screens, and voice input is disabled. The speaker button turns spoken replies on or off: when on, replies stream in word by word and are read aloud in the BellAI voice by the voice server, which runs separately from this app.
 
 ## Getting Started
 

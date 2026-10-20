@@ -3,8 +3,9 @@ import FirebaseFunctions
 
 // talks to the cloud functions in /firebase
 @MainActor
-struct FirebaseUserDataService {
-    private let functions = Functions.functions()
+struct FirebaseUserDataService: UserDataStore {
+    // looked up on use, so previews don't need firebase configured
+    private var functions: Functions { Functions.functions() }
 
     // skips if allready signed in
     func signInAnonymouslyIfNeeded() async throws {
