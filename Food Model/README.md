@@ -1,47 +1,32 @@
 # BellAi Food Model
 
-## Summary
-Send a food photo or a description like "2 eggs and toast" and get back the foods, portions and nutrition as JSON. Qwen2.5-VL-7B identifies the food and estimates grams, and the nutrition comes from USDA FoodData Central. It runs locally on an NVIDIA GPU.
+## Overview
 
-Setup (Windows, NVIDIA GPU, Python 3.10 to 3.12, free USDA API key), from this folder in PowerShell:
-```powershell
-powershell -ExecutionPolicy Bypass -File setup.ps1
-powershell -ExecutionPolicy Bypass -File start_server.ps1
-```
-When it says `Model ready.`, open http://127.0.0.1:8000.
+**BellAi Food Model** identifies what you're eating and estimates its nutrition. You send it a photo of a meal, a typed description like "2 eggs and a slice of toast", or both, and it returns each food with its nutrition facts. Food is identified by Qwen2.5-VL-7B running locally on an NVIDIA GPU, and nutrition values come from USDA FoodData Central for an accurate calorie numbers.
 
-- `server.py` runs the API (`POST /analyze`) and the test page
-- `analyze_food.py` turns a photo or text into foods and nutrition
-- `quick_parse.py` handles simple text like "150 g rice" without the AI
-- `nutrition.py` looks up nutrition in USDA and caches it
+## Getting Started
 
-## Changes/Tasks
-- Find and set up a food model to ingest images: Qwen2.5-VL-7B running locally, with a 3B option for smaller GPUs
-- Ingest user prompts and return food labels: accepts a photo, text, or both, and returns each food with a type and grams
-- Return sanitized labels as JSON for the backend: cleaned labels, a fixed list of food types, sensible gram limits, USDA nutrition, totals and a summary sentence
+### Prerequisites
 
-## Testing
-Activate the environment with `.venv\Scripts\activate`, stop the server, then run:
-```powershell
-python evaluate.py eval_data\real_world\labels.csv
-```
-- `evaluate.py` scores the model against a labels.csv and saves a report in `results`
-- `make_labels.py` makes a labels.csv for a folder of your own photos
-- `test_api.py` sends a test request to the running server
+* Operating System: Windows 10 or 11. The scripts are PowerShell.
+* GPU: NVIDIA with about 20 GB of free memory for the 7B model, or about 9 GB for the 3B model (`-Small`).
+* Python: `3.10` to `3.12`, with about 40 GB of free disk space. The model downloads about 16 GB on first start.
+* API Keys: A free USDA key from https://fdc.nal.usda.gov/api-key-signup, saved as `FDC_API_KEY`. `FOOD_API_KEY` is optional and makes every request send an `X-API-Key` header.
+* Development setup: From the `Food Model` folder in PowerShell, run `powershell -ExecutionPolicy Bypass -File setup.ps1` once. It creates `.venv`, installs the packages and saves your keys. See [API.md](API.md) for the request and response format.
 
-Results from testing accuracy:
-- Nutrition5k (50 cafeteria meals): 82 percent food identification
-- Real world (41 food photos, 8 non-food): 73 percent food identification, 7 of 8 non-food photos rejected
-- My photos (79 non-food, 2 food): 78 of 79 non-food rejected, both food photos identified
+### How to Enable / Access
 
-Results from testing accuracy after review:
-- Nutrition5k (50 cafeteria meals): 88%
-- Real world (41 food photos, 8 non-food): 95%
-- Average Total: 91%
+1. Run `powershell -ExecutionPolicy Bypass -File start_server.ps1`. Add `-Small` for the 3B model or `-Lan` to allow the Pi and other devices on your network.
+2. Wait for **Model ready.** in the terminal. It also prints how much GPU memory is free.
+3. Open http://127.0.0.1:8000 in a browser to reach the test page.
 
-## Issues
-- USDA lookups must have a corresponding API key attached and you can request that from `https://fdc.nal.usda.gov/api-key-signup`.
-- Food model mistakes are just naming differences, like "beef steak" for filet mignon. I counted them as correct which is why the task is considered complete.
-- Drawings of food can trick the AI model currently. A fruit painting and a cartoon with burgers were both read as food.
-- Running without `.venv` gives errors like `No module named 'qwen_vl_utils'`.
-- The 7B model uses about 17 GB of GPU memory. If another model is loaded too, everything slows down. Use `-Small` or close the other model.
+## How to Use It
+
+1. **Analyze a photo:** On the test page, upload a JPEG, PNG or WEBP photo and click **Analyze**. Add a note like "half portion" in the text box for extra context.
+2. **Analyze a description:** Leave the photo empty, type a meal such as "2 eggs and a slice of toast", and click **Analyze**. The result shows whether the fast path or the AI model answered and how long it took.
+3. **Read the results:** The summary, meal totals and a table of foods appear below. Open **Raw JSON** to see exactly what the app receives.
+4. **Call it from the app or Pi:** Send `POST /analyze` with an `image` field, a `text` field, or both. Check that the server is up with `GET /health`.
+5. **Test accuracy:** Stop the server, activate the environment with `.venv\Scripts\activate`, and run `python evaluate.py eval_data\real_world\labels.csv`. Open the `.html` report it saves in `results`. Use `python make_labels.py` to build a labels.csv for your own photos, and use `none` for photos with no food.
+6. **Handle an error:** If you see `No module named 'qwen_vl_utils'`, the environment is not active. If everything slows down and the GPU sits at 99 percent, another model is using GPU memory. Close it (check with `ollama ps`) or restart with `-Small`.
+
+> **Tip:** If foods come back with no nutrition, the USDA lookup is failing. Check that `echo $env:FDC_API_KEY` prints your key, then run `python nutrition.py "apple"` to test the connection. Each food is cached in `cache\fdc_cache_v2.json` after its first lookup.
