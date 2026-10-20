@@ -2,7 +2,7 @@
 
 ## Overview
 
-**BellAI** is a personal AI assistant for iOS that speaks in a custom voice. You chat with it by text, send it a photo of a meal to get a spoken nutrition summary, and keep a to-do list that BellAI knows about.
+**BellAI** is a personal AI assistant for iOS that speaks in a custom voice. You chat with it by text, send it a photo of a meal to get a spoken nutrition summary, and keep a to-do list that BellAI knows about. You are the cloud, you hold your own data.
 
 ## Repository layout
 
