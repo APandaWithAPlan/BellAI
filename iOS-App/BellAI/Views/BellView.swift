@@ -4,6 +4,9 @@ struct BellView: View {
     var conversation: [ConversationEntry] = []
     var isSubmitting = false
     var isSpeaking = false
+    var isListening = false
+    var isStartingMicrophone = false
+    var onMicrophoneTap: (() -> Void)? = nil
     @Binding var isSpeakerEnabled: Bool
     var onSubmitPrompt: (String) -> Bool = { _ in false }
     var onSubmitPhoto: (Data, String) -> Bool = { _, _ in false }
@@ -17,7 +20,7 @@ struct BellView: View {
     var body: some View {
         VStack(spacing: 0) {
             BellHeaderView(
-                subtitle: isSpeaking ? "Speaking…" : isSubmitting ? "Thinking…" : "Ready to help",
+                subtitle: isStartingMicrophone ? "Preparing microphone…" : isListening ? "Listening…" : isSpeaking ? "Speaking…" : isSubmitting ? "Thinking…" : "Ready to help",
                 onClose: onClose,
                 onOpenSettings: onOpenSettings
             )
@@ -27,6 +30,7 @@ struct BellView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 16) {
+                        BellListeningView(isWaiting: isSubmitting, isListening: isListening, isStartingMicrophone: isStartingMicrophone)
                         BellConversationView(conversation: conversation)
                         Color.clear.frame(height: 1).id("conversationEnd")
                     }
@@ -50,7 +54,9 @@ struct BellView: View {
                 BellInputControlsView(
                     isSpeakerEnabled: $isSpeakerEnabled,
                     isKeyboardVisible: showsKeyboardInput,
-                    onKeyboardTap: toggleKeyboardInput
+                    onKeyboardTap: toggleKeyboardInput,
+                    onMicrophoneTap: isSubmitting ? nil : onMicrophoneTap,
+                    isListening: isListening || isStartingMicrophone
                 )
 
                 if showsKeyboardInput {

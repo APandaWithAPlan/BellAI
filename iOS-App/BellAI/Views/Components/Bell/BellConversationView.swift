@@ -6,7 +6,7 @@ struct BellConversationView: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 16) {
             if conversation.isEmpty {
-                Text("Start a conversation using the keyboard below.")
+                Text("Start a conversation using the microphone or keyboard below.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -18,7 +18,7 @@ struct BellConversationView: View {
                     title: title(for: entry),
                     symbol: entry.kind == .error ? "exclamationmark.triangle" : "sparkles",
                     message: entry.content,
-                    subtext: entry.kind == .user ? "Typed message" : entry.kind == .error ? "You can try again using the input below." : ""
+                    subtext: entry.kind == .user ? "Your message" : entry.kind == .error ? "You can try again using the input below." : ""
                 ) {
                     if entry.kind != .error {
                         ShareLink(item: entry.content) {

@@ -8,6 +8,7 @@ xcrun swiftc -D DEBUG -parse-as-library \
   BellAI/Services/HTTPBellAIService.swift \
   BellAI/Services/FoodAnalysisService.swift \
   BellAI/Services/VoiceStreamService.swift \
+  BellAI/Services/MicrophoneService.swift \
   BellAI/Services/SpeechPlayer.swift \
   BellAI/ViewModels/ChatViewModel.swift \
   BellAI/ViewModels/TasksViewModel.swift \

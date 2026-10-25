@@ -2,6 +2,8 @@ import SwiftUI
 
 struct BellListeningView: View {
     var isWaiting = false
+    var isListening = false
+    var isStartingMicrophone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var pulseStartedAt = Date()
@@ -50,7 +52,7 @@ struct BellListeningView: View {
             .frame(height: 42)
             .accessibilityHidden(true)
 
-            Text(isWaiting ? "Thinking…" : "Ready to help")
+            Text(isStartingMicrophone ? "Preparing microphone…" : isListening ? "Listening…" : isWaiting ? "Thinking…" : "Ready to help")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(accent)
         }

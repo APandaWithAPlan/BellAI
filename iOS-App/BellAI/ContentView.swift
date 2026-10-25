@@ -1,7 +1,9 @@
+import AVFoundation
 import SwiftUI
 import Playgrounds
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: BellAITab = .home
     @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), foodService: HTTPFoodAnalysisService(), speech: SpeechPlayer())
     @State private var tasks = TasksViewModel(store: FirebaseUserDataService())
@@ -12,12 +14,18 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             if selectedTab == .home {
-                HomeView(isSubmitting: chat.isSubmitting, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
+                HomeView(isSubmitting: chat.isSubmitting, onMicrophoneTap: {
+                    selectedTab = .bell
+                    chat.toggleMicrophone(startsNewSession: true)
+                }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
             } else if selectedTab == .bell {
                 BellView(
                     conversation: chat.conversation,
                     isSubmitting: chat.isSubmitting,
                     isSpeaking: chat.isSpeaking,
+                    isListening: chat.isListening,
+                    isStartingMicrophone: chat.isStartingMicrophone,
+                    onMicrophoneTap: { chat.toggleMicrophone() },
                     isSpeakerEnabled: $chat.isSpeakerEnabled,
                     onSubmitPrompt: submitFollowUpPrompt,
                     onSubmitPhoto: submitFollowUpPhoto,
@@ -40,7 +48,19 @@ struct ContentView: View {
             chat.contextProvider = { [tasks] in tasks.openTaskSummary }
             await tasks.load()
         }
-        .alert("Couldn't send message", isPresented: Binding(
+        .onChange(of: selectedTab) { _, tab in
+            if tab != .bell { chat.stopMicrophone() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { chat.stopMicrophone() }
+        }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
+            chat.stopMicrophone()
+        }
+        #endif
+        .onDisappear { chat.stopMicrophone() }
+        .alert("Couldn't complete request", isPresented: Binding(
             get: { chat.errorMessage != nil },
             set: { if !$0 { chat.errorMessage = nil } }
         )) {

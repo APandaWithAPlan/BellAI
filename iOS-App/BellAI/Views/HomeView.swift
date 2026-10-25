@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     var isSubmitting = false
+    var onMicrophoneTap: (() -> Void)? = nil
     var onSubmitPrompt: (String) -> Bool = { _ in false }
     var onSubmitPhoto: (Data, String) -> Bool = { _, _ in false }
     @State private var prompt = ""
@@ -17,6 +18,7 @@ struct HomeView: View {
                     onSubmit: {
                         if onSubmitPrompt(prompt) { prompt = "" }
                     },
+                    onMicrophoneTap: onMicrophoneTap,
                     onPhotoPicked: { jpeg in
                         if onSubmitPhoto(jpeg, prompt) { prompt = "" } // what's typed goes along as the note
                     }
