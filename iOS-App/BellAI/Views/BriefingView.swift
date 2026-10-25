@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Static morning briefing layout. Sample content is not connected to live services.
+/// Briefing with the device's current date and sample card content.
 struct BriefingView: View {
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
@@ -41,9 +41,11 @@ struct BriefingView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("TUESDAY · OCT 6")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(accent)
+                TimelineView(.everyMinute) { context in
+                    Text(dateSubtitle(for: context.date))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(accent)
+                }
                 Text("Your morning")
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(ink)
@@ -59,6 +61,17 @@ struct BriefingView: View {
                 .accessibilityLabel("Spoken briefing")
         }
         .padding(.bottom, 2)
+    }
+
+    private func dateSubtitle(for date: Date) -> String {
+        let style = Date.FormatStyle(
+            locale: .autoupdatingCurrent,
+            calendar: .autoupdatingCurrent,
+            timeZone: .autoupdatingCurrent
+        )
+        let weekday = date.formatted(style.weekday(.wide))
+        let monthAndDay = date.formatted(style.month(.abbreviated).day())
+        return "\(weekday) · \(monthAndDay)".uppercased(with: .autoupdatingCurrent)
     }
 
     private var weatherCard: some View {
