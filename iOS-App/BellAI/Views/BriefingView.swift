@@ -40,25 +40,18 @@ struct BriefingView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                TimelineView(.everyMinute) { context in
+            TimelineView(.everyMinute) { context in
+                VStack(alignment: .leading, spacing: 4) {
                     Text(dateSubtitle(for: context.date))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(accent)
+                    Text(briefingTitle(for: context.date))
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle(ink)
                 }
-                Text("Your morning")
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image(systemName: "speaker.wave.2")
-                .font(.system(size: 20, weight: .light))
-                .foregroundStyle(ink)
-                .frame(width: 48, height: 48)
-                .background(.white, in: Circle())
-                .overlay(Circle().strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
-                .accessibilityLabel("Spoken briefing")
         }
         .padding(.bottom, 2)
     }
@@ -72,6 +65,14 @@ struct BriefingView: View {
         let weekday = date.formatted(style.weekday(.wide))
         let monthAndDay = date.formatted(style.month(.abbreviated).day())
         return "\(weekday) · \(monthAndDay)".uppercased(with: .autoupdatingCurrent)
+    }
+
+    private func briefingTitle(for date: Date) -> String {
+        switch Calendar.autoupdatingCurrent.component(.hour, from: date) {
+        case 0..<12: "Your morning"
+        case 12..<18: "Your afternoon"
+        default: "Your evening"
+        }
     }
 
     private var weatherCard: some View {
