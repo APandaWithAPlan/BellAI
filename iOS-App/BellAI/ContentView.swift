@@ -5,6 +5,8 @@ import Playgrounds
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: BellAITab = .home
+    @State private var homeSection: HomeSection = .main
+    @State private var bottomNavigationHeight: CGFloat = 56
     @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), foodService: HTTPFoodAnalysisService(), speech: SpeechPlayer())
     @State private var tasks = TasksViewModel(store: FirebaseUserDataService())
 
@@ -14,10 +16,14 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             if selectedTab == .home {
-                HomeView(isSubmitting: chat.isSubmitting, onMicrophoneTap: {
-                    selectedTab = .bell
-                    chat.toggleMicrophone(startsNewSession: true)
-                }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
+                if homeSection == .main {
+                    HomeView(isSubmitting: chat.isSubmitting, onMicrophoneTap: {
+                        selectedTab = .bell
+                        chat.toggleMicrophone(startsNewSession: true)
+                    }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
+                } else {
+                    BriefingView()
+                }
             } else if selectedTab == .bell {
                 BellView(
                     conversation: chat.conversation,
@@ -41,7 +47,18 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomNavigationView(selection: $selectedTab)
+            VStack(spacing: 12) {
+                if selectedTab == .home {
+                    HomeSectionNavigationView(selection: $homeSection, height: bottomNavigationHeight * 2 / 3)
+                        .padding(.horizontal, 20)
+                }
+                BottomNavigationView(selection: $selectedTab)
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.size.height
+                    } action: { height in
+                        bottomNavigationHeight = height
+                    }
+            }
         }
         .task {
             // BellAI gets your open tasks as context, so load them now, not when the tab opens
