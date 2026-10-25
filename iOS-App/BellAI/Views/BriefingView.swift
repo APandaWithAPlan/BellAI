@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Briefing with the device's current date and sample card content.
+/// Live local date and weather, with sample task and lifestyle cards.
 struct BriefingView: View {
+    @State private var weatherModel = BriefingWeatherViewModel()
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
     private let green = Color(red: 0.10, green: 0.69, blue: 0.43)
@@ -11,6 +12,7 @@ struct BriefingView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 weatherCard
+                weatherAttribution
 
                 card {
                     BriefingRow(symbol: "calendar", color: .blue,
@@ -34,6 +36,8 @@ struct BriefingView: View {
             .padding(.top, 20)
             .padding(.bottom, 24)
         }
+        .task { await weatherModel.refresh() }
+        .refreshable { await weatherModel.refresh() }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
     }
@@ -76,31 +80,60 @@ struct BriefingView: View {
     }
 
     private var weatherCard: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("58°")
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                    .fontWidth(.expanded)
-                    .accessibilityLabel("58 degrees")
-                Text("Clear now · High 71°")
-                    .font(.headline.weight(.regular))
-                Text("Light jacket until 10 AM")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(weatherModel.weather?.locationName ?? "Local weather")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                    Text(weatherModel.temperatureText(weatherModel.weather?.temperature))
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                        .fontWidth(.expanded)
+                    Text(weatherModel.weather?.condition ?? (weatherModel.isLoading ? "Loading weather…" : "Weather unavailable"))
+                        .font(.headline.weight(.regular))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image(systemName: "sun.max")
-                .font(.system(size: 34, weight: .ultraLight))
+                Group {
+                    if weatherModel.isLoading {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: weatherModel.weather?.symbolName ?? "cloud")
+                            .font(.system(size: 34, weight: .ultraLight))
+                    }
+                }
                 .frame(width: 76, height: 76)
                 .background(.white.opacity(0.13), in: Circle())
                 .accessibilityHidden(true)
+            }
+
+            if let message = weatherModel.errorMessage {
+                Text(message).font(.subheadline)
+                Button("Try again") { Task { await weatherModel.refresh() } }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+                    .disabled(weatherModel.isLoading)
+            } else {
+                Text("Rest of today (est.) · High \(weatherModel.temperatureText(weatherModel.weather?.high)) · Low \(weatherModel.temperatureText(weatherModel.weather?.low))")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.top, 4)
+            }
         }
         .foregroundStyle(.white)
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(red: 0.92, green: 0.24, blue: 0.49), in: RoundedRectangle(cornerRadius: 22))
-        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var weatherAttribution: some View {
+        if let weather = weatherModel.weather {
+            Link("Weather data by OpenWeather", destination: weather.attributionURL)
+                .font(.caption)
+                .foregroundStyle(ink)
+        }
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {

@@ -13,6 +13,7 @@
 
 /* Begin PBXFileReference section */
 		000000000000000000000030 /* Config/Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		000000000000000000000031 /* Config/Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Release.xcconfig; sourceTree = SOURCE_ROOT; };
 		000000000000000000000120 /* BellAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BellAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -41,6 +42,7 @@
 				000000000000000000000010 /* BellAI */,
 				000000000000000000000020 /* Products */,
 				000000000000000000000030 /* Config/Debug.xcconfig */,
+				000000000000000000000031 /* Config/Release.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -306,6 +308,7 @@
 		};
 		000000000000000112000000 /* Release configuration for PBXNativeTarget "BellAI" */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 000000000000000000000031 /* Config/Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
