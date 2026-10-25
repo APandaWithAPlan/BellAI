@@ -40,6 +40,8 @@ struct ContentView: View {
                 )
             } else if selectedTab == .tasks {
                 TasksView(model: tasks)
+            } else if selectedTab == .settings {
+                SettingsView()
             } else {
                 Text(selectedTab.rawValue)
                     .font(.title2.weight(.semibold))
