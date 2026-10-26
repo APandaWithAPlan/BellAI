@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card"
 
 function DateTimeCard({ date, time, period }) {
   return (
-    <Card className="rounded-xl border border-solid border-[#7d5070] bg-[#20151c] p-4 text-white shadow-lg">
+    <Card className="h-full rounded-xl border border-solid border-[#7d5070] bg-[#20151c] p-4 text-white shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-baseline gap-2">
           <span className="text-6xl font-light">
