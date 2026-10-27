@@ -1,8 +1,17 @@
 import SwiftUI
+import CoreLocation
+import Observation
+#if os(iOS)
+import UIKit
+#endif
 
-/// Settings layout; preference controls are display-only until their services are connected.
+/// Settings layout with a location control backed by system authorization.
 struct SettingsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
+    @State private var locationPermission = SettingsLocationPermission()
+    @State private var showsLocationSettings = false
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
     private let muted = Color(red: 0.48, green: 0.43, blue: 0.46)
@@ -27,6 +36,17 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(surface)
+        .task(id: scenePhase) {
+            if scenePhase == .active { await locationPermission.refresh() }
+        }
+        .alert("Location access", isPresented: $showsLocationSettings) {
+            #if os(iOS)
+            Button("Open Settings") { openLocationSettings() }
+            #endif
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Change BellAI’s location access in System Settings. If Location Services are disabled for your device, enable them under Privacy & Security → Location Services first.")
+        }
     }
 
     private var header: some View {
@@ -119,7 +139,7 @@ struct SettingsView: View {
                 }
 
                 LazyVGrid(columns: columns, spacing: 8) {
-                    permissionTile("Location", subtitle: "While using", symbol: "mappin.and.ellipse")
+                    locationTile
                     permissionTile("Email", subtitle: "Not connected", symbol: "envelope")
                     permissionTile("Music", subtitle: "Not connected", symbol: "music.note")
                     permissionTile("Calendar", subtitle: "Not connected", symbol: "calendar")
@@ -141,19 +161,76 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             // Display-only switch, so no privacy setting is changed by this layout.
-            Capsule()
-                .fill(isOn ? accent : muted.opacity(0.25))
-                .frame(width: 44, height: 28)
-                .overlay(alignment: isOn ? .trailing : .leading) {
-                    Circle().fill(.white).frame(width: 22, height: 22).padding(3)
-                }
-                .accessibilityHidden(true)
+            statusSwitch(isOn: isOn)
         }
         .padding(10)
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         .background(green.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title), \(isOn ? "on" : "off"), display only")
+    }
+
+    private func statusSwitch(isOn: Bool) -> some View {
+        Capsule()
+            .fill(isOn ? accent : muted.opacity(0.25))
+            .frame(width: 44, height: 28)
+            .overlay(alignment: isOn ? .trailing : .leading) {
+                Circle().fill(.white).frame(width: 22, height: 22).padding(3)
+            }
+            .accessibilityHidden(true)
+    }
+
+    private var locationTile: some View {
+        Button(action: changeLocationAccess) {
+            HStack(spacing: 8) {
+                Image(systemName: "mappin.and.ellipse")
+                    .font(.system(size: 17, weight: .light))
+                    .foregroundStyle(accent)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                Text("Location")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                statusSwitch(isOn: locationPermission.isEnabled)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(surface, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Location")
+        .accessibilityValue(locationPermission.isEnabled ? "On" : "Off")
+        .accessibilityHint(locationPermission.isEnabled
+            ? "Opens Settings to turn off location access"
+            : "Requests location access or opens Settings to enable it")
+    }
+
+    private func changeLocationAccess() {
+        Task {
+            await locationPermission.refresh()
+            if locationPermission.requestAccessIfNeeded() { return }
+            if !locationPermission.servicesEnabled {
+                showsLocationSettings = true
+            } else {
+                openLocationSettings()
+            }
+        }
+    }
+
+    private func openLocationSettings() {
+        #if os(iOS)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            openURL(url) { opened in
+                if !opened { showsLocationSettings = true }
+            }
+        }
+        #else
+        showsLocationSettings = true
+        #endif
     }
 
     private func permissionTile(_ title: String, subtitle: String, symbol: String) -> some View {
@@ -189,6 +266,38 @@ struct SettingsView: View {
                     .strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90), lineWidth: 0.75)
             }
             .shadow(color: ink.opacity(0.05), radius: 14, y: 7)
+    }
+}
+
+@MainActor
+@Observable
+private final class SettingsLocationPermission: NSObject, @preconcurrency CLLocationManagerDelegate {
+    private(set) var isEnabled = false
+    private(set) var servicesEnabled = false
+    private let manager = CLLocationManager()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func refresh() async {
+        // Check the global setting off the main thread; no location request is needed.
+        servicesEnabled = await Task.detached {
+            CLLocationManager.locationServicesEnabled()
+        }.value
+        let status = manager.authorizationStatus
+        isEnabled = servicesEnabled && (status == .authorizedAlways || status == .authorizedWhenInUse)
+    }
+
+    func requestAccessIfNeeded() -> Bool {
+        guard servicesEnabled, manager.authorizationStatus == .notDetermined else { return false }
+        manager.requestWhenInUseAuthorization()
+        return true
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { await refresh() }
     }
 }
 
