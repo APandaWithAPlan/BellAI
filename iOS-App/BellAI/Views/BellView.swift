@@ -15,12 +15,15 @@ struct BellView: View {
 
     @State private var showsKeyboardInput = false
     @State private var typedPrompt = ""
+    @State private var connection = ServerConnectionMonitor()
+    @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isPromptFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             BellHeaderView(
-                subtitle: isStartingMicrophone ? "Preparing microphone…" : isListening ? "Listening…" : isSpeaking ? "Speaking…" : isSubmitting ? "Thinking…" : "Ready to help",
+                isServerConnected: connection.isConnected,
+                subtitle: isStartingMicrophone ? "Preparing microphone..." : isListening ? "Listening..." : isSpeaking ? "Speaking..." : isSubmitting ? "Processing..." : "Tap to speak",
                 onClose: onClose,
                 onOpenSettings: onOpenSettings
             )
@@ -30,7 +33,6 @@ struct BellView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 16) {
-                        BellListeningView(isWaiting: isSubmitting, isListening: isListening, isStartingMicrophone: isStartingMicrophone)
                         BellConversationView(conversation: conversation)
                         Color.clear.frame(height: 1).id("conversationEnd")
                     }
@@ -99,6 +101,19 @@ struct BellView: View {
             .padding(.vertical, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: scenePhase) {
+            connection.reset()
+            guard scenePhase == .active else { return }
+            defer { connection.reset() }
+            while !Task.isCancelled {
+                await connection.check()
+                do {
+                    try await Task.sleep(for: .seconds(15))
+                } catch {
+                    break
+                }
+            }
+        }
     }
 
     private func toggleKeyboardInput() {

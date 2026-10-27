@@ -28,6 +28,7 @@ enum BellAIServiceError: LocalizedError {
 
 @MainActor
 struct HTTPBellAIService: BellAIService {
+    nonisolated static let baseURL = URL(string: "http://ai-server:11434")!
     private let session: URLSession
 
     init(session: URLSession = .shared) {
@@ -35,7 +36,7 @@ struct HTTPBellAIService: BellAIService {
     }
 
     func send(_ request: ChatRequest) async throws -> ChatResponse {
-        var urlRequest = URLRequest(url: URL(string: "http://ai-server:11434/v1/chat/completions")!)
+        var urlRequest = URLRequest(url: Self.baseURL.appendingPathComponent("v1/chat/completions"))
         urlRequest.httpMethod = "POST"
         urlRequest.timeoutInterval = 90
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")

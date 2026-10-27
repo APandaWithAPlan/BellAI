@@ -165,7 +165,33 @@ struct OllamaSubmissionChecks {
         try await testServerErrorMessages(service: service, request: request)
         try await testInvalidResponses(service: service, request: request)
         try await testFoodAnalysisHTTP(session: session)
+        await testServerConnectionHealth(session: session)
         print("All Ollama submission checks passed.")
+    }
+
+    @MainActor
+    private static func testServerConnectionHealth(session: URLSession) async {
+        let monitor = ServerConnectionMonitor(session: session)
+        precondition(!monitor.isConnected)
+        for (status, payload, connected) in [
+            (200, #"{"version":"0.40.4"}"#, true),
+            (200, #"{"version":""}"#, false),
+            (503, #"{"version":"0.40.4"}"#, false),
+            (200, #"{"unexpected":true}"#, false),
+            (200, "invalid JSON", false)
+        ] {
+            StubURLProtocol.status = status
+            StubURLProtocol.payload = Data(payload.utf8)
+            await monitor.check()
+            precondition(monitor.isConnected == connected)
+        }
+        StubURLProtocol.status = 200
+        StubURLProtocol.payload = Data(#"{"version":"0.40.4"}"#.utf8)
+        await monitor.check()
+        precondition(monitor.isConnected)
+        monitor.reset()
+        precondition(!monitor.isConnected)
+        precondition(StubURLProtocol.capturedRequest?.url?.absoluteString == "http://ai-server:11434/api/version")
     }
 
     @MainActor

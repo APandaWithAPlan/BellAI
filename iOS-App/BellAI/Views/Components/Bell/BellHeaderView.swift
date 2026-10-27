@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct BellHeaderView: View {
+    var isServerConnected = false
     var subtitle = "Ready to help"
     let onClose: () -> Void
     let onOpenSettings: () -> Void
@@ -26,11 +27,11 @@ struct BellHeaderView: View {
 
                 HStack(spacing: 5) {
                     Circle()
-                        .fill(Color(red: 0.10, green: 0.71, blue: 0.43))
+                        .fill(isServerConnected ? Color(red: 0.10, green: 0.71, blue: 0.43) : .yellow)
                         .frame(width: 6, height: 6)
-                        .accessibilityHidden(true)
+                        .accessibilityLabel(isServerConnected ? "Server connected" : "Server connection pending or unavailable")
 
-                    Text(subtitle)
+                    Text(isServerConnected ? subtitle : "Connecting to server...")
                         .font(.caption2)
                         .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46))
                 }
