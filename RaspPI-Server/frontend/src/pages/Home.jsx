@@ -19,31 +19,31 @@ function Home() {
             </div>
 
             <DeviceCard
-            icon={Lightbulb}
-            value="6 Lights"
-            label="Active"
-            color="#ef6cba"
+                icon={Lightbulb}
+                value="6 Lights"
+                label="Active"
+                color="#ef6cba"
             />
 
             <DeviceCard
-            icon={Thermometer}
-            value="85°F"
-            label="Thermostat"
-            color="#54b7e8"
+                icon={Thermometer}
+                value="85°F"
+                label="Thermostat"
+                color="#54b7e8"
             />
 
             <DeviceCard
-            icon={Lock}
-            value="Locked"
-            label="Doors"
-            color="#37c5a1"
+                icon={Lock}
+                value="Locked"
+                label="Doors"
+                color="#37c5a1"
             />
 
             <DeviceCard
-            icon={Mic}
-            value="Ask BellAI"
-            label="Voice"
-            color="#ef6cba"
+                icon={Mic}
+                value="Ask BellAI"
+                label="Voice"
+                color="#ef6cba"
             />
 
             <div className="col-span-4">
