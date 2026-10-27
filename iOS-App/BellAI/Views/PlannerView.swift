@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TasksView: View {
+struct PlannerView: View {
     @Bindable var model: TasksViewModel
     @State private var newTitle = ""
 
@@ -11,7 +11,7 @@ struct TasksView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Tasks")
+            Text("Planner")
                 .font(.largeTitle.weight(.bold))
                 .foregroundStyle(ink)
                 .padding(.horizontal, 20)
@@ -32,6 +32,7 @@ struct TasksView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(red: 0.97, green: 0.96, blue: 0.97))
         .task { await model.load() }
         .alert("Tasks", isPresented: Binding(
             get: { model.errorMessage != nil },
@@ -115,12 +116,14 @@ struct TasksView: View {
 
 // preview store, keeps tasks in memory only
 @MainActor
-private final class PreviewStore: UserDataStore {
+final class PlannerPreviewStore: UserDataStore {
     func load() async throws -> [String: Any]? { nil }
     func save(_ data: [String: Any]) async throws {}
 }
 
 #Preview {
-    TasksView(model: TasksViewModel(store: PreviewStore()))
+    NavigationStack {
+        PlannerView(model: TasksViewModel(store: PlannerPreviewStore()))
+    }
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
 }

@@ -17,7 +17,7 @@ struct ContentView: View {
 
             if selectedTab == .home {
                 if homeSection == .main {
-                    HomeView(isSubmitting: chat.isSubmitting, onMicrophoneTap: {
+                    HomeView(tasks: tasks, isSubmitting: chat.isSubmitting, onMicrophoneTap: {
                         selectedTab = .bell
                         chat.toggleMicrophone(startsNewSession: true)
                     }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
@@ -38,8 +38,6 @@ struct ContentView: View {
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }
                 )
-            } else if selectedTab == .tasks {
-                TasksView(model: tasks)
             } else if selectedTab == .settings {
                 SettingsView()
             } else {
