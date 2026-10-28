@@ -1,6 +1,5 @@
 import { Card, CardContent } from "./ui/card"
 import { Separator } from "@/components/ui/separator"
-import { EighthNote, Pause, SkipForward, SkipBack } from "lucide-react"
 
 function EventCard({ time, timeUntil, title }) {
   return (
@@ -9,15 +8,18 @@ function EventCard({ time, timeUntil, title }) {
 
         <div className="flex min-w-0 items-center gap-4">
             
-            <Separator orientation="vertical" />
+            <Separator orientation="vertical" className="h-12! bg-[#f472b6]!"/>
 
           <div className="min-w-0">
-            <p className="text-sm text-[#f472b6]">
-              {time} · {timeUntil} min
-            </p>
+
             <p className="text-lg font-semibold">
                 {title}
             </p>
+
+            <p className="text-sm text-[#f472b6]">
+              {time} · {timeUntil}
+            </p>
+
           </div>
 
         </div>

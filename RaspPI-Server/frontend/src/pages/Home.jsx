@@ -51,7 +51,7 @@ function Home() {
             </div>
 
             <div className="col-span-4">
-                <EventCard time="9:30 AM" timeUntil="30" title="Team Standup" />
+                <EventCard time="9:30 AM" timeUntil="30 min" title="Team Standup" />
             </div>
 
         </div>  
