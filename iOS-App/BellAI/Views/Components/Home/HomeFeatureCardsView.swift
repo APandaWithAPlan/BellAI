@@ -34,10 +34,15 @@ struct HomeFeatureCardsView: View {
                 )
             }
             .buttonStyle(.plain)
-            FeatureCardView(
-                title: "Security", detail: "Home", symbol: "checkmark.shield",
-                tint: Color(red: 1, green: 0.18, blue: 0.45)
-            )
+            NavigationLink {
+                SecurityView()
+            } label: {
+                FeatureCardView(
+                    title: "Security", detail: "Home", symbol: "checkmark.shield",
+                    tint: Color(red: 1, green: 0.18, blue: 0.45)
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 }

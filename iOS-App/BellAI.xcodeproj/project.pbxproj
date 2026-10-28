@@ -278,6 +278,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "BellAI connects to your AI server to send messages and receive replies.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "BellAI uses your location to show local weather in your briefing.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "BellAI uses the microphone to capture your spoken messages.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "BellAI transcribes your speech into text to send to your AI server.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -319,6 +322,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "BellAI connects to your AI server to send messages and receive replies.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "BellAI uses your location to show local weather in your briefing.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "BellAI uses the microphone to capture your spoken messages.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "BellAI transcribes your speech into text to send to your AI server.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
