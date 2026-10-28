@@ -13,14 +13,24 @@ struct HomeFeatureCardsView: View {
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
-            FeatureCardView(
-                title: "Lights", detail: "8 on", symbol: "lightbulb",
-                tint: Color(red: 1, green: 0.57, blue: 0.16)
-            )
-            FeatureCardView(
-                title: "Climate", detail: "72°", symbol: "thermometer.medium",
-                tint: Color(red: 0.28, green: 0.51, blue: 1)
-            )
+            NavigationLink {
+                SmartHomeView()
+            } label: {
+                FeatureCardView(
+                    title: "Lights", detail: "Connect", symbol: "lightbulb",
+                    tint: Color(red: 1, green: 0.57, blue: 0.16)
+                )
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                SmartHomeView()
+            } label: {
+                FeatureCardView(
+                    title: "Climate", detail: "Connect", symbol: "thermometer.medium",
+                    tint: Color(red: 0.28, green: 0.51, blue: 1)
+                )
+            }
+            .buttonStyle(.plain)
             NavigationLink {
                 PlannerView(model: tasks)
                     #if os(iOS)
