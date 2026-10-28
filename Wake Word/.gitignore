@@ -1,0 +1,9 @@
+# Recordings of other people stay local
+custom_clips/**/*.wav
+custom_clips/**/*.mp3
+custom_clips/**/*.m4a
+custom_clips/**/*.flac
+custom_clips/**/*.ogg
+!custom_clips/**/.gitkeep
+
+__pycache__/

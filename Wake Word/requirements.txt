@@ -1,0 +1,36 @@
+# Training requirements for the BellAi wake word (Python 3.10, Linux/WSL only).
+# Versions follow the openWakeWord automatic training notebook. TensorFlow 2.8 is only
+# used to convert the finished model to .tflite, and it needs Python 3.10, older numpy and protobuf 3.20.
+torch==2.1.2
+torchaudio==2.1.2
+numpy==1.23.5
+scipy==1.10.1
+piper-phonemize==1.1.0
+webrtcvad-wheels
+mutagen==1.47.0
+torchinfo==1.8.0
+torchmetrics==1.2.0
+speechbrain==0.5.14
+audiomentations==0.33.0
+torch-audiomentations==0.11.0
+acoustics==0.2.6
+tensorflow-cpu==2.8.1
+tensorflow_probability==0.16.0
+tensorflow-addons==0.17.1
+onnx_tf==1.10.0
+onnx==1.14.0
+onnxruntime==1.16.3
+protobuf==3.20.3
+pronouncing==0.2.0
+datasets==2.14.6
+huggingface_hub==0.20.3
+pyarrow==14.0.2
+fsspec==2023.9.2
+deep-phonemizer==0.0.19
+soundfile
+librosa==0.10.1
+# librosa and tensorboard import pkg_resources, which uv venvs don't include and newer setuptools drops
+setuptools==69.5.1
+pyyaml
+tqdm
+requests

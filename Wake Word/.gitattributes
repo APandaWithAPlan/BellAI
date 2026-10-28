@@ -1,0 +1,4 @@
+# Keep Linux line endings so the scripts run in WSL
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
