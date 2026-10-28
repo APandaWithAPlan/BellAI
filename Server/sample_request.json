@@ -1,0 +1,15 @@
+{
+  "user": {
+    "calorie_goal": 1900,
+    "weight_kg": 65,
+    "allergies": ["peanut"],
+    "diet": "vegetarian",
+    "goal": "maintain",
+    "injuries": ["knee"],
+    "fitness_level": "beginner"
+  },
+  "meals": [
+    {"name": "breakfast", "kcal": 420, "protein_g": 8, "carbs_g": 70, "fat_g": 12, "fiber_g": 3, "sugar_g": 25, "sodium_mg": 450},
+    {"name": "lunch", "kcal": 650, "protein_g": 14, "carbs_g": 95, "fat_g": 20, "fiber_g": 4, "sugar_g": 10, "sodium_mg": 1200}
+  ]
+}
