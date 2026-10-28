@@ -38,6 +38,8 @@ struct ContentView: View {
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }
                 )
+            } else if selectedTab == .activity {
+                WellnessView(isSubmitting: chat.isSubmitting, onSubmitPhoto: submitHomePhoto)
             } else if selectedTab == .settings {
                 SettingsView()
             } else {

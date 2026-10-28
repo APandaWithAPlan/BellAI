@@ -91,6 +91,9 @@
 				TargetAttributes = {
 					000000000000000100000000 = {
 						CreatedOnToolsVersion = 26.3;
+						SystemCapabilities = {
+							com.apple.HealthKit = { enabled = 1; };
+						};
 					};
 				};
 			};
@@ -270,6 +273,8 @@
 			baseConfigurationReference = 000000000000000000000030 /* Config/Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/BellAI.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Config/BellAI.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 77AUP8FZH8;
 				ENABLE_APP_SANDBOX = YES;
@@ -277,6 +282,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/App-Info.plist";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BellAI reads your steps, active energy, water, nutrition, and workouts to display your daily Wellness overview.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "BellAI connects to your AI server to send messages and receive replies.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "BellAI uses your location to show local weather in your briefing.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "BellAI uses the microphone to capture your spoken messages.";
@@ -314,6 +320,8 @@
 			baseConfigurationReference = 000000000000000000000031 /* Config/Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/BellAI.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Config/BellAI.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 77AUP8FZH8;
 				ENABLE_APP_SANDBOX = YES;
@@ -321,6 +329,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/App-Info.plist";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BellAI reads your steps, active energy, water, nutrition, and workouts to display your daily Wellness overview.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "BellAI connects to your AI server to send messages and receive replies.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "BellAI uses your location to show local weather in your briefing.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "BellAI uses the microphone to capture your spoken messages.";

@@ -32,3 +32,11 @@ The Home screen also previews Lights, Climate, Plan, and Security with static sa
 6. **Handle an error:** Validation problems appear in an alert; server or connection failures appear in the conversation. Check your Tailscale connection, server availability, and configured model, then send your message again.
 
 > 💡 **Tip:** Keep each message to 1–4,000 characters after trimming surrounding whitespace. Conversation history is kept only in memory and is not saved across app launches; sending a valid new prompt from Home clears the previous conversation.
+
+## Wellness and Apple Health
+
+Activity opens Wellness. Tap **Connect Apple Health** (or the heart button) to request read-only access to steps, active energy, dietary water, dietary energy, protein, and workouts. The screen reads today's totals and latest workout; pull to refresh or return to the app to refresh. No HealthKit values are sent to BellAI's server or written back to Health. A dash means no readable samples, which may reflect missing data or unshared access—not a measured zero. Apple deliberately does not reveal whether read access was denied: https://developer.apple.com/documentation/healthkit/authorizing-access-to-health-data
+
+The iOS target includes the HealthKit entitlement and a Health read-access usage description. Rebuild with a signing profile that supports HealthKit and verify the permission sheet and real data on a supported device. Other platforms show an unavailable state.
+
+The meal-photo tile and Log meal action reuse Home's JPEG picker and `submitHomePhoto` flow: selection opens BellAI and uploads the photo to the existing food-analysis server. These actions analyze the photo; they do not write a meal to Apple Health. Camera roll load failures show an alert.
