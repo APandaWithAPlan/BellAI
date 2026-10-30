@@ -7,3 +7,7 @@ custom_clips/**/*.ogg
 !custom_clips/**/.gitkeep
 
 __pycache__/
+
+# Raw takes of other people stay local
+recordings/**
+!recordings/.gitkeep

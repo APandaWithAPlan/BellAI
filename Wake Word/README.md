@@ -44,10 +44,15 @@ cd "/mnt/c/Users/Bella Breaux/Documents/GitHub/BellAI/Wake Word"
 | Step | Command | What it does |
 | --- | --- | --- |
 | 1 | `generate` | Makes synthetic "bell ay eye" clips with Piper (many different voices), plus near-miss clips. |
-| 2 | `import` | Copies your clips from `custom_clips/` into the training folders as 16 kHz mono wav. |
+| 2a | `split` | Cuts long takes in `recordings/` into one-word clips in `custom_clips/`. |
+| 2b | `import` | Copies your clips from `custom_clips/` into the training folders as 16 kHz mono wav. |
 | 3 | `augment` | Adds room echo and background noise to every clip and turns them into features. |
 | 4 | `train` | Trains the model and saves `BellAi.onnx` and `BellAi.tflite`. |
 | 5 | `export` | Copies the model and the two feature models it needs into `models/`. |
+
+### Recording sessions
+
+Put each person's long takes in `recordings/<person>/`, one file per part of the recording script: `close`, `mid`, `far` (BellAi), `nearmiss_close`, `nearmiss_mid` and `talk` (any audio format). List the 2 test speakers in `test_speakers.txt`, one folder name per line. `bash train.sh` (or `bash train.sh split`) cuts every take at the pauses into one-word clips in `custom_clips/` and prints how many it found per take; a count that doesn't match the script is flagged so you can listen and fix it. Raw takes are not committed to git.
 
 ### Adding your own clips
 

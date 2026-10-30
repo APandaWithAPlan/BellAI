@@ -3,7 +3,8 @@
 #
 #   bash train.sh            # every step, in order
 #   bash train.sh generate   # 1. synthetic Piper clips (target word + near misses)
-#   bash train.sh import     # 2. copy your clips from custom_clips/ into the training folders
+#   bash train.sh split      # 2a. cut long takes in recordings/ into one-word clips in custom_clips/
+#   bash train.sh import     # 2b. copy your clips from custom_clips/ into the training folders
 #   bash train.sh augment    # 3. add room echo + background noise, compute features
 #   bash train.sh train      # 4. train, then save BellAi.onnx / BellAi.tflite
 #   bash train.sh export     # 5. copy the finished model into Wake Word/models
@@ -26,6 +27,7 @@ MODEL_NAME="$(python -c "import yaml; print(yaml.safe_load(open('$CONFIG'))['mod
 OUT_DIR="$(python -c "import os, yaml; print(os.path.abspath(yaml.safe_load(open('$CONFIG'))['output_dir']))")"
 
 run_generate() { python "$TRAIN" --training_config "$CONFIG" --generate_clips; }
+run_split()    { if ls "$REPO_DIR"/recordings/*/ >/dev/null 2>&1; then python "$REPO_DIR/split_recordings.py"; else echo "No recordings yet, skipping split"; fi; }
 run_import()   { python "$REPO_DIR/import_clips.py" --clips "$REPO_DIR/custom_clips" --dest "$OUT_DIR/$MODEL_NAME"; }
 run_augment()  { python "$TRAIN" --training_config "$CONFIG" --augment_clips --overwrite; }
 run_train()    { python "$TRAIN" --training_config "$CONFIG" --train_model || echo "Training script exited with an error (often only the .tflite conversion). Checking for the .onnx..."; }
@@ -49,10 +51,11 @@ run_export() {
 
 case "$STEP" in
     generate) run_generate ;;
+    split)    run_split ;;
     import)   run_import ;;
     augment)  run_augment ;;
     train)    run_train ;;
     export)   run_export ;;
-    all)      run_generate; run_import; run_augment; run_train; run_export ;;
-    *) echo "Unknown step '$STEP'. Use: generate, import, augment, train, export or all"; exit 1 ;;
+    all)      run_generate; run_split; run_import; run_augment; run_train; run_export ;;
+    *) echo "Unknown step '$STEP'. Use: generate, split, import, augment, train, export or all"; exit 1 ;;
 esac

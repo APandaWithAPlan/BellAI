@@ -7,7 +7,7 @@ Put clips in the matching custom_clips folder (any of .wav .mp3 .m4a .flac .ogg,
   negative_test/   a few near misses held out for testing
 
 Each clip is converted to 16 kHz mono 16-bit wav (the only format openWakeWord trains on) and saved
-with a "custom_" prefix. Clips that were already imported are skipped.
+with a "custom_" prefix. Clips already imported are skipped unless the source changed (e.g. a take was re-split).
 """
 import argparse
 import subprocess
@@ -36,8 +36,8 @@ for folder in FOLDERS:
     for f in files:
         name = "custom_" + "_".join(f.relative_to(src).with_suffix("").parts).replace(" ", "_") + ".wav"
         target = out / name
-        if target.exists():
-            continue
+        if target.exists() and target.stat().st_mtime >= f.stat().st_mtime:
+            continue  # already imported and unchanged
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(f),
                         "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(target)], check=True)
         with wave.open(str(target)) as w:
