@@ -6,7 +6,7 @@ Open BellAi Studio first ("BellAi Studio.bat", wait for Ready), then in PowerShe
 
 Positives go to custom_clips/positive_train/sovits and near misses to custom_clips/negative_train/sovits.
 The speaking speed is varied for variety, and the Studio's saved speed is put back when it finishes.
-Clips are saved at the voice's own sample rate; import_clips.py converts them to 16 kHz mono.
+Clips are saved at the voice's own sample rate; train.py converts them to 16 kHz mono.
 Only the standard library is used, so any Python 3 works. Re-running adds more clips; it never overwrites.
 
 To use the stand-alone voice API (bellai_voice_server.py) instead: --api http://127.0.0.1:9880

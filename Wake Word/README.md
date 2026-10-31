@@ -2,76 +2,46 @@
 
 ## Overview
 
-**BellAi Wake Word** is the small model that listens for "BellAi" so the Raspberry Pi (and the iOS app while it is open) can start recording a command without a button press. It is trained with [openWakeWord](https://github.com/dscripka/openWakeWord) using its automatic training process: thousands of synthetic "BellAi" clips from Piper TTS, clips from GPT-SoVITS and real recordings, near-miss words such as "Bella" so the model learns what *not* to wake on, and about 2,000 hours of general audio as negatives.
+**BellAi Wake Word** is the small model that listens for "BellAi" so the Raspberry Pi can start recording a command without a button press. It is trained with openWakeWord on about 50,000 synthetic clips from Piper TTS, 1,800 clips in the BellAi voice (GPT-SoVITS), and real recordings from Bella and Jo. Near-miss words such as "Bella", "belly" and "bell" are included so the model learns what not to wake on.
 
-Training outputs `BellAi.onnx` and `BellAi.tflite` (a few hundred KB each) in `models/`.
+Training runs in WSL on an NVIDIA GPU and outputs `BellAi.onnx` (about 200 KB), which the Pi listener in `RaspPI-Server/wake_listener` uses.
 
 ## Getting Started
 
 ### Prerequisites
 
-* Operating System: Windows 10 or 11 with WSL2 (Ubuntu). Training only runs on Linux, because Piper TTS does not support Windows.
-* GPU: An NVIDIA GPU with the Windows driver installed. Running `nvidia-smi` inside WSL should list the GPU. Tested target: RTX 4500 Ada (24 GB).
-* Disk: About 40 GB free in WSL for the training data.
+* Operating System: Windows 10 or 11 with WSL2 (Ubuntu).
+* GPU: An NVIDIA GPU, with `nvidia-smi` working in WSL. It was trained on an RTX 4500 Ada (24 GB).
+* Disk: About 40 GB free in WSL. The training environment and data are kept in `~/bellai-wakeword`, not in this folder.
 * Files:
-  * `bellai_model.yml` is the training config (target phrase, near misses, number of clips, training steps).
-  * `setup.sh` installs everything (one time).
-  * `download_data.sh` and `download_audio.py` download the training data (one time).
-  * `train.sh` runs the training steps.
-  * `import_clips.py` adds your own clips from `custom_clips/`.
-  * `export_tflite.py` converts the model to .tflite if that step fails during training.
-
-> 💡 **Where files go:** The Python environment and the ~30 GB of data live in WSL at `~/bellai-wakeword`, not in this folder. Reading tens of thousands of small clips through `/mnt/c` is very slow. This folder only keeps the config, scripts, your clips and the finished model. To use a different location, set `BELLAI_WW_DIR` before running the scripts.
+  * `setup.sh` installs everything and downloads the training data.
+  * `train.py` cuts the recordings into clips, trains the model and copies it into `models/`.
+  * `make_sovits_clips.py` makes "BellAi" and near-miss clips in the BellAi voice through BellAi Studio.
+  * `bellai_model.yml` holds the training settings (the target phrase, near-miss words and number of clips).
+* Dataset:
+  * `recordings/<person>/` holds each person's takes from the recording script, one per part, named `close`, `mid`, `far`, `nearmiss_close`, `nearmiss_mid`, and `nearmiss_far`.
+  * `custom_clips/` holds the one-word clips: `positive_train` ("BellAi"), `negative_train` (near misses and talking), and `positive_test` / `negative_test` for test speakers. Clips are named by person, take, and number, e.g. `Bella_far_000.wav`.
 
 ### How to Enable / Access
 
-Open **Ubuntu** (WSL) and go to this folder:
-
-```bash
-cd "/mnt/c/Users/Bella Breaux/Documents/GitHub/BellAI/Wake Word"
-```
-
-1. **Set up (one time, ~10 minutes):** `bash setup.sh`. Enter your WSL password when asked. At the end it should print `GPU found`.
-2. **Download data (one time, ~30 GB):** `bash download_data.sh`. If the download stops, run it again and it picks up where it left off.
-3. **Train:** `bash train.sh`. This runs every step in order (see below) and copies the finished model into `models/`.
+1. Open Ubuntu (WSL) and go to this folder: `cd "/mnt/c/Users/Bella Breaux/Documents/GitHub/BellAI/Wake Word"`.
+2. Run `bash setup.sh` once. It ends with **GPU found** when everything is ready.
+3. Run `source ~/bellai-wakeword/.venv/bin/activate` each time a new Ubuntu window is opened.
 
 ## How to Use It
 
-### Training steps
+1. **Make BellAi voice clips:** Open BellAi Studio, then run `python make_sovits_clips.py` in PowerShell.
+2. **Add recordings:** Put each person's takes in `recordings/<person>/`. Any audio format works.
+3. **Train:** Run `python train.py`. It runs these steps in order, skipping work that is already done:
+   * `generate` makes the synthetic Piper clips.
+   * `prepare` cuts the recordings into one-word clips and gets every clip in `custom_clips` ready for training.
+   * `augment` adds room echo and background noise to the clips.
+   * `train` trains the model.
+   * `export` copies the finished model into `models/`.
 
-`bash train.sh` runs all of these. Each one can also be run alone, for example `bash train.sh augment`.
+   To run only one step, add its name, EX: `python train.py prepare` to cut new recordings and check the clip counts before training, or `python train.py export` if the model was trained but not copied.
+4. **Check the clips:** `prepare` prints how many "BellAi" clips it cut from each take (20 close, 15 mid, 15 far). If a count is off, listen to that take's clips in `custom_clips` and delete any that are not "BellAi". Deleted clips stay deleted.
+5. **Use the model:** The finished model is saved in `models/`. Copy the three `.onnx` files to the Pi listener.
+6. **Handle an error:** If a step stops, run the same step again; it continues where it left off. If `setup.sh` does not show **GPU found**, update the NVIDIA driver on Windows and run `wsl --shutdown` in PowerShell.
 
-| Step | Command | What it does |
-| --- | --- | --- |
-| 1 | `generate` | Makes synthetic "bell ay eye" clips with Piper (many different voices), plus near-miss clips. |
-| 2a | `split` | Cuts long takes in `recordings/` into one-word clips in `custom_clips/`. |
-| 2b | `import` | Copies your clips from `custom_clips/` into the training folders as 16 kHz mono wav. |
-| 3 | `augment` | Adds room echo and background noise to every clip and turns them into features. |
-| 4 | `train` | Trains the model and saves `BellAi.onnx` and `BellAi.tflite`. |
-| 5 | `export` | Copies the model and the two feature models it needs into `models/`. |
-
-### Recording sessions
-
-Put each person's long takes in `recordings/<person>/`, one file per part of the recording script: `close`, `mid`, `far` (BellAi), `nearmiss_close`, `nearmiss_mid` and `talk` (any audio format). List the 2 test speakers in `test_speakers.txt`, one folder name per line. `bash train.sh` (or `bash train.sh split`) cuts every take at the pauses into one-word clips in `custom_clips/` and prints how many it found per take; a count that doesn't match the script is flagged so you can listen and fix it. Raw takes are not committed to git.
-
-### Adding your own clips
-
-Put clips in `custom_clips/` before step 2 (or re-run `import`, `augment`, `train` and `export` after adding more):
-
-* `positive_train/`: "BellAi" from the recordings and from GPT-SoVITS.
-* `positive_test/`: "BellAi" from 2–3 people who are not in `positive_train`, so the test score reflects new voices.
-* `negative_train/`: recorded near misses ("Bella", "hey Bella", "belly", "bell", "Bali").
-* `negative_test/`: a few held-out near misses.
-
-Each clip should be one word, 1–2 seconds long, with little silence. Record on the Pi's microphone when possible, since that is the mic the model will run on. Recordings of other people are not committed to git (see `.gitignore`).
-
-### Changing what it listens for
-
-Edit `bellai_model.yml`. `target_phrase` is spelled how it sounds ("bell ay eye") because Piper reads it literally. `custom_negative_phrases` lists words it must not wake on. After changing the phrase, delete `~/bellai-wakeword/my_custom_model` and run `bash train.sh` again.
-
-### Handle an error
-
-* **`GPU found` never shows:** update the NVIDIA driver on Windows, then run `wsl --shutdown` in PowerShell and open Ubuntu again.
-* **Generation stopped partway:** run `bash train.sh generate` again. It continues until there are enough clips.
-* **No `.tflite` file:** `bash train.sh export` retries the conversion. The `.onnx` model works on its own if the conversion still fails.
-* **`pip` version conflict during setup:** the versions in `requirements.txt` follow the openWakeWord training notebook. Copy the error and adjust only the package it names.
+> 💡 **Tip:** Training takes a few hours. Keep the PC from sleeping (Settings → System → Power & battery) and leave the Ubuntu window open; locking the screen is fine.
