@@ -197,6 +197,9 @@ def cut_recordings():
 
 def copy_clips():
     """Converts every clip in custom_clips/ to 16 kHz mono and copies it into the training folders."""
+    if not any(f.suffix.lower() in AUDIO for f in (HERE / "custom_clips").rglob("*")):
+        print("custom_clips is empty, so nothing was copied or removed. Training keeps the clips it already has.")
+        return
     for folder in FOLDERS:
         src = HERE / "custom_clips" / folder
         files = sorted(p for p in src.rglob("*") if p.suffix.lower() in AUDIO) if src.exists() else []

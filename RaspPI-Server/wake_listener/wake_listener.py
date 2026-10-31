@@ -10,6 +10,7 @@ recording. Nothing plays while nobody is asking.
     python wake_listener.py --list-mics
     python wake_listener.py --server http://<ai-server>:11434
     python wake_listener.py --wav test.wav       # test with a recording instead of the mic
+    python wake_listener.py --scores             # test mode: show how sure the model is as you talk
 """
 import argparse
 import queue
@@ -44,6 +45,7 @@ parser.add_argument("--dropped-sound", default=str(HERE / "connection_dropped.wa
                     help=".wav spoken on connection dropped (recorded in the BellAi voice; skipped if missing)")
 parser.add_argument("--max-seconds", type=float, default=8.0, help="longest command to record")
 parser.add_argument("--wav", default="", help="read audio from this file instead of the mic (for testing)")
+parser.add_argument("--scores", action="store_true", help="test mode: only print what the model hears, send nothing")
 args = parser.parse_args()
 
 
@@ -246,7 +248,7 @@ def main():
     folder = model_path.parent
     for needed in (model_path, folder / "melspectrogram.onnx", folder / "embedding_model.onnx"):
         if not needed.exists():
-            sys.exit(f"Missing {needed}. Copy the files from the Wake Word/models folder (bash train.sh export).")
+            sys.exit(f"Missing {needed}. Copy the files from the Wake Word/models folder (python train.py export).")
     model = Model(wakeword_models=[str(model_path)], inference_framework="onnx",
                   melspec_model_path=str(folder / "melspectrogram.onnx"),
                   embedding_model_path=str(folder / "embedding_model.onnx"))
@@ -263,6 +265,12 @@ def main():
             break
         recent.append(level_db(chunk))
         score = max(model.predict(chunk).values())
+        if args.scores:
+            if score >= 0.05:
+                seconds = f"{source.pos / RATE:6.1f}s " if args.wav else ""
+                mark = "  <-- wakes" if score >= args.threshold else ""
+                print(f"{seconds}{score:.2f} {'#' * int(score * 40)}{mark}", flush=True)
+            continue
         if score < args.threshold:
             continue
         log(f"Heard BellAi ({score:.2f})")
