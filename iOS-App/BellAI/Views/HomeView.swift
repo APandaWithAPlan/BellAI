@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
     var tasks: TasksViewModel
+    var firstName = ""
+    var lastName = ""
     var isSubmitting = false
     var onMicrophoneTap: (() -> Void)? = nil
     var onSubmitPrompt: (String) -> Bool = { _ in false }
@@ -12,7 +14,7 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    HomeHeaderView()
+                    HomeHeaderView(firstName: firstName, lastName: lastName)
                     HomeFeatureCardsView(tasks: tasks)
                     BellAIPromptInputView(
                         text: $prompt,

@@ -4,21 +4,21 @@
 
 **BellAI** is an iOS assistant designed to extend help beyond the home. The current app lets you send text prompts to an Ollama server, read replies, and continue a conversation with follow-up questions.
 
-The Home screen also previews Lights, Climate, Plan, and Security with static sample values; these cards do not control devices or manage tasks yet. The Tasks tab is a to-do list: add, check off and swipe to delete. It is saved to your Firebase account (encrypted, anonymous sign-in) and loads again on launch. Activity and Settings are placeholder screens, and voice input is available from the microphone buttons. Grant microphone and speech recognition permissions on first use. Five seconds without new recognized speech ends capture; a nonempty transcript is sent through the same chat flow as typed text. Tap the stop button to cancel. Recording stops before a request is sent and stays off during the reply. The speaker button turns spoken replies on or off: when on, replies stream in word by word and are read aloud in the BellAI voice by the voice server, which runs separately from this app.
+The Home screen also previews Lights, Climate, Plan, and Security with static sample values; these cards do not control devices or manage tasks yet. The Tasks tab is a to-do list: add, check off and swipe to delete. It is saved to your Firebase account (encrypted, email/password sign-in) and loads again on launch. Activity and Settings are placeholder screens, and voice input is available from the microphone buttons. Grant microphone and speech recognition permissions on first use. Five seconds without new recognized speech ends capture; a nonempty transcript is sent through the same chat flow as typed text. Tap the stop button to cancel. Recording stops before a request is sent and stays off during the reply. The speaker button turns spoken replies on or off: when on, replies stream in word by word and are read aloud in the BellAI voice by the voice server, which runs separately from this app.
 
 ## Getting Started
 
 ### Prerequisites
 
 * Minimum App Version: `v1.0` (current development version, build `1`).
-* Minimum iOS Version: `27.0`, as currently configured in the Xcode project.
-* Account Tier / Permissions needed: No in-app account, paid tier, or API key is currently required. The device must have Tailscale access to `ai-server` on port `11434`; allow local-network access if prompted.
+* Minimum iOS Version: `17.0`.
+* Account Tier / Permissions needed: An email/password Firebase account is required; sign up from the login screen. The device must have Tailscale access to `ai-server` on port `11434`; allow local-network access if prompted.
 * Server: A running Ollama server with the configured model available. The default model is `qwen3.5:4b-q4_K_M`. For spoken replies, also run the voice server on the same machine; it listens on port `8000`, which must be reachable over Tailscale.
 * Development setup: Open `BellAI.xcodeproj` in Xcode with support for the configured iOS target, select the BellAI app and a compatible device or simulator, then build and run. See [Ollama development configuration](Config/README.md) for model configuration and offline checks.
 
 ### How to Enable / Access
 
-1. Open the app to the **Home** tab.
+1. Open the app and **Log In** or **Sign Up**. After authentication, the **Home** tab opens.
 2. Tap **What can I help with?** and type your first message. No feature toggle is required.
 3. Tap the **Send** arrow or the keyboard's **Send** key. The app opens **BellAI**, displays your message, and shows **Thinking…** while waiting for a reply.
 
@@ -40,3 +40,7 @@ Activity opens Wellness. Tap **Connect Apple Health** (or the heart button) to r
 The iOS target includes the HealthKit entitlement and a Health read-access usage description. Rebuild with a signing profile that supports HealthKit and verify the permission sheet and real data on a supported device. Other platforms show an unavailable state.
 
 The meal-photo tile and Log meal action reuse Home's JPEG picker and `submitHomePhoto` flow: selection opens BellAI and uploads the photo to the existing food-analysis server. These actions analyze the photo; they do not write a meal to Apple Health. Camera roll load failures show an alert.
+
+## Authentication
+
+See [Firebase authentication setup and verification](Config/Authentication.md) for Xcode configuration, enabling Email/Password in Firebase Console, the MVVM code map, and signup/login/logout/session-restoration checks.

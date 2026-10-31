@@ -1,9 +1,17 @@
 import SwiftUI
 
 struct HomeHeaderView: View {
-    var welcomeMessage = "Good morning, Maya"
+    var firstName = ""
+    var lastName = ""
     var subtitle = "Home is calm · 2 things need you"
-    var avatarInitials = "MK"
+
+    private var welcomeMessage: String {
+        firstName.isEmpty ? "Good morning" : "Good morning, \(firstName)"
+    }
+
+    private var avatarInitials: String {
+        (String(firstName.prefix(1)) + String(lastName.prefix(1))).uppercased()
+    }
 
     @ScaledMetric(relativeTo: .body) private var avatarSize = 44.0
 
@@ -29,7 +37,13 @@ struct HomeHeaderView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(avatarInitials)
+            Group {
+                if avatarInitials.isEmpty {
+                    Image(systemName: "person")
+                } else {
+                    Text(avatarInitials)
+                }
+            }
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(Color(red: 0.88, green: 0.12, blue: 0.37))
                 .frame(width: avatarSize, height: avatarSize)

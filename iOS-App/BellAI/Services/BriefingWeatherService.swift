@@ -30,12 +30,19 @@ final class BriefingWeatherService: BriefingWeatherProviding {
         try client.validateConfiguration()
         let coordinate = try await location.currentLocation()
         async let response = client.fetch(latitude: coordinate.coordinate.latitude, longitude: coordinate.coordinate.longitude)
-        let geocoding = MKReverseGeocodingRequest(location: coordinate)
-        let place = try? await geocoding?.mapItems.first
+        let cityName: String?
+        if #available(iOS 26, macOS 26, visionOS 26, *) {
+            let geocoding = MKReverseGeocodingRequest(location: coordinate)
+            let place = try? await geocoding?.mapItems.first
+            cityName = place?.addressRepresentations?.cityName ?? place?.addressRepresentations?.cityWithContext
+        } else {
+            let place = try? await CLGeocoder().reverseGeocodeLocation(coordinate).first
+            cityName = place?.locality
+        }
         let result = try await response
         try Task.checkCancellation()
         return BriefingWeather(
-            locationName: place?.addressRepresentations?.cityName ?? place?.addressRepresentations?.cityWithContext ?? result.locationName,
+            locationName: cityName ?? result.locationName,
             temperature: result.temperature, condition: result.condition, symbolName: result.symbolName,
             high: result.high, low: result.low, attributionURL: result.attributionURL
         )

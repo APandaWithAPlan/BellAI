@@ -7,11 +7,18 @@ import UIKit
 
 /// Settings layout with a location control backed by system authorization.
 struct SettingsView: View {
+    var auth: AuthViewModel? = nil
+    @State private var showsAccountDetails = false
+    var onLogout: (() -> Void)? = nil
+    var isLoggingOut = false
+    var logoutError: String? = nil
+    var isLocalTestSession = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
     @State private var locationPermission = SettingsLocationPermission()
     @State private var showsLocationSettings = false
+    @State private var showsLogoutConfirmation = false
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
     private let muted = Color(red: 0.48, green: 0.43, blue: 0.46)
@@ -27,8 +34,32 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
+                if isLocalTestSession {
+                    Text("Local test account · Tasks reset when you log out or restart.")
+                        .font(.caption)
+                        .foregroundStyle(muted)
+                }
                 appearanceCard
                 privacyCard
+                if onLogout != nil {
+                    Button { showsLogoutConfirmation = true } label: {
+                        HStack {
+                            Text(isLoggingOut ? "Logging out…" : "Log Out")
+                                .font(.headline)
+                            Spacer()
+                            if isLoggingOut { ProgressView() }
+                            else { Image(systemName: "rectangle.portrait.and.arrow.right") }
+                        }
+                        .foregroundStyle(accent)
+                        .padding(16)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isLoggingOut)
+                    if let logoutError {
+                        Text(logoutError).font(.subheadline).foregroundStyle(.red)
+                    }
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -36,6 +67,15 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(surface)
+        .sheet(isPresented: $showsAccountDetails) {
+            if let auth { AccountDetailsView(model: auth) }
+        }
+        .alert("Log out?", isPresented: $showsLogoutConfirmation) {
+            Button("No", role: .cancel) {}
+            Button("Yes", role: .destructive) { onLogout?() }
+        } message: {
+            Text("Are you sure you want to log out?")
+        }
         .task(id: scenePhase) {
             if scenePhase == .active { await locationPermission.refresh() }
         }
@@ -60,13 +100,17 @@ struct SettingsView: View {
                     .foregroundStyle(ink)
             }
             Spacer(minLength: 0)
-            Image(systemName: "person")
-                .font(.system(size: 22, weight: .light))
-                .foregroundStyle(ink)
-                .frame(width: 48, height: 48)
-                .background(.white, in: Circle())
-                .overlay(Circle().strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
-                .accessibilityLabel("Profile")
+            Button { showsAccountDetails = true } label: {
+                Image(systemName: "person")
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundStyle(ink)
+                    .frame(width: 48, height: 48)
+                    .background(.white, in: Circle())
+                    .overlay(Circle().strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
+            }
+            .buttonStyle(.plain)
+            .disabled(auth == nil)
+            .accessibilityLabel("Account details")
         }
         .padding(.bottom, 2)
     }
