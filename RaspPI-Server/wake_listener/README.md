@@ -17,7 +17,8 @@ Listens for "BellAi" on the Raspberry PI microphone, records the command that fo
 * Raspberry PI with `api.py` running.
 * USB microphone (Razer).
 * [uv](https://docs.astral.sh/uv/) for installing Python 3.12.
-* `BellAi.onnx`, `melspectrogram.onnx` and `embedding_model.onnx` in `Wake Word/models`.
+* `BellAi.onnx`, `melspectrogram.onnx` and `embedding_model.onnx` in this folder or in `Wake Word/models`.
+* Optional: `wake.wav` (chime) and `connection_dropped.wav` in this folder. Without `wake.wav` a built-in chime plays.
 
 ### How to Enable / Access
 

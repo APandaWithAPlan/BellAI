@@ -32,7 +32,7 @@ RATE = 16000
 CHUNK = 1280  # 80 ms at 16 kHz, the frame size openWakeWord expects
 
 parser = argparse.ArgumentParser(description="BellAi wake word listener")
-parser.add_argument("--model", default=str(REPO_MODELS / "BellAi.onnx"),
+parser.add_argument("--model", default=str(HERE / "BellAi.onnx") if (HERE / "BellAi.onnx").exists() else str(REPO_MODELS / "BellAi.onnx"),
                     help="wake word model; melspectrogram.onnx and embedding_model.onnx must be in the same folder")
 parser.add_argument("--mic", default="Razer", help="part of the microphone's name (see --list-mics)")
 parser.add_argument("--list-mics", action="store_true", help="list microphones and exit")
@@ -40,7 +40,8 @@ parser.add_argument("--threshold", type=float, default=0.5, help="0-1; raise it 
 parser.add_argument("--api", default="http://127.0.0.1:8000", help="the Pi API (api.py)")
 parser.add_argument("--server", default="", help="AI server to check when woken, e.g. http://<ai-server>:11434")
 parser.add_argument("--tts", default="", help="optional voice API to speak replies, e.g. http://<ai-server>:9880")
-parser.add_argument("--wake-sound", default="", help="chime .wav to play when woken (default: a built-in chime)")
+parser.add_argument("--wake-sound", default=str(HERE / "wake.wav") if (HERE / "wake.wav").exists() else "",
+                    help="chime .wav to play when woken (default: wake.wav next to this script, else a built-in chime)")
 parser.add_argument("--dropped-sound", default=str(HERE / "connection_dropped.wav"),
                     help=".wav spoken on connection dropped (recorded in the BellAi voice; skipped if missing)")
 parser.add_argument("--max-seconds", type=float, default=8.0, help="longest command to record")
