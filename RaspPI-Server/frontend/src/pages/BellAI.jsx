@@ -1,7 +1,5 @@
 import { useState } from "react"
 import { Mic, Send } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Message, MessageContent, } from "@/components/ui/message"
 import { Bubble, BubbleContent, } from "@/components/ui/bubble"
 import {
@@ -17,18 +15,27 @@ function BellAI() {
 
     const [input, setInput] = useState("")
 
-    const [messages, setMessages] = useState([
-        { id: "1", role: "user", content: "Hello BellAI!", time: "10:30 PM"},
-        { id: "2", role: "assistant", content: "Hello! How can I help?", time: "10:31 PM" },
-        { id: "3", role: "user", content: "How's the weather?", time: "10:32 PM"},
-        { id: "4", role: "assistant", content: "It's sunny.", time: "10:32 PM" },
-    ])
+    const [messages, setMessages] = useState([])
+
+    function sendMessage() {
+        if (!input.trim()) return
+
+        const newMessage = {
+            id: crypto.randomUUID(),
+            role: "user",
+            content: input.trim(),
+            time: new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})
+        }
+
+        setMessages((prevMessages) => [...prevMessages, newMessage])
+        setInput("")
+    }
 
   return (
-    <div className="flex min-h-[calc(100dvh-120px)] flex-col bg-[#0c0709] text-white">
-        <div className="min-h-0 flex-1">
+    <div className="flex h-[calc(100dvh-120px)] min-h-0 flex-col overflow-hidden bg-[#0c0709] text-white">
+        <div className="min-h-0 flex-1 overflow-hidden">
             <MessageScrollerProvider>
-                <MessageScroller  className="h-full min-h-0">
+                <MessageScroller className="h-full min-h-0 overflow-hidden">
                     <MessageScrollerViewport>
                         <MessageScrollerContent className="flex flex-col gap-3 p-4">
                             {messages.map((message) => (
@@ -67,6 +74,7 @@ function BellAI() {
         <button
           type="button"
           className="flex h-14 w-14 items-center justify-center rounded-full border border-[#39212e] bg-[#28131f] text-[#a35b89]"
+        //   onClick={sendAudio}
         >
           <Mic size={24} />
         </button>
@@ -88,6 +96,7 @@ function BellAI() {
         <button
           type="button"
           className="flex h-10 w-10 items-center justify-center rounded-full bg-[#28131f] text-[#f472b6]"
+          onClick={sendMessage}               
         >
           <Send size={18} fill="#c85d96" stroke="#c85d96"/>
         </button>

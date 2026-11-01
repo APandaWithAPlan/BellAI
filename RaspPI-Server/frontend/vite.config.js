@@ -10,5 +10,5 @@ export default defineConfig({
     alias: {
       "@": path.resolve(process.cwd(), "./src")
     }
-  }
+  },
 })

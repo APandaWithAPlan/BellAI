@@ -6,13 +6,16 @@
 # https://fastapi.tiangolo.com/reference/uploadfile/#fastapi.UploadFile
 
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, FileResponse
 from pydantic import BaseModel, Field, field_validator, ValidationError
 import ollama
+import reverse_geocode
 from pathlib import Path
 import tempfile
 import shutil
 import subprocess
+from serve import setup_dashboard
+from homeassistant import get_entity, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
 client = ollama.Client(host="http://ip:port")
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
@@ -34,7 +37,7 @@ class Prompt(BaseModel):
 app = FastAPI()
 
 # Create an endpoint to listen for and receive user prompts
-@app.post("/chat")
+@app.post("/api/chat")
 def receive_chat_prompt(prompt: Prompt):
     # print(f"Prompt: {prompt.request}")
     response = forward_request(prompt.request)
@@ -42,7 +45,7 @@ def receive_chat_prompt(prompt: Prompt):
     # Return the AI server's response to the user
     return {"response": response.message.content}
 
-@app.post("/audio")
+@app.post("/api/audio")
 def receive_audio_prompt(audio_file: UploadFile = File(...)):
     if audio_file.content_type not in ["audio/webm", "video/webm"]:
         raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm file is expected.")
@@ -68,6 +71,39 @@ def receive_audio_prompt(audio_file: UploadFile = File(...)):
 
     # Return the AI server's response to the user
     return {"response": response.message.content}
+
+@app.get("/api/weather")
+async def get_weather():
+    weather = await get_entity(HA_WEATHER_ENTITY)
+    forecast_response = await get_forecast(HA_WEATHER_ENTITY)
+
+    daily_forecast = forecast_response["service_response"][HA_WEATHER_ENTITY]["forecast"]
+    today_forecast = daily_forecast[0] if daily_forecast else {}
+
+    return {
+        "temperature": weather["attributes"].get("temperature"),
+        "temperature_unit": weather["attributes"].get("temperature_unit"),
+        "humidity": weather["attributes"].get("humidity"),
+        "description": weather["state"],
+        "high": today_forecast.get("temperature"),
+        "low": today_forecast.get("templow")
+    }
+
+@app.get("/api/location")
+async def get_location():
+    home = await get_entity(HA_HOME_LOCATION_ENTITY)
+
+    lat = home["attributes"]["latitude"]
+    long = home["attributes"]["longitude"]
+
+    location = reverse_geocode.get((lat, long))
+
+    return {
+        "city": location["city"],
+        "state": location["state"]
+    }
+
+setup_dashboard(app)
 
 # Create function to send the prompt to the AI server
 def forward_request(request):

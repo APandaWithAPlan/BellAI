@@ -1,21 +1,103 @@
 import DateTimeCard from "../components/DateTimeCard"
+import { useDateTime } from "../hooks/useDateTime"
 import WeatherCard from "../components/WeatherCard"
 import DeviceCard from "../components/DeviceCard"
 import MusicCard from "../components/MusicCard"
 import EventCard from "../components/EventCard"
 import { Lightbulb, Thermometer, Lock, Mic } from "lucide-react"
-import { NavLink } from "react-router"
+import { useState, useEffect } from "react";
+import { toast } from "@/components/ui/toast"
 
 function Home() {
+
+    const { date, time, period } = useDateTime();
+    const [weather, setWeather] = useState(null);
+    const [location, setLocation] = useState(null);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+
+        async function fetchWeather() {
+            try {
+                const response = await fetch("/api/weather");
+
+                if(!response.ok) {
+                    throw new Error("Failed to fetch /api/weather.");
+                }
+
+                const data = await response.json();
+
+                if (active) {
+                setWeather(data);
+                setError(null);
+                }
+            } catch (error) {
+                if (active) {
+                setError(error.message);
+                }
+            }
+        }
+
+        fetchWeather();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+
+        async function fetchLocation() {
+            try {
+                const response = await fetch("/api/location");
+
+                if(!response.ok) {
+                    throw new Error("Failed to fetch /api/location.");
+                }
+
+                const data = await response.json();
+
+                if (active) {
+                setLocation(data);
+                setError(null);
+                }
+            } catch (error) {
+                if (active) {
+                setError(error.message);
+                }
+            }
+        }
+
+        fetchLocation();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (error) {
+            toast.add({
+                type: "warning",
+                description: error
+            });
+        }
+    }, [error]);
+    
     return (
         <div className="grid grid-cols-4 gap-4">
 
             <div className="col-span-3">
-                <DateTimeCard time="7:50" date="SUNDAY, OCTOBER 25" period="PM" />
+                <DateTimeCard time={time} date={date} period={period} />
             </div>
 
             <div className="col-span-1">
-                <WeatherCard temperature="50" description="Partly Cloudy" high="72" low="56" hum="62" location="San Francisco, CA" />
+                {weather && location ? (
+                <WeatherCard temperature={weather.temperature} temperature_unit={weather.temperature_unit} description={weather.description} high={weather.high} low={weather.low} hum={weather.humidity} location={`${location.city}, ${location.state}`} />
+                ) : ( <p></p>
+                )}
             </div>
 
             <DeviceCard
