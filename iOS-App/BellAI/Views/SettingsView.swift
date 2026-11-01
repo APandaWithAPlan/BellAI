@@ -39,7 +39,6 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(muted)
                 }
-                appearanceCard
                 privacyCard
                 if onLogout != nil {
                     Button { showsLogoutConfirmation = true } label: {
@@ -177,19 +176,7 @@ struct SettingsView: View {
                     Spacer(minLength: 0)
                 }
 
-                LazyVGrid(columns: columns, spacing: 8) {
-                    preferenceTile("Local processing", symbol: "cpu", isOn: false)
-                    preferenceTile("Secure storage", symbol: "lock.shield", isOn: true)
-                }
-
-                LazyVGrid(columns: columns, spacing: 8) {
-                    locationTile
-                    permissionTile("Email", subtitle: "Not connected", symbol: "envelope")
-                    permissionTile("Music", subtitle: "Not connected", symbol: "music.note")
-                    permissionTile("Calendar", subtitle: "Not connected", symbol: "calendar")
-                    permissionTile("Health", subtitle: "Not connected", symbol: "heart.text.square")
-                    permissionTile("Camera", subtitle: "Not connected", symbol: "camera")
-                }
+                locationTile
             }
         }
     }

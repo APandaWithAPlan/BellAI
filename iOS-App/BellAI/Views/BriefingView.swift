@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Live local date and weather, with sample task and lifestyle cards.
+/// Live local date, weather, and the shared Planner tasks.
 struct BriefingView: View {
+    var tasks: TasksViewModel
     @State private var weatherModel = BriefingWeatherViewModel()
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
@@ -14,23 +15,8 @@ struct BriefingView: View {
                 weatherCard
                 weatherAttribution
 
-                card {
-                    BriefingRow(symbol: "calendar", color: .blue,
-                                title: "Design review", detail: "10:30 AM · Studio B", trailing: "45 min")
-                    BriefingRow(symbol: "envelope", color: accent,
-                                title: "2 priority emails", detail: "Ana needs contract approval", trailing: "Review")
-                    BriefingRow(symbol: "checkmark.circle", color: green,
-                                title: "4 tasks today", detail: "Prep deck is due at 10:00", trailing: "1 due")
-                }
+                tasksCard
 
-                card {
-                    BriefingRow(symbol: "headphones", color: accent,
-                                title: "Continue Sunday Slowdown", detail: "Living room · 18 min left", trailing: "Play")
-                    BriefingRow(symbol: "shippingbox", color: .orange,
-                                title: "Coffee delivery", detail: "Arriving 11:15–11:45 AM", trailing: "Track")
-                    BriefingRow(symbol: "heart.text.square", color: green,
-                                title: "Wellness check", detail: "7h 42m sleep · Recovery looks good", trailing: "82%")
-                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -40,6 +26,48 @@ struct BriefingView: View {
         .refreshable { await weatherModel.refresh() }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
+    }
+
+    private var tasksCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Planner tasks")
+                    .font(.headline)
+                    .foregroundStyle(ink)
+                if !tasks.isLoaded {
+                    if let error = tasks.errorMessage {
+                        Text(error).font(.subheadline).foregroundStyle(.red)
+                        Button("Try again") { Task { await tasks.load() } }
+                            .tint(accent)
+                    } else {
+                        ProgressView("Loading tasks…")
+                    }
+                } else if tasks.tasks.isEmpty {
+                    Text("No tasks yet. Add a task in Planner.")
+                        .font(.subheadline)
+                        .foregroundStyle(ink.opacity(0.7))
+                } else {
+                    let remaining = tasks.tasks.filter { !$0.isDone }.count
+                    Text("\(remaining) remaining · \(tasks.tasks.count - remaining) completed")
+                        .font(.subheadline)
+                        .foregroundStyle(ink.opacity(0.7))
+                    ForEach(tasks.tasks) { task in
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(task.isDone ? green : ink.opacity(0.6))
+                                .accessibilityHidden(true)
+                            Text(task.title)
+                                .strikethrough(task.isDone)
+                                .foregroundStyle(task.isDone ? ink.opacity(0.6) : ink)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityValue(task.isDone ? "Done" : "Not done")
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var header: some View {
@@ -148,50 +176,8 @@ struct BriefingView: View {
     }
 }
 
-private struct BriefingRow: View {
-    let symbol: String
-    let color: Color
-    let title: String
-    let detail: String
-    let trailing: String
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 19, weight: .light))
-                .foregroundStyle(color)
-                .frame(width: 44, height: 44)
-                .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
-                Text(detail)
-                    .font(.subheadline)
-                if dynamicTypeSize.isAccessibilitySize {
-                    Text(trailing).font(.subheadline)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-
-            if !dynamicTypeSize.isAccessibilitySize {
-                Text(trailing)
-                    .font(.subheadline)
-                    .fixedSize()
-                    .padding(.top, 12)
-            }
-        }
-        .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46))
-        .accessibilityElement(children: .combine)
-    }
-}
-
 #Preview {
-    BriefingView()
+    BriefingView(tasks: TasksViewModel(store: PlannerPreviewStore()))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 12) {
                 HomeSectionNavigationView(selection: .constant(.agenda), height: 56 * 2 / 3)

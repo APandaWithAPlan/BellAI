@@ -3,53 +3,18 @@ import SwiftUI
 struct HomeHeaderView: View {
     var firstName = ""
     var lastName = ""
-    var subtitle = "Home is calm · 2 things need you"
 
     private var welcomeMessage: String {
         firstName.isEmpty ? "Good morning" : "Good morning, \(firstName)"
     }
 
-    private var avatarInitials: String {
-        (String(firstName.prefix(1)) + String(lastName.prefix(1))).uppercased()
-    }
-
-    @ScaledMetric(relativeTo: .body) private var avatarSize = 44.0
-
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(welcomeMessage)
-                    .font(.title.weight(.bold))
-                    .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: "checkmark.circle")
-                        .foregroundStyle(Color(red: 0.10, green: 0.71, blue: 0.43))
-                        .accessibilityHidden(true)
-
-                    Text(subtitle)
-                        .foregroundStyle(Color(red: 0.48, green: 0.43, blue: 0.46))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .font(.footnote)
-            }
+        Text(welcomeMessage)
+            .font(.title.weight(.bold))
+            .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            Group {
-                if avatarInitials.isEmpty {
-                    Image(systemName: "person")
-                } else {
-                    Text(avatarInitials)
-                }
-            }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color(red: 0.88, green: 0.12, blue: 0.37))
-                .frame(width: avatarSize, height: avatarSize)
-                .background(Color(red: 1, green: 0.91, blue: 0.94), in: Circle())
-                .accessibilityLabel("Profile, \(avatarInitials)")
-        }
     }
 }
 

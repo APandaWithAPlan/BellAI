@@ -3,7 +3,9 @@ import SwiftUI
 struct SmartHomeView: View {
     @State private var showsConnectionOptions = false
 
-    private let background = Color(red: 0.08, green: 0.06, blue: 0.08)
+    private let background = Color(red: 0.97, green: 0.96, blue: 0.97)
+    private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
+    private let muted = Color(red: 0.48, green: 0.43, blue: 0.46)
     private let accent = Color(red: 0.94, green: 0.23, blue: 0.49)
 
     var body: some View {
@@ -11,15 +13,15 @@ struct SmartHomeView: View {
             HStack(spacing: 16) {
                 Text("My home")
                     .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(ink)
                 Spacer(minLength: 0)
                 Button { showsConnectionOptions = true } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 23, weight: .light))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(ink)
                         .frame(width: 48, height: 48)
-                        .background(Color.white.opacity(0.05), in: Circle())
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.16)))
+                        .background(.white, in: Circle())
+                        .overlay(Circle().strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Connect a home device")
@@ -33,10 +35,10 @@ struct SmartHomeView: View {
                     .accessibilityHidden(true)
                 Text("No devices connected")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(ink)
                 Text("Tap + to explore ways to connect your home devices.")
                     .font(.subheadline)
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    .foregroundStyle(muted)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
@@ -47,17 +49,18 @@ struct SmartHomeView: View {
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(background)
+        .preferredColorScheme(.light)
         .tint(accent)
         #if os(iOS)
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
         #endif
         .sheet(isPresented: $showsConnectionOptions) {
             HomeDeviceConnectionOptionsView()
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
         }
     }
 }

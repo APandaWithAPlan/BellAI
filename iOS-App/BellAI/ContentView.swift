@@ -61,7 +61,7 @@ private struct MainAppView: View {
                         chat.toggleMicrophone(startsNewSession: true)
                     }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
                 } else {
-                    BriefingView()
+                    BriefingView(tasks: tasks)
                 }
             } else if selectedTab == .bell {
                 BellView(

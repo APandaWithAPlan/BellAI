@@ -38,6 +38,7 @@ struct SecurityView: View {
             .padding(.bottom, 24)
         }
         .background(surface)
+        .preferredColorScheme(.light)
         #if os(iOS)
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
@@ -48,9 +49,11 @@ struct SecurityView: View {
                 updated.append(camera)
                 if let data = try? JSONEncoder().encode(updated) { savedCameras = data }
             }
+            .preferredColorScheme(.light)
         }
         .sheet(item: $selectedCamera) { camera in
             SecurityCameraPlayerView(camera: camera)
+                .preferredColorScheme(.light)
         }
     }
 
@@ -83,42 +86,64 @@ struct SecurityView: View {
             if let camera { selectedCamera = camera } else { showsAddCamera = true }
         } label: {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
+                HStack(spacing: 0) {
                     Text(camera == nil ? "SET UP" : "CAMERA")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(accent)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 6)
                         .padding(.vertical, 6)
                         .background(Color(red: 1, green: 0.91, blue: 0.95), in: Capsule())
                     Spacer(minLength: 0)
+                    if camera != nil {
+                        Color.clear.frame(width: 44, height: 44)
+                    }
                     Image(systemName: camera == nil ? "plus" : "arrow.up.left.and.arrow.down.right")
-                        .foregroundStyle(.white)
+                        .foregroundStyle(ink)
+                        .frame(width: 32, height: 44)
                 }
                 Image(systemName: "video")
                     .font(.system(size: 32, weight: .ultraLight))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(muted)
                     .frame(maxWidth: .infinity, minHeight: 54)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(ink)
                     Text(camera == nil ? "No camera connected" : "Tap to view stream")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(muted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 190, alignment: .bottomLeading)
-            .background(
-                LinearGradient(colors: [Color(red: 0.47, green: 0.43, blue: 0.46),
-                                        Color(red: 0.23, green: 0.20, blue: 0.23)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: 24)
-            )
+            .background(.white, in: RoundedRectangle(cornerRadius: 24))
+            .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
+            .shadow(color: ink.opacity(0.05), radius: 14, y: 7)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(camera == nil ? "Set up \(name) camera" : "View \(name) camera")
+        .overlay(alignment: .topTrailing) {
+            if let camera {
+                Button(role: .destructive) { removeCamera(camera) } label: {
+                    Image(systemName: "trash")
+                        .foregroundStyle(accent)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(name) camera")
+                .padding(.trailing, 46)
+                .padding(.top, 14)
+            }
+        }
+    }
+
+    private func removeCamera(_ camera: SecurityCamera) {
+        let updated = cameras.filter { $0.id != camera.id }
+        guard let data = try? JSONEncoder().encode(updated) else { return }
+        savedCameras = data
+        if selectedCamera?.id == camera.id { selectedCamera = nil }
     }
 
     private var presenceCard: some View {
