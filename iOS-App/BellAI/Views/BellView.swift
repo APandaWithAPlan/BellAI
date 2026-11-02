@@ -4,6 +4,9 @@ struct BellView: View {
     var conversation: [ConversationEntry] = []
     var isSubmitting = false
     var isSpeaking = false
+    var isListening = false
+    var isStartingMicrophone = false
+    var onMicrophoneTap: (() -> Void)? = nil
     @Binding var isSpeakerEnabled: Bool
     var onSubmitPrompt: (String) -> Bool = { _ in false }
     var onSubmitPhoto: (Data, String) -> Bool = { _, _ in false }
@@ -12,12 +15,15 @@ struct BellView: View {
 
     @State private var showsKeyboardInput = false
     @State private var typedPrompt = ""
+    @State private var connection = ServerConnectionMonitor()
+    @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isPromptFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             BellHeaderView(
-                subtitle: isSpeaking ? "Speaking…" : isSubmitting ? "Thinking…" : "Ready to help",
+                isServerConnected: connection.isConnected,
+                subtitle: isStartingMicrophone ? "Preparing microphone..." : isListening ? "Listening..." : isSpeaking ? "Speaking..." : isSubmitting ? "Processing..." : "Tap to speak",
                 onClose: onClose,
                 onOpenSettings: onOpenSettings
             )
@@ -50,7 +56,9 @@ struct BellView: View {
                 BellInputControlsView(
                     isSpeakerEnabled: $isSpeakerEnabled,
                     isKeyboardVisible: showsKeyboardInput,
-                    onKeyboardTap: toggleKeyboardInput
+                    onKeyboardTap: toggleKeyboardInput,
+                    onMicrophoneTap: isSubmitting ? nil : onMicrophoneTap,
+                    isListening: isListening || isStartingMicrophone
                 )
 
                 if showsKeyboardInput {
@@ -93,6 +101,19 @@ struct BellView: View {
             .padding(.vertical, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: scenePhase) {
+            connection.reset()
+            guard scenePhase == .active else { return }
+            defer { connection.reset() }
+            while !Task.isCancelled {
+                await connection.check()
+                do {
+                    try await Task.sleep(for: .seconds(15))
+                } catch {
+                    break
+                }
+            }
+        }
     }
 
     private func toggleKeyboardInput() {

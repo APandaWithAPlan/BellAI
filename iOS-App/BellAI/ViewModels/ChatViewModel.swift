@@ -10,6 +10,11 @@ final class ChatViewModel {
     private(set) var responseError: String?
     private(set) var conversation: [ConversationEntry] = []
     var errorMessage: String?
+    private(set) var isListening = false
+    private(set) var isStartingMicrophone = false
+    private var microphoneTask: Task<Void, Never>?
+    private var microphoneSession: UUID?
+    private let microphone: any MicrophoneListening
 
     // speaker toggle, turning it off stops any audio that's playing
     var isSpeakerEnabled: Bool {
@@ -38,15 +43,58 @@ final class ChatViewModel {
         voiceService: (any VoiceStreamService)? = nil,
         foodService: (any FoodAnalysisService)? = nil,
         speech: (any SpeechPlaying)? = nil,
+        microphone: (any MicrophoneListening)? = nil,
         model: String? = nil
     ) {
         self.service = service ?? HTTPBellAIService()
         self.voiceService = voiceService
         self.foodService = foodService
         self.speech = speech
+        self.microphone = microphone ?? MicrophoneService()
         let configuredModel = (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         self.model = model ?? (configuredModel?.isEmpty == false && configuredModel?.hasPrefix("$(") == false ? configuredModel! : "qwen3.5:4b-q4_K_M")
+    }
+
+    func toggleMicrophone(startsNewSession: Bool = false) {
+        if microphoneSession != nil { stopMicrophone(); return }
+        guard !isSubmitting else { return }
+        errorMessage = nil
+        let id = UUID()
+        microphoneSession = id
+        isStartingMicrophone = true
+        microphoneTask = Task { [self] in
+            do {
+                await speech?.stopForRecording()
+                guard microphoneSession == id, !Task.isCancelled else { return }
+                let text = try await microphone.listen { [weak self] in
+                    guard let self, self.microphoneSession == id else { return }
+                    self.isStartingMicrophone = false
+                    self.isListening = true
+                }
+                guard microphoneSession == id, !Task.isCancelled else { return }
+                microphoneSession = nil
+                microphoneTask = nil
+                isStartingMicrophone = false
+                isListening = false
+                if let text, validateAndStoreRequest(text, startsNewSession: startsNewSession) {
+                    await submitStoredRequest()
+                }
+            } catch {
+                guard microphoneSession == id else { return }
+                stopMicrophone()
+                if !(error is CancellationError) { errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    func stopMicrophone() {
+        microphoneSession = nil
+        microphoneTask?.cancel()
+        microphoneTask = nil
+        microphone.cancel()
+        isListening = false
+        isStartingMicrophone = false
     }
 
     /// Validates and snapshots a request in memory, reserving one submission at a time.
@@ -65,6 +113,7 @@ final class ChatViewModel {
         }
         response = nil
         responseError = nil
+        stopMicrophone()
         speech?.stop()
         if startsNewSession { conversation.removeAll() }
         conversation.append(ConversationEntry(kind: .user, content: message))
@@ -98,6 +147,7 @@ final class ChatViewModel {
         }
         response = nil
         responseError = nil
+        stopMicrophone()
         speech?.stop()
         if startsNewSession { conversation.removeAll() }
         conversation.append(ConversationEntry(kind: .user, content: note.isEmpty ? "📷 Photo" : "📷 \(note)"))

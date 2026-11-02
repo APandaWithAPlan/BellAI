@@ -1,5 +1,23 @@
 # Ollama development configuration
 
+## Briefing weather
+
+Agenda uses Core Location for a one-time approximate location and MapKit for the city name. Weather comes from OpenWeather's Current Weather and 5-day/3-hour Forecast endpoints. No WeatherKit entitlement or paid Apple Developer membership is required for weather access.
+
+Create an OpenWeather account and get an active API key with access to those endpoints. Add this line to `BellAI/Config/Secrets.xcconfig` (ignored by Git; used by Debug and Release):
+
+```xcconfig
+OPENWEATHER_API_KEY = YOUR_OPENWEATHER_API_KEY
+```
+
+`Config/Secrets.xcconfig.example` is a template. Rebuild after setting the key. Missing or inactive keys show a configuration/access error. The key is bundled into the app for local development; for distribution, proxy requests through your backend to keep the provider credential off client devices. Never commit the populated secrets file.
+
+The card shows current temperature, condition, and an SF Symbol mapped from OpenWeather's condition code and day/night icon. Temperatures follow device units. The lower row is labeled **Rest of today (est.)**: it uses current temperature and remaining 3-hour forecast temperatures on the location's local calendar day. It is not a full-day high/low; earlier temperatures are unavailable from this endpoint. If there are no remaining samples, the range shows dashes. OpenWeather's current `temp_min`/`temp_max` fields are not daily extremes and are not used.
+
+Pull down or tap Try again to refresh. Each refresh makes two weather requests. In Simulator, select a simulated location; on a device, grant location access. Check city, condition icon, units, denied permission, missing/invalid key, and offline behavior. The console logs only error domains/codes, never request URLs or credentials.
+
+Run offline checks with `sh scripts/check-weather.sh`.
+
 The app connects to the OpenAI-compatible API at `http://ai-server:11434/v1/` without an API key or Authorization header. The device running BellAI must be connected to Tailscale with access to `ai-server` on port 11434.
 
 `OLLAMA_MODEL` defaults to `qwen3.5:4b-q4_K_M`; it must match a model available on the server. Debug builds can override it in the ignored `BellAI/Config/Secrets.xcconfig` included by `Config/Debug.xcconfig`. No API key is required.
