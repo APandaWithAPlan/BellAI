@@ -2,7 +2,7 @@
 
 ## Overview
 
-**BellAi Insights** gives food and workout recommendations based on what the user ate today. You send it the user's meals and preferences and it sends back the biggest problems with their day (like low protein or high sodium), a few food and workout ideas, and a short summary BellAi can read out loud.
+**BellAi Insights** gives food and workout recommendations based on what the user ate today. You send it the user's meals and preferences and it sends back the biggest problems with their day such as low protein or high sodium and a few food and workout ideas, and a short summary BellAi can read out loud.
 
 All the nutrition math is done in code. The chat model on the AI server (`qwen3.5:4b-q4_K_M` on Ollama) only writes the suggestions and one tip, and anything that breaks the user's allergies, diet, calorie budget or injuries gets removed before it's sent back. If the model is down, it falls back to safe default suggestions.
 
