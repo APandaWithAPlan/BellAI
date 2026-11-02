@@ -268,7 +268,6 @@ function BellAI() {
           <Send size={18} fill="#be185d" stroke="#be185d"/>
         </button>
       </div>
-
 </div>
   )
 }

@@ -101,7 +101,7 @@ function ToastDescription({
   return (
     <ToastPrimitive.Description
       data-slot="toast-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-[#be185d]", className)}
       {...props}
     />
   )
@@ -165,7 +165,7 @@ function ToastIcon({
 
   if (type === "warning") {
     icon = (
-      <TriangleAlertIcon aria-hidden="true" />
+      <TriangleAlertIcon aria-hidden="true" color="red" />
     )
   }
 
