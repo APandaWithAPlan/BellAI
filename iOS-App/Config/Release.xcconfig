@@ -1,0 +1,2 @@
+// Local credentials are shared with Debug and ignored by Git.
+#include? "../BellAI/Config/Secrets.xcconfig"

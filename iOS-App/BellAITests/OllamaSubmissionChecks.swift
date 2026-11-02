@@ -98,10 +98,37 @@ final class StubStore: UserDataStore {
     }
 }
 
+@MainActor
+final class StubMicrophone: MicrophoneListening {
+    var continuation: CheckedContinuation<String?, Error>?
+    func listen(onReady: @escaping @MainActor () -> Void) async throws -> String? {
+        onReady()
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+    func complete(_ text: String?) {
+        let pending = continuation
+        continuation = nil
+        pending?.resume(returning: text)
+    }
+    func cancel() {
+        let pending = continuation
+        continuation = nil
+        pending?.resume(throwing: CancellationError())
+    }
+}
+
 @main
 struct OllamaSubmissionChecks {
     @MainActor
     static func main() async throws {
+        for code in [102, 201, 300] {
+            let error = NSError(domain: "kLSRErrorDomain", code: code)
+            let message = MicrophoneService.recognitionError(error).localizedDescription
+            precondition(message.contains("Speech error \(code)"))
+        }
+        let unrelatedError = NSError(domain: "OtherError", code: 300)
+        precondition(MicrophoneService.recognitionError(unrelatedError) as NSError === unrelatedError)
+        await testMicrophoneSubmissionAndCancellation()
         let stub = StubService()
         let viewModel = ChatViewModel(service: stub, model: "test-model")
         await testValidationAndSuccessfulSubmission(stub: stub, viewModel: viewModel)
@@ -138,7 +165,73 @@ struct OllamaSubmissionChecks {
         try await testServerErrorMessages(service: service, request: request)
         try await testInvalidResponses(service: service, request: request)
         try await testFoodAnalysisHTTP(session: session)
+        await testServerConnectionHealth(session: session)
         print("All Ollama submission checks passed.")
+    }
+
+    @MainActor
+    private static func testServerConnectionHealth(session: URLSession) async {
+        let monitor = ServerConnectionMonitor(session: session)
+        precondition(!monitor.isConnected)
+        for (status, payload, connected) in [
+            (200, #"{"version":"0.40.4"}"#, true),
+            (200, #"{"version":""}"#, false),
+            (503, #"{"version":"0.40.4"}"#, false),
+            (200, #"{"unexpected":true}"#, false),
+            (200, "invalid JSON", false)
+        ] {
+            StubURLProtocol.status = status
+            StubURLProtocol.payload = Data(payload.utf8)
+            await monitor.check()
+            precondition(monitor.isConnected == connected)
+        }
+        StubURLProtocol.status = 200
+        StubURLProtocol.payload = Data(#"{"version":"0.40.4"}"#.utf8)
+        await monitor.check()
+        precondition(monitor.isConnected)
+        monitor.reset()
+        precondition(!monitor.isConnected)
+        precondition(StubURLProtocol.capturedRequest?.url?.absoluteString == "http://ai-server:11434/api/version")
+    }
+
+    @MainActor
+    private static func testMicrophoneSubmissionAndCancellation() async {
+        let microphone = StubMicrophone()
+        let api = StubService()
+        let model = ChatViewModel(service: api, microphone: microphone, model: "test")
+        model.toggleMicrophone()
+        while microphone.continuation == nil { await Task.yield() }
+        precondition(model.isListening && !model.isSubmitting)
+        microphone.complete(nil)
+        while model.isListening { await Task.yield() }
+        precondition(api.requests.isEmpty && model.conversation.isEmpty)
+
+        model.toggleMicrophone()
+        while microphone.continuation == nil { await Task.yield() }
+        microphone.complete("  Spoken question  ")
+        while model.isListening || model.isSubmitting { await Task.yield() }
+        precondition(api.requests.count == 1)
+        precondition(model.conversation.map(\.content) == ["Spoken question", "Mock reply"])
+        precondition(!model.isListening)
+
+        model.toggleMicrophone()
+        while microphone.continuation == nil { await Task.yield() }
+        microphone.complete("Follow up")
+        while model.isListening || model.isSubmitting { await Task.yield() }
+        precondition(api.requests.last?.messages.count == 3)
+
+        model.toggleMicrophone()
+        while microphone.continuation == nil { await Task.yield() }
+        model.stopMicrophone()
+        await Task.yield()
+        precondition(!model.isListening && api.requests.count == 2 && model.errorMessage == nil)
+
+        model.toggleMicrophone()
+        while microphone.continuation == nil { await Task.yield() }
+        precondition(model.validateAndStoreRequest("Keyboard takes over"))
+        precondition(!model.isListening && microphone.continuation == nil)
+        await model.submitStoredRequest()
+        precondition(api.requests.count == 3)
     }
 
     @MainActor
