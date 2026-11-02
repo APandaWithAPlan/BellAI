@@ -40,7 +40,6 @@ app = FastAPI()
 # Create an endpoint to listen for and receive user prompts
 @app.post("/api/chat")
 async def receive_chat_prompt(prompt: Prompt):
-    # print(f"Prompt: {prompt.request}")
     response = forward_request(prompt.request)
 
     # Return the AI server's response to the user
@@ -56,15 +55,11 @@ async def receive_audio_prompt(audio_file: UploadFile = File(...)):
         input_path = Path(temp_dir) / "input_audio.webm" 
         output_path = Path(temp_dir) / "output_audio.wav"
 
-        print("2. Converting audio...", flush=True)
         # Convert audio to format whisper-cli accepts
         convert_audio(audio_file.file, input_path, output_path)
-        print("3. Audio converted", flush=True)
 
-        print("4. Transcribing audio...", flush=True)
         # Transcribe audio to text
         transcript = transcribe_audio(output_path)
-        print(f"5. Transcript: {transcript}", flush=True)
 
         if transcript.upper() == "[BLANK_AUDIO]":
             raise HTTPException(status_code=422,detail="No speech detected in the recording.")
@@ -76,10 +71,7 @@ async def receive_audio_prompt(audio_file: UploadFile = File(...)):
             raise HTTPException(status_code=422, detail="The audio prompt is invalid or empty.")
 
     # Return the AI server's response to the user
-    return {
-
-        "transcript": validated_prompt.request
-    }
+    return {"transcript": validated_prompt.request}
 
 @app.get("/api/weather")
 async def get_weather():
