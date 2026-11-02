@@ -1,3 +1,5 @@
 fastapi>=0.110
 uvicorn>=0.29
 httpx
+# only for db.py (database):
+psycopg[binary]>=3.1

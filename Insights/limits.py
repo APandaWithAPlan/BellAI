@@ -1,12 +1,8 @@
-"""Limiting script: enforce the user's preferences on whatever the AI suggested.
-
-Runs after the model. Removes recommendations that break allergies, diet type, calorie budget
-or injuries, then tops up from safe defaults so the user always gets something useful.
-"""
+# Removes model suggestions that break the user's allergies, diet, calories or injuries.
 
 import re
 
-# allergen -> words that mean it's present
+# allergen -> words that mean it is present
 ALLERGENS = {
     "peanut": ["peanut", "satay", "groundnut"],
     "tree nut": ["almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "macadamia", "nut butter", "pesto"],
@@ -22,6 +18,7 @@ ALLERGENS = {
     "sesame": ["sesame", "tahini", "hummus"],
 }
 
+# foods each diet rules out
 MEAT = ["chicken", "beef", "pork", "turkey", "ham", "bacon", "sausage", "steak", "lamb", "jerky", "salami"]
 SEAFOOD = ALLERGENS["fish"] + ALLERGENS["shellfish"]
 ANIMAL = MEAT + SEAFOOD + ALLERGENS["dairy"] + ALLERGENS["egg"] + ["honey", "gelatin"]
@@ -33,13 +30,17 @@ DIETS = {
     "kosher": ["pork", "ham", "bacon", "shrimp", "crab", "lobster"],
 }
 
+# exercises to avoid for each injury
 HIGH_IMPACT = ["run", "running", "jog", "sprint", "jump", "burpee", "plyometric", "hiit", "squat", "lunge", "box jump"]
-INJURY_LIMITS = {"knee": HIGH_IMPACT, "ankle": HIGH_IMPACT, "back": ["deadlift", "squat", "crunch", "sit-up", "row"],
+KNEE_LOADING = ["leg press", "wall sit", "step-up", "step up", "leg extension", "stair", "pistol", "deep knee bend"]
+INJURY_LIMITS = {"knee": HIGH_IMPACT + KNEE_LOADING, "ankle": HIGH_IMPACT + ["stair", "step-up", "step up", "calf raise"],
+                 "back": ["deadlift", "squat", "crunch", "sit-up", "row"],
                  "shoulder": ["push-up", "pushup", "press", "pull-up", "pullup", "throw", "swim"]}
 
 MAX_SNACK_KCAL = 700    # one suggestion should never be a huge meal
+MIN_BUDGET_KCAL = 300   # even when over the goal, allow a light snack or two in total
 
-# safe fallbacks per flag (checked against the same rules before use)
+# safe fallback foods per flag (checked against the same rules before use)
 DEFAULT_FOODS = {
     "low_protein": [
         {"title": "Greek yogurt with berries", "ingredients": ["greek yogurt", "berries"], "kcal": 180, "protein_g": 17,
@@ -70,6 +71,7 @@ DEFAULT_FOODS = {
          "why": "A light snack that keeps you on track."},
     ],
 }
+# safe fallback workouts
 DEFAULT_WORKOUTS = [
     {"title": "Brisk walk", "why": "Easy on the joints and good for daily activity.", "minutes": 20, "intensity": "light"},
     {"title": "Stretching and mobility", "why": "Helps recovery and flexibility.", "minutes": 15, "intensity": "light"},
@@ -77,16 +79,18 @@ DEFAULT_WORKOUTS = [
 ]
 
 
+# Searchable text of a suggestion
 def _text(rec):
     return " ".join([str(rec.get("title", "")), str(rec.get("why", ""))] +
                     [str(i) for i in rec.get("ingredients", [])]).lower()
 
 
+# Whole-word match
 def _has_word(text, words):
-    # whole words or plurals only, so "egg" doesn't block "eggplant"
     return any(re.search(rf"\b{re.escape(w)}(s|es)?\b", text) for w in words)
 
 
+# Words the user can't have
 def blocked_words(user):
     words = []
     for allergy in user.get("allergies") or []:
@@ -97,6 +101,7 @@ def blocked_words(user):
     return words
 
 
+# Checks one food
 def food_allowed(rec, user, calories_remaining):
     text = _text(rec)
     if _has_word(text, blocked_words(user)):
@@ -108,6 +113,7 @@ def food_allowed(rec, user, calories_remaining):
     return kcal <= max(calories_remaining, 250)
 
 
+# Checks one workout
 def workout_allowed(rec, user):
     text = _text(rec)
     for injury in user.get("injuries") or []:
@@ -120,13 +126,27 @@ def workout_allowed(rec, user):
     return 5 <= minutes <= 90
 
 
+# Checks free text like the summary
+def text_allowed(text, user):
+    return not _has_word(str(text).lower(), blocked_words(user))
+
+
+# Filters suggestions, adds safe defaults
 def apply_limits(ai, user, flags, calories_remaining, want_foods=3, want_workouts=2):
-    """Filter the AI's suggestions, then top up from safe defaults. Returns (foods, workouts, removed)."""
     removed = []
     foods = []
+    # all suggestions together must fit what's left today (or a light snack or two when over)
+    budget = max(calories_remaining, MIN_BUDGET_KCAL)
+    used = 0.0
+
+    # Fits the calorie budget
+    def fits(rec):
+        return used + float(rec.get("kcal") or 0) <= budget
+
     for rec in (ai or {}).get("food_recommendations", []) or []:
-        if isinstance(rec, dict) and food_allowed(rec, user, calories_remaining):
+        if isinstance(rec, dict) and food_allowed(rec, user, calories_remaining) and fits(rec):
             foods.append(rec)
+            used += float(rec.get("kcal") or 0)
         else:
             removed.append(str(rec.get("title", "?")) if isinstance(rec, dict) else "?")
     workouts = []
@@ -143,8 +163,9 @@ def apply_limits(ai, user, flags, calories_remaining, want_foods=3, want_workout
         for rec in DEFAULT_FOODS[pool]:
             if len(foods) >= want_foods:
                 break
-            if rec["title"].lower() not in have and food_allowed(rec, user, calories_remaining):
+            if rec["title"].lower() not in have and food_allowed(rec, user, calories_remaining) and fits(rec):
                 foods.append(dict(rec, source="default")); have.add(rec["title"].lower())
+                used += rec["kcal"]
     for rec in DEFAULT_WORKOUTS:
         if len(workouts) >= want_workouts:
             break
