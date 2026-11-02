@@ -85,11 +85,14 @@ function BellAI() {
                 } catch (error) {
                     toast.add({
                         type: "warning",
-                        description: error.message
+                        description: error.message + " Unable to process audio."
                     });
+                
+
                 } finally {
                     stream.getTracks().forEach(track => track.stop());
                     mediaRecorderRef.current = null;
+                    setIsTranscribing(false);
                 }
             };
 
@@ -103,7 +106,7 @@ function BellAI() {
 
             toast.add({
                 type: "warning",
-                description: error.message
+                description: error.message + " Unable to connect to BellAI."
             });
         }
     }
@@ -171,7 +174,7 @@ function BellAI() {
         } catch (error) {
             toast.add({
                 type: "warning",
-                description: error.message
+                description: error.message + " Unable to connect to BellAI."
             });
         } finally {
             setIsLoading(false);
