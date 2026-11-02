@@ -10,7 +10,7 @@ function Life() {
         <div className="flex flex-col gap-6">
 
             <section className="flex flex-col gap-3">
-                <h3 className="flex items-center gap-2 text-xs text-[#a35b89]">
+                <h3 className="flex items-center gap-2 text-xs text-[#be185d]">
                     <Calendar size={16} strokeWidth={1.5}/> 
                     Today's Schedule
                 </h3>
@@ -24,7 +24,7 @@ function Life() {
 
             <section className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                    <h3 className="flex items-center gap-2 text-xs text-[#a35b89]">
+                    <h3 className="flex items-center gap-2 text-xs text-[#be185d]">
                         <Mail size={16} strokeWidth={1.5}/> 
                         Flagged Emails
                     </h3>
@@ -38,7 +38,7 @@ function Life() {
             </section>        
         
             <section className="flex flex-col gap-3">
-                <h3 className="flex items-center gap-2 text-xs text-[#a35b89]">
+                <h3 className="flex items-center gap-2 text-xs text-[#be185d]">
                     <Check size={16} strokeWidth={1.5}/> 
                     To-Do
                 </h3>
@@ -53,7 +53,7 @@ function Life() {
             </section>
 
             <section className="flex flex-col gap-3">
-                <h3 className="flex items-center gap-2 text-xs text-[#a35b89]">
+                <h3 className="flex items-center gap-2 text-xs text-[#be185d]">
                     <Box size={16} strokeWidth={1.5}/> 
                     Deliveries
                 </h3>

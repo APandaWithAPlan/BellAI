@@ -1,7 +1,7 @@
 function Header() {
     return (
-        <header className="flex items-center justify-center bg-[#150d10] px-6 py-1 border-b border-[#7d5070]">
-            <h1 className="font-bold text-[#7d5070]">
+        <header className="flex items-center justify-center bg-white px-6 py-1 border-b border-[#fbcfe8]">
+            <h1 className="font-bold text-[#be185d]">
                 BellAI
             </h1>
         </header>

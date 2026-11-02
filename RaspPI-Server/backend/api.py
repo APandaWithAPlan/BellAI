@@ -15,7 +15,7 @@ import tempfile
 import shutil
 import subprocess
 from serve import setup_dashboard
-from homeassistant import get_entity, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
+from homeassistant import get_entity, get_entities, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
 client = ollama.Client(host="http://ip:port")
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
@@ -48,7 +48,7 @@ def receive_chat_prompt(prompt: Prompt):
 @app.post("/api/audio")
 def receive_audio_prompt(audio_file: UploadFile = File(...)):
     if audio_file.content_type not in ["audio/webm", "video/webm"]:
-        raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm file is expected.")
+        raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm or /wav file is expected.")
     
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = Path(temp_dir) / "input_audio.webm" 
@@ -70,7 +70,10 @@ def receive_audio_prompt(audio_file: UploadFile = File(...)):
     response = forward_request(validated_prompt.request)
 
     # Return the AI server's response to the user
-    return {"response": response.message.content}
+    return {
+        "response": response.message.content,
+        "transcript": validated_prompt.request
+    }
 
 @app.get("/api/weather")
 async def get_weather():
@@ -102,6 +105,17 @@ async def get_location():
         "city": location["city"],
         "state": location["state"]
     }
+
+@app.get("/api/devices")
+async def get_devices():
+    device_entities = await get_entities()
+
+    devices = [
+        device_entity["entity_id"]
+        for device_entity in device_entities
+    ]
+
+    return devices
 
 setup_dashboard(app)
 

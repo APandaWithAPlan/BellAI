@@ -3,7 +3,7 @@ import { Progress } from "@/components/ui/progress"
 
 function EventCard({ seller, item, arrivalTime, progress }) {
   return (
-    <Card className="rounded-xl border border-[#7d5070] bg-[#20151c] p-4 text-white shadow-lg">
+    <Card className="rounded-xl border border-[#fbcfe8] bg-white p-4 text-black shadow-lg">
       <CardContent className="p-0">
 
         <div className="flex items-start justify-between">
@@ -12,13 +12,13 @@ function EventCard({ seller, item, arrivalTime, progress }) {
                 {seller}
             </p>
 
-            <p className="text-sm text-[#f472b6]">
+            <p className="text-sm text-[#be185d]">
                 {arrivalTime}
             </p>
 
         </div>
 
-            <p className="text-sm text-[#a35b89]">
+            <p className="text-sm text-[#db2e80]">
                 {item}
             </p>
 

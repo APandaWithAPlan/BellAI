@@ -4,7 +4,7 @@ import { Cloud } from "lucide-react"
 
 function WeatherCard({ temperature, temperature_unit, description, high, low, hum, location }) {
   return (
-    <Card className="h-full gap-3 rounded-xl border border-[#7d5070] bg-[#20151c] p-4 text-white shadow-lg">
+    <Card className="h-full gap-3 rounded-xl border border-[#fbcfe8] bg-white p-4 text-black shadow-lg">
 
       <CardHeader className="p-0">
         <CardTitle className="flex items-center justify-between">
@@ -21,33 +21,33 @@ function WeatherCard({ temperature, temperature_unit, description, high, low, hu
 
         </CardTitle>
 
-        <p className="text-xs text-[#a35b89]">
+        <p className="text-xs text-[#be185d]">
           {description}
         </p>
       </CardHeader>
 
-      <Separator className="bg-[#39212e]" />
+      <Separator className="bg-[#fbcfe8]" />
 
       <CardContent className="space-y-3 p-0">
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <p className="text-xs text-[#a35b89]">HIGH</p>
+            <p className="text-xs text-[#be185d]">HIGH</p>
             <p className="font-semibold">{high}{temperature_unit}</p>
           </div>
 
           <div>
-            <p className="text-xs text-[#a35b89]">LOW</p>
+            <p className="text-xs text-[#be185d]">LOW</p>
             <p className="font-semibold">{low}{temperature_unit}</p>
           </div>
 
           <div className="text-right">
-            <p className="text-xs text-[#a35b89]">HUM</p>
+            <p className="text-xs text-[#be185d]">HUM</p>
             <p className="font-semibold">{hum}%</p>
           </div>
         </div>
 
-        <p className="text-xs text-[#a35b89]">
+        <p className="text-xs text-[#be185d]">
           {location}
         </p>
 

@@ -7,11 +7,11 @@ function ToDoCard({ task }) {
 
   return (
     
-    <div className="flex items-center gap-3 border-b border-[#39212e] px-4 py-3 last:border-b-0">
+    <div className="flex items-center gap-3 rounded-xl border border-[#fbcfe8] bg-white px-4 py-3 last:border-b-0 shadow-lg">
 
-      <Checkbox checked={completed} onCheckedChange={setCompleted} className="rounded border-[#7d5070] data-checked:border-[#34d399] data-checked:bg-[#34d399]"/>
+      <Checkbox checked={completed} onCheckedChange={setCompleted} className="rounded border-[#fbcfe8] data-checked:border-[#fbcfe8] data-checked:bg-[#34d399]"/>
 
-      <span className={`text-sm ${ completed ? "text-[#a35b89] line-through" : "text-white" }`}>
+      <span className={`text-sm ${ completed ? "text-[#be185d] line-through" : "text-black" }`}>
         {task}
       </span>
 

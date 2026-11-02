@@ -4,7 +4,7 @@ import NavBar from "../components/NavBar"
 
 function DashboardLayout() {
   return (
-    <div className="min-h-screen bg-[#150d10]">
+    <div className="min-h-screen bg-[#fff0f7]">
       <Header />
       <main className="p-6 pb-24">
         <Outlet />

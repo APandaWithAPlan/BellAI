@@ -28,13 +28,13 @@ function Devices() {
     return (
         <div className="space-y-2">
             
-            <h3 className="text-xl font-semibold text-white">Smart Home</h3>
+            <h3 className="text-xl font-semibold text-black">Smart Home</h3>
 
-            <p className="text-xs text-[#a35b89]">
+            <p className="text-xs text-[#be185d]">
                 {activeDevices} of {totalDevices} active
             </p>
 
-            <Progress value={progress} className="h-1 bg-[#39212e] [&_[data-slot=progress-indicator]]:bg-[#ef6cba]"/>
+            <Progress value={progress} className="h-1 bg-[#f9ddea] [&_[data-slot=progress-indicator]]:bg-[#db2777]"/>
         
             <div className="grid grid-cols-6 p-4 gap-4">
 

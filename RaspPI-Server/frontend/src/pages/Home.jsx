@@ -13,7 +13,6 @@ function Home() {
     const { date, time, period } = useDateTime();
     const [weather, setWeather] = useState(null);
     const [location, setLocation] = useState(null);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
         let active = true;
@@ -30,11 +29,14 @@ function Home() {
 
                 if (active) {
                 setWeather(data);
-                setError(null);
                 }
             } catch (error) {
                 if (active) {
-                setError(error.message);
+
+                    toast.add({
+                        type: "warning",
+                        description: error.message
+                    });
                 }
             }
         }
@@ -61,11 +63,14 @@ function Home() {
 
                 if (active) {
                 setLocation(data);
-                setError(null);
                 }
             } catch (error) {
                 if (active) {
-                setError(error.message);
+
+                    toast.add({
+                        type: "warning",
+                        description: error.message
+                    });
                 }
             }
         }
@@ -76,15 +81,6 @@ function Home() {
             active = false;
         };
     }, []);
-
-    useEffect(() => {
-        if (error) {
-            toast.add({
-                type: "warning",
-                description: error
-            });
-        }
-    }, [error]);
     
     return (
         <div className="grid grid-cols-4 gap-4">

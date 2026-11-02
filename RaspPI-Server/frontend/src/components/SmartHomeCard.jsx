@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch"
 
 function SmartHomeCard({ icon: Icon, location, color, isOn, onToggle}) {
   return (
-    <Card className="w-54 rounded-xl border border-[#7d5070] bg-[#20151c]">
+    <Card className="w-54 rounded-xl border border-[#fbcfe8] bg-white shadow-lg">
       <CardContent className="flex flex-col gap-4 px-4">
 
         <div className="flex items-start justify-between">
@@ -18,7 +18,7 @@ function SmartHomeCard({ icon: Icon, location, color, isOn, onToggle}) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold text-[#a35b89]">
+          <p className="text-sm font-semibold text-[#be185d]">
             {location}
           </p>
         </div>

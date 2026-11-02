@@ -2,7 +2,7 @@ import { Card, CardContent } from "./ui/card"
 
 function DeviceCard({ icon: Icon, value, label, color }) {
   return (
-    <Card className="h-full rounded-xl border border-[#7d5070] bg-[#20151c] text-white">
+    <Card className="h-full rounded-xl border border-[#fbcfe8] bg-white text-black shadow-lg">
       <CardContent className="flex flex-col items-center justify-center gap-2 p-4">
 
         <div className="rounded-lg bg-[#39212e] p-3" style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)` }}>
@@ -13,7 +13,7 @@ function DeviceCard({ icon: Icon, value, label, color }) {
           {value}
         </p>
 
-        <p className="text-xs text-[#a35b89]">
+        <p className="text-xs text-[#be185d]">
           {label}
         </p>
 

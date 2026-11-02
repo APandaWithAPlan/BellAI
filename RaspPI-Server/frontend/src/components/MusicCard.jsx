@@ -3,13 +3,13 @@ import { EighthNotes, Pause, SkipForward, SkipBack } from "lucide-react"
 
 function MusicCard({ song, artist, device }) {
   return (
-    <Card className="rounded-xl border border-[#7d5070] bg-[#20151c] p-4 text-white shadow-lg">
+    <Card className="rounded-xl border border-[#fbcfe8] bg-white p-4 text-black shadow-lg">
       <CardContent className="flex items-center justify-between gap-4 p-0">
 
         <div className="flex min-w-0 items-center gap-4">
 
-          <div className="rounded-lg bg-[#39212e] p-3">
-            <EighthNotes size={24} strokeWidth={1.5} className="text-[#d89fbd]"/>
+          <div className="rounded-lg bg-[#fae4ee] p-3">
+            <EighthNotes size={24} strokeWidth={1.5} className="text-[#be185d]"/>
           </div>
 
           <div className="min-w-0">
@@ -17,24 +17,23 @@ function MusicCard({ song, artist, device }) {
               {song}
             </h3>
 
-            <p className="truncate text-sm text-[#a35b89]">
+            <p className="truncate text-sm text-[#be185d]">
               {artist} · {device}
             </p>
           </div>
 
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3 text-[#db2777]">
           <button type="button">
             <SkipBack size={20} />
           </button>
 
           <button
             type="button"
-            aria-label="Pause"
-            className="rounded-full bg-[#7d5070] p-2"
+            className="rounded-full bg-[#db2777] p-2 text-white"
           >
-            <Pause size={20} />
+            <Pause fill="white" size={20} />
           </button>
 
           <button type="button">
