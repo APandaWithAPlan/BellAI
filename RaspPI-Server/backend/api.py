@@ -14,10 +14,11 @@ from pathlib import Path
 import tempfile
 import shutil
 import subprocess
+import os
 from serve import setup_dashboard
 from homeassistant import get_entity, get_entities, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
-client = ollama.Client(host="http://ip:port")
+client = ollama.Client(host=os.environ["OLLAMA_HOST"])
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
 whisper_model = Path.home() / "whisper.cpp/models/ggml-tiny.en.bin"
 
@@ -38,7 +39,7 @@ app = FastAPI()
 
 # Create an endpoint to listen for and receive user prompts
 @app.post("/api/chat")
-def receive_chat_prompt(prompt: Prompt):
+async def receive_chat_prompt(prompt: Prompt):
     # print(f"Prompt: {prompt.request}")
     response = forward_request(prompt.request)
 
@@ -46,7 +47,7 @@ def receive_chat_prompt(prompt: Prompt):
     return {"response": response.message.content}
 
 @app.post("/api/audio")
-def receive_audio_prompt(audio_file: UploadFile = File(...)):
+async def receive_audio_prompt(audio_file: UploadFile = File(...)):
     if audio_file.content_type not in ["audio/webm", "video/webm"]:
         raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm or /wav file is expected.")
     
@@ -122,7 +123,7 @@ setup_dashboard(app)
 # Create function to send the prompt to the AI server
 def forward_request(request):
     try:
-        response = client.chat(model="qwen3:8b", messages=[{'role': 'user', 'content': request}])
+        response = client.chat(model="qwen3:4b", messages=[{'role': 'user', 'content': request}])
 
     except ollama.ResponseError as e:
         raise HTTPException(status_code=502, detail="Ollama encountered an error while processing the request.")

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react"
-import { Mic, Send } from "lucide-react"
+import { Mic, Send, LoaderCircle } from "lucide-react"
 import { Message, MessageContent, } from "@/components/ui/message"
 import { Bubble, BubbleContent, } from "@/components/ui/bubble"
 import {
@@ -17,6 +17,7 @@ function BellAI() {
     const [input, setInput] = useState("")
     const [messages, setMessages] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]); 
@@ -46,7 +47,7 @@ function BellAI() {
                     });
 
                     const formData = new FormData();
-                    formData.append("file", audioBlob, "recording.webm");
+                    formData.append("audio_file", audioBlob, "recording.webm");
 
                     const response = await fetch("/api/audio", {
                         method: "POST",
@@ -54,11 +55,24 @@ function BellAI() {
                     });
 
                     if (!response.ok) {
-                        throw new Error("Failed to upload audio");
+                        throw new Error("Failed to upload audio.");
                     }
 
                     const data = await response.json();
-                    setInput(data.transcript);
+                    
+                    setMessages(prev => [
+                        ...prev,
+                        {
+                            id: crypto.randomUUID(),
+                            role: "user",
+                            content: data.transcript
+                        },
+                        {
+                            id: crypto.randomUUID(),
+                            role: "assistant",
+                            content: data.response
+                        }
+                    ]);
 
                 } catch (error) {
                     toast.add({
@@ -93,18 +107,58 @@ function BellAI() {
         }
     }
 
-    function sendMessage() {
-        if (!input.trim()) return
+    async function sendMessage() {
+        if (!input.trim()) return;
+
+        const request = input.trim();
 
         const newMessage = {
             id: crypto.randomUUID(),
             role: "user",
-            content: input.trim(),
+            content: request,
             time: new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})
-        }
+        };
 
         setMessages((prevMessages) => [...prevMessages, newMessage])
         setInput("")
+
+        try {
+            setIsLoading(true);
+
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    request: request
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            const bellaiMessage = {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                content: data.response,
+                time: new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})
+            };
+
+            setMessages(prev => [...prev, bellaiMessage]);
+
+            } catch (error) {
+                toast.add({
+                    type: "warning",
+                    description: error.message
+                });
+                
+            } finally {
+                setIsLoading(false);
+        }
     }
 
   return (
@@ -125,8 +179,8 @@ function BellAI() {
                                                         </div>
                                                     )}
                                                     <div className="flex min-w-0 flex-col gap-1">
-                                                <Bubble>
-                                                    <BubbleContent className={`rounded-xl border px-4 py-3 text-sm text-black ${ message.role === "user" ? "!border-[#fbcfe8] !bg-[#fad5e6]" : "border-[#fbcfe8] bg-white" }`}>
+                                                <Bubble className="rounded-xl border border-[#fbcfe8] shadow-lg">
+                                                    <BubbleContent className={`rounded-xl border px-4 py-3 text-sm text-black ${ message.role === "user" ? "!text-black !border-[#fbcfe8] !bg-[#fad5e6]" : "!text-black !border-[#fbcfe8] !bg-white" }`}>
                                                         {message.content}
                                                     </BubbleContent>
                                                 </Bubble>
@@ -139,6 +193,14 @@ function BellAI() {
                                 </Message>
                             </MessageScrollerItem>
                         ))}
+                        {isLoading && (
+                            <div className="flex items-center gap-2 p-3 text-[#be185d]">
+                                <LoaderCircle size={20} className="animate-spin"/>
+                                <span className="text-sm">
+                                    Thinking...
+                                </span>
+                            </div>
+                        )}
                     </MessageScrollerContent>
                 </MessageScrollerViewport>
                 <MessageScrollerButton />
@@ -146,19 +208,29 @@ function BellAI() {
         </MessageScrollerProvider>
     </div>
 
-      <div className="flex flex-col items-center gap-3 px-4 py-4">
-        <button
-          type="button"
-          className="flex h-14 w-14 items-center justify-center rounded-full border border-[#fbcfe8] bg-[#fce7f3] text-[#be185d]"
-          onClick={isRecording ? stopRecording : startRecording}
-        >
-          <Mic size={24} />
-        </button>
+    <div className="flex flex-col items-center gap-3 px-4 py-4">
+        <div className="relative flex items-center justify-center">
+            {isRecording && (
+            <span className="absolute h-14 w-14 animate-ping rounded-full bg-[#f472b6] opacity-50" />
+            )}
+
+            <button
+            type="button"
+            className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-full border transition-colors duration-300 ${
+                isRecording
+                ? "border-[#be185d] bg-[#be185d] text-white"
+                : "border-[#fbcfe8] bg-[#fce7f3] text-[#be185d]"
+            }`}
+            onClick={isRecording ? stopRecording : startRecording}
+            >
+            <Mic size={24} />
+            </button>
+        </div>
 
         <p className="text-[10px] tracking-[0.2em] text-[#be185d]">
-          TAP TO SPEAK
+            {isRecording ? "LISTENING..." : "TAP TO SPEAK"}
         </p>
-      </div>
+    </div>
 
       <div className="flex items-center gap-2 border-t border-[#fbcfe8] p-3">
         <input
@@ -166,7 +238,7 @@ function BellAI() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
-          className="min-w-0 flex-1 rounded-full border border-[#fbcfe8] bg-[#fce7f3] px-4 py-3 text-sm text-white outline-none placeholder:text-[#be185d]"
+          className="min-w-0 flex-1 rounded-full border border-[#fbcfe8] bg-[#fce7f3] px-4 py-3 text-sm text-black outline-none placeholder:text-[#be185d]"
         />
 
         <button
