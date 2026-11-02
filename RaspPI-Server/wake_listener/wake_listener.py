@@ -1,35 +1,22 @@
-"""BellAi wake word listener for the Raspberry Pi.
-
-Listens on the microphone for "BellAi". When it hears it, it plays a chime, records the command until you stop
-talking, and sends it to the Pi API (api.py, POST /audio) as .webm. api.py transcribes it with whisper.cpp and
-asks the AI server, and the reply is printed (and spoken, if --tts is set).
-
-If someone says "BellAi" while the AI server can't be reached, it says "connection dropped" instead of
-recording. Nothing plays while nobody is asking.
-
-    python wake_listener.py --list-mics
-    python wake_listener.py --server http://<ai-server>:11434
-    python wake_listener.py --wav test.wav       # test with a recording instead of the mic
-    python wake_listener.py --scores             # test mode: show how sure the model is as you talk
-"""
 import argparse
 import queue
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from collections import deque
 from pathlib import Path
 
 import numpy as np
 import requests
-import scipy.signal
 
 HERE = Path(__file__).resolve().parent
 REPO_MODELS = HERE.parent.parent / "Wake Word" / "models"
 RATE = 16000
-CHUNK = 1280  # 80 ms at 16 kHz, the frame size openWakeWord expects
+CHUNK = 1280
 
 parser = argparse.ArgumentParser(description="BellAi wake word listener")
 parser.add_argument("--model", default=str(HERE / "BellAi.onnx") if (HERE / "BellAi.onnx").exists() else str(REPO_MODELS / "BellAi.onnx"),
@@ -37,6 +24,7 @@ parser.add_argument("--model", default=str(HERE / "BellAi.onnx") if (HERE / "Bel
 parser.add_argument("--mic", default="Razer", help="part of the microphone's name (see --list-mics)")
 parser.add_argument("--list-mics", action="store_true", help="list microphones and exit")
 parser.add_argument("--threshold", type=float, default=0.5, help="0-1; raise it if BellAi wakes up by mistake")
+parser.add_argument("--gain", type=float, default=5.0, help="boosts the mic in software (default 5, tuned for the Razer Seiren Mini across a room)")
 parser.add_argument("--api", default="http://127.0.0.1:8000", help="the Pi API (api.py)")
 parser.add_argument("--server", default="", help="AI server to check when woken, e.g. http://<ai-server>:11434")
 parser.add_argument("--tts", default="", help="optional voice API to speak replies, e.g. http://<ai-server>:9880")
@@ -51,103 +39,104 @@ args = parser.parse_args()
 
 
 def log(msg):
+    """Prints a message with the time in front."""
     print(time.strftime("%H:%M:%S"), msg, flush=True)
 
 
-# ---------- audio in
+def list_mics():
+    """Returns the recording devices from `arecord -l` as (card id, device number, description)."""
+    out = subprocess.run(["arecord", "-l"], capture_output=True, text=True).stdout
+    found = re.findall(r"^card \d+: (\S+) \[(.*?)\], device (\d+): (.*?)$", out, flags=re.M)
+    return [(card, dev, f"{name} - {desc}") for card, name, dev, desc in found]
 
-def find_mic(sd, name):
-    inputs = [(i, d) for i, d in enumerate(sd.query_devices()) if d["max_input_channels"] > 0]
-    for i, d in inputs:
-        if name.lower() in d["name"].lower():
-            return i
-    names = "\n  ".join(d["name"] for _, d in inputs) or "(none)"
+
+def find_mic(name):
+    """Finds the microphone whose name contains `name` and returns its arecord device and description."""
+    for card, dev, desc in list_mics():
+        if name.lower() in f"{card} {desc}".lower():
+            return f"plughw:CARD={card},DEV={dev}", desc
+    names = "\n  ".join(d for _, _, d in list_mics()) or "(none)"
     sys.exit(f"No microphone with '{name}' in its name. Microphones found:\n  {names}\nUse --mic with part of one.")
 
 
 class Mic:
-    """Reads the microphone and hands out 80 ms chunks of 16 kHz mono int16."""
+    """Reads the microphone with arecord as 16 kHz mono and hands out 80 ms chunks, without needing PulseAudio."""
 
     def __init__(self, name):
-        import sounddevice as sd
-        device = find_mic(sd, name)
+        """Starts arecord on the chosen mic and a background thread that reads from it."""
+        device, desc = find_mic(name)
+        self.proc = subprocess.Popen(["arecord", "-q", "-D", device, "-f", "S16_LE", "-r", str(RATE), "-c", "1",
+                                      "-t", "raw"], stdout=subprocess.PIPE)
         self.q = queue.Queue()
-        self.buf = np.zeros(0, dtype=np.int16)
-        self.rate = RATE
-        try:  # ask for 16 kHz; many USB mics only do 48 kHz, so fall back to their own rate
-            self.stream = self._open(sd, device, RATE)
-        except Exception:
-            self.rate = int(sd.query_devices(device)["default_samplerate"])
-            self.stream = self._open(sd, device, self.rate)
-        self.step = self.rate // RATE if self.rate % RATE == 0 else 0
-        if self.rate != RATE:
-            # anti-alias filter that keeps its state between blocks, so there are no clicks at block edges
-            self.sos = scipy.signal.butter(8, 7000, fs=self.rate, output="sos")
-            self.zi = scipy.signal.sosfilt_zi(self.sos) * 0
-            self.offset = 0
-        self.stream.start()
-        log(f"Listening on {sd.query_devices(device)['name']} ({self.rate} Hz)")
+        threading.Thread(target=self._reader, daemon=True).start()
+        log(f"Listening on {desc}")
 
-    def _open(self, sd, device, rate):
-        return sd.InputStream(device=device, channels=1, samplerate=rate, dtype="int16",
-                              blocksize=int(rate * 0.08), callback=lambda d, f, t, s: self.q.put(d[:, 0].copy()))
-
-    def _to_16k(self, block):
-        if self.rate == RATE:
-            return block
-        y, self.zi = scipy.signal.sosfilt(self.sos, block.astype(np.float32), zi=self.zi)
-        if self.step:  # e.g. 48 kHz -> every 3rd sample
-            out = y[self.offset::self.step]
-            self.offset = (self.offset - len(y)) % self.step
-        else:  # odd rates such as 44.1 kHz
-            out = scipy.signal.resample_poly(y, RATE, self.rate)
-        return np.clip(out, -32768, 32767).astype(np.int16)
+    def _reader(self):
+        """Keeps reading the mic into a queue so audio never backs up while BellAi is busy."""
+        while True:
+            data = self.proc.stdout.read(CHUNK * 2)
+            if len(data) < CHUNK * 2:
+                self.q.put(None)
+                return
+            self.q.put(boost(np.frombuffer(data, dtype=np.int16)))
 
     def read(self):
-        while len(self.buf) < CHUNK:
-            self.buf = np.concatenate([self.buf, self._to_16k(self.q.get())])
-        chunk, self.buf = self.buf[:CHUNK], self.buf[CHUNK:]
+        """Returns the next 80 ms of audio, or stops the program if the mic was unplugged."""
+        chunk = self.q.get()
+        if chunk is None:
+            sys.exit("The microphone stopped (unplugged, or in use by another program).")
         return chunk
 
     def flush(self):
         """Drops audio that piled up while BellAi was busy, so old sound can't wake it."""
         while not self.q.empty():
-            self.q.get_nowait()
-        self.buf = np.zeros(0, dtype=np.int16)
+            if self.q.get_nowait() is None:
+                self.q.put(None)
+                return
 
 
 class WavFile:
-    """Plays a recording through the listener instead of the mic."""
+    """Feeds a recording through the listener instead of the mic, for testing."""
 
     def __init__(self, path):
+        """Loads the recording as 16 kHz mono."""
         raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", path, "-ar", str(RATE), "-ac", "1",
                               "-f", "s16le", "-"], check=True, capture_output=True).stdout
         self.audio, self.pos = np.frombuffer(raw, dtype=np.int16), 0
         log(f"Reading {path} ({len(self.audio) / RATE:.1f} s)")
 
     def read(self):
+        """Returns the next 80 ms of the recording, or None at the end."""
         if self.pos + CHUNK > len(self.audio):
             return None
         self.pos += CHUNK
-        return self.audio[self.pos - CHUNK:self.pos]
+        return boost(self.audio[self.pos - CHUNK:self.pos])
 
     def flush(self):
+        """Does nothing; a recording has no backed-up audio to drop."""
         pass
 
 
+def boost(chunk):
+    """Makes the audio louder by --gain, without letting it clip past the loudest possible value."""
+    if args.gain == 1.0:
+        return chunk
+    return np.clip(chunk.astype(np.float32) * args.gain, -32768, 32767).astype(np.int16)
+
+
 def level_db(chunk):
+    """Returns how loud a chunk of audio is, in decibels."""
     return 20 * np.log10(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)) + 1)
 
 
-# ---------- sound out
-
 def play(path):
+    """Plays a .wav file through the speaker, if the file exists."""
     if path and Path(path).exists() and shutil.which("aplay"):
         subprocess.run(["aplay", "-q", str(path)], check=False)
 
 
 def make_chime(path):
-    """A short two-note chime, used when no --wake-sound is given."""
+    """Writes a short two-note chime, used when there is no wake.wav."""
     import wave
     t = np.arange(int(0.12 * RATE)) / RATE
     notes = [np.sin(2 * np.pi * f * t) * np.hanning(len(t)) for f in (880, 1320)]
@@ -157,10 +146,8 @@ def make_chime(path):
         w.writeframes(tone.tobytes())
 
 
-# ---------- server status
-
 def server_up(url):
-    """Quick check, made only when someone says BellAi, so nothing plays while nobody is asking."""
+    """Checks whether the AI server answers; only called after the wake word is heard."""
     try:
         return requests.get(url, timeout=3).status_code < 500
     except requests.RequestException:
@@ -168,14 +155,13 @@ def server_up(url):
 
 
 def connection_dropped(reason):
+    """Prints "connection dropped" with the reason and plays connection_dropped.wav."""
     log(f"connection dropped ({reason})")
     play(args.dropped_sound)
 
 
-# ---------- one command
-
 def record_command(source, noise_db):
-    """Records until there's 1 s of quiet after speech. Returns None if nobody spoke within 4 s."""
+    """Records the command until 1 s of quiet after speech; returns None if nobody spoke within 4 s."""
     speech_db = max(noise_db + 10, 35)
     frames, heard, quiet, seconds = [], False, 0.0, 0.0
     while seconds < args.max_seconds:
@@ -196,12 +182,14 @@ def record_command(source, noise_db):
 
 
 def to_webm(audio):
+    """Converts the recorded audio to .webm, the format api.py accepts."""
     return subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "-",
                            "-c:a", "libopus", "-b:a", "32k", "-f", "webm", "-"],
                           input=audio.tobytes(), check=True, capture_output=True).stdout
 
 
 def speak(text):
+    """Sends the reply to the voice API and plays the audio it returns."""
     try:
         r = requests.post(f"{args.tts}/tts", json={"text": text, "stream": False}, timeout=60)
         r.raise_for_status()
@@ -214,6 +202,7 @@ def speak(text):
 
 
 def ask(audio):
+    """Sends the command to api.py (POST /audio) for Whisper and the AI server, then prints the reply."""
     try:
         r = requests.post(f"{args.api}/audio", files={"audio_file": ("command.webm", to_webm(audio), "audio/webm")},
                           timeout=180)
@@ -234,14 +223,14 @@ def ask(audio):
         speak(reply)
 
 
-# ---------- main
-
 def main():
+    """Loads the model, listens for "BellAi", and handles each command until stopped with Ctrl+C."""
     if args.list_mics:
-        import sounddevice as sd
-        for i, d in enumerate(sd.query_devices()):
-            if d["max_input_channels"] > 0:
-                print(f"{i}: {d['name']} ({int(d['default_samplerate'])} Hz)")
+        mics = list_mics()
+        for card, dev, desc in mics:
+            print(f"{card}: {desc}")
+        if not mics:
+            print("No microphones found. Check `arecord -l`; this user may need: sudo usermod -aG audio $USER")
         return
 
     from openwakeword.model import Model
@@ -258,7 +247,7 @@ def main():
         make_chime(args.wake_sound)
 
     source = WavFile(args.wav) if args.wav else Mic(args.mic)
-    recent = deque(maxlen=int(3 * RATE / CHUNK))  # last 3 s of levels, to know how loud the room is
+    recent = deque(maxlen=int(3 * RATE / CHUNK))
     log(f"Say \"BellAi\" (threshold {args.threshold})")
     while True:
         chunk = source.read()
@@ -268,7 +257,7 @@ def main():
         score = max(model.predict(chunk).values())
         if args.scores:
             if score >= 0.05:
-                seconds = f"{source.pos / RATE:6.1f}s " if args.wav else ""
+                seconds = f"{source.pos / RATE:6.1f}s " if args.wav else time.strftime("%H:%M:%S ")
                 mark = "  <-- wakes" if score >= args.threshold else ""
                 print(f"{seconds}{score:.2f} {'#' * int(score * 40)}{mark}", flush=True)
             continue
@@ -279,7 +268,7 @@ def main():
             connection_dropped(f"the AI server at {args.server} isn't answering")
         else:
             play(args.wake_sound)
-            source.flush()  # don't record the chime
+            source.flush()
             audio = record_command(source, float(np.percentile(recent, 20)))
             if audio is None:
                 log("No command heard")
