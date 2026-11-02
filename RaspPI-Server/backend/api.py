@@ -48,18 +48,26 @@ async def receive_chat_prompt(prompt: Prompt):
 
 @app.post("/api/audio")
 async def receive_audio_prompt(audio_file: UploadFile = File(...)):
-    if audio_file.content_type not in ["audio/webm", "video/webm"]:
+    content_type = (audio_file.content_type or "").split(";", 1)[0].strip().lower()
+    if content_type not in ["audio/webm", "video/webm"]:
         raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm or /wav file is expected.")
     
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = Path(temp_dir) / "input_audio.webm" 
         output_path = Path(temp_dir) / "output_audio.wav"
 
+        print("2. Converting audio...", flush=True)
         # Convert audio to format whisper-cli accepts
         convert_audio(audio_file.file, input_path, output_path)
+        print("3. Audio converted", flush=True)
 
+        print("4. Transcribing audio...", flush=True)
         # Transcribe audio to text
         transcript = transcribe_audio(output_path)
+        print(f"5. Transcript: {transcript}", flush=True)
+
+        if transcript.upper() == "[BLANK_AUDIO]":
+            raise HTTPException(status_code=422,detail="No speech detected in the recording.")
 
         try:
             validated_prompt = Prompt(request=transcript)
@@ -67,12 +75,9 @@ async def receive_audio_prompt(audio_file: UploadFile = File(...)):
         except ValidationError as e:
             raise HTTPException(status_code=422, detail="The audio prompt is invalid or empty.")
 
-    # Send transcript to AI server
-    response = forward_request(validated_prompt.request)
-
     # Return the AI server's response to the user
     return {
-        "response": response.message.content,
+
         "transcript": validated_prompt.request
     }
 

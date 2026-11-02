@@ -18,6 +18,7 @@ function BellAI() {
     const [messages, setMessages] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
 
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]); 
@@ -41,7 +42,10 @@ function BellAI() {
             };
 
             mediaRecorder.onstop = async () => {
+                setIsTranscribing(true);
+
                 try {
+                    // console.log("MediaRecorder MIME type:", mediaRecorder.mimeType);
                     const audioBlob = new Blob(chunksRef.current, {
                         type: mediaRecorder.mimeType
                     });
@@ -65,14 +69,18 @@ function BellAI() {
                         {
                             id: crypto.randomUUID(),
                             role: "user",
-                            content: data.transcript
-                        },
-                        {
-                            id: crypto.randomUUID(),
-                            role: "assistant",
-                            content: data.response
+                            content: data.transcript,
+                            time: new Date().toLocaleTimeString([], {
+                                hour: "numeric",
+                                minute: "2-digit"
+                            })
                         }
                     ]);
+
+                    setIsTranscribing(false);
+                    setIsRecording(false);
+
+                    await sendToBellAI(data.transcript);
 
                 } catch (error) {
                     toast.add({
@@ -112,27 +120,33 @@ function BellAI() {
 
         const request = input.trim();
 
-        const newMessage = {
-            id: crypto.randomUUID(),
-            role: "user",
-            content: request,
-            time: new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})
-        };
+        setMessages(prev => [
+            ...prev, {
+                id: crypto.randomUUID(),
+                role: "user",
+                content: request,
+                time: new Date().toLocaleTimeString([], {
+                    hour: "numeric", 
+                    minute: "2-digit"
+                })
+            }
+        ]);
 
-        setMessages((prevMessages) => [...prevMessages, newMessage])
-        setInput("")
+        setInput("");
+
+        await sendToBellAI(request);
+    }
+
+    async function sendToBellAI(request) {
+        setIsLoading(true);
 
         try {
-            setIsLoading(true);
-
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    request: request
-                })
+                body: JSON.stringify({ request })
             });
 
             if (!response.ok) {
@@ -141,23 +155,26 @@ function BellAI() {
 
             const data = await response.json();
 
-            const bellaiMessage = {
-                id: crypto.randomUUID(),
-                role: "assistant",
-                content: data.response,
-                time: new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})
-            };
+            setMessages(prev => [
+                ...prev,
+                {
+                    id: crypto.randomUUID(),
+                    role: "assistant",
+                    content: data.response,
+                    time: new Date().toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit"
+                    })
+                }
+            ]);
 
-            setMessages(prev => [...prev, bellaiMessage]);
-
-            } catch (error) {
-                toast.add({
-                    type: "warning",
-                    description: error.message
-                });
-                
-            } finally {
-                setIsLoading(false);
+        } catch (error) {
+            toast.add({
+                type: "warning",
+                description: error.message
+            });
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -228,7 +245,9 @@ function BellAI() {
         </div>
 
         <p className="text-[10px] tracking-[0.2em] text-[#be185d]">
-            {isRecording ? "LISTENING..." : "TAP TO SPEAK"}
+            {isRecording ? "LISTENING..." 
+                : isTranscribing ? <LoaderCircle size={20} className="animate-spin"/>
+                : "TAP TO SPEAK"}
         </p>
     </div>
 
