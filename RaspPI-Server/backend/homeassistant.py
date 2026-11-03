@@ -31,14 +31,13 @@ HA_HOME_LOCATION_ENTITY = os.getenv("HA_HOME_LOCATION_ENTITY")
 #             raise RuntimeError("Unable to authenticate to Home Assistant.")
 
 async def get_entity(entity_id: str):
-    headers = {
-        "Authorization": f"Bearer {HA_TOKEN}"
-    }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
             f"{HA_URL}/api/states/{entity_id}",
-            headers=headers
+            headers={
+                "Authorization": f"Bearer {HA_TOKEN}"
+            }
         )
 
         response.raise_for_status()
@@ -46,14 +45,13 @@ async def get_entity(entity_id: str):
         return response.json()
 
 async def get_entities():
-    headers = {
-        "Authorization": f"Bearer {HA_TOKEN}"
-    }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
             f"{HA_URL}/api/states/",
-            headers=headers
+            headers={
+                "Authorization": f"Bearer {HA_TOKEN}"
+            }
         )
 
         response.raise_for_status()
@@ -77,5 +75,23 @@ async def get_forecast(entity_id: str):
 
         response.raise_for_status()
         
+        return response.json()
+
+async def command_device(entity_id: str, domain: str, action: str, data: dict | None = None):
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(
+            f"{HA_URL}/api/services/{domain}/{action}",
+            headers={
+                "Authorization": f"Bearer {HA_TOKEN}"
+                },
+            json = {
+                "entity_id": entity_id,
+                **(data or {})
+            }
+        )
+
+        response.raise_for_status()
+
         return response.json()
 

@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import os
 from serve import setup_dashboard
-from homeassistant import get_entity, get_entities, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
+from homeassistant import get_entity, get_entities, command_device, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
 client = ollama.Client(host=os.environ["OLLAMA_HOST"])
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
@@ -34,6 +34,12 @@ class Prompt(BaseModel):
             raise ValueError("The prompt cannot be empty.")
         
         return v
+
+class DeviceCommand(BaseModel):
+    entity_id: str
+    domain: str
+    action: str
+    data: dict = Field(default_factory=dict)
 
 app = FastAPI()
 
@@ -72,6 +78,27 @@ async def receive_audio_prompt(audio_file: UploadFile = File(...)):
 
     # Return the AI server's response to the user
     return {"transcript": validated_prompt.request}
+
+@app.post("/api/device/command")
+async def control_device(command: DeviceCommand):
+    allowed_actions = {
+            "media_player": { "media_play", "media_pause", "media_next_track", "media_previous_track"},
+    }
+
+    if (command.action not in allowed_actions.get(command.domain, set())):
+        raise HTTPException(status_code=400, detail="Unsupported device command.")
+
+    if not (command.entity_id.startswith(f"{command.domain}")):
+        raise HTTPException(status_code=400, detail=f"Entity is not {command.domain}.")
+
+    await command_device(
+        command.entity_id,
+        "media_player",
+        "media_pause",
+        command.data
+    )
+
+    return
 
 @app.get("/api/weather")
 async def get_weather():

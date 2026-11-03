@@ -13,11 +13,7 @@ function WeatherCard({ temperature, temperature_unit, description, high, low, hu
             {temperature}{temperature_unit}
           </span>
 
-          <Cloud
-            size={36}
-            strokeWidth={1.5}
-            className="text-[#54b7e8]"
-          />
+          <Cloud size={36} strokeWidth={1.5} fill="#dfeef7" className="text-[#54b7e8]"/>
 
         </CardTitle>
 
