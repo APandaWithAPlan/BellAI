@@ -6,15 +6,19 @@
 # https://fastapi.tiangolo.com/reference/uploadfile/#fastapi.UploadFile
 
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, FileResponse
 from pydantic import BaseModel, Field, field_validator, ValidationError
 import ollama
+import reverse_geocode
 from pathlib import Path
 import tempfile
 import shutil
 import subprocess
+import os
+from serve import setup_dashboard
+from homeassistant import get_entity, get_entities, command_device, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
-client = ollama.Client(host="http://ip:port")
+client = ollama.Client(host=os.environ["OLLAMA_HOST"])
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
 whisper_model = Path.home() / "whisper.cpp/models/ggml-tiny.en.bin"
 
@@ -31,21 +35,27 @@ class Prompt(BaseModel):
         
         return v
 
+class DeviceCommand(BaseModel):
+    entity_id: str
+    domain: str
+    action: str
+    data: dict = Field(default_factory=dict)
+
 app = FastAPI()
 
 # Create an endpoint to listen for and receive user prompts
-@app.post("/chat")
-def receive_chat_prompt(prompt: Prompt):
-    # print(f"Prompt: {prompt.request}")
+@app.post("/api/chat")
+async def receive_chat_prompt(prompt: Prompt):
     response = forward_request(prompt.request)
 
     # Return the AI server's response to the user
     return {"response": response.message.content}
 
-@app.post("/audio")
-def receive_audio_prompt(audio_file: UploadFile = File(...)):
-    if audio_file.content_type not in ["audio/webm", "video/webm"]:
-        raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm file is expected.")
+@app.post("/api/audio")
+async def receive_audio_prompt(audio_file: UploadFile = File(...)):
+    content_type = (audio_file.content_type or "").split(";", 1)[0].strip().lower()
+    if content_type not in ["audio/webm", "video/webm"]:
+        raise HTTPException(status_code=415, detail="Unsupported audio format. A /webm or /wav file is expected.")
     
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = Path(temp_dir) / "input_audio.webm" 
@@ -57,22 +67,87 @@ def receive_audio_prompt(audio_file: UploadFile = File(...)):
         # Transcribe audio to text
         transcript = transcribe_audio(output_path)
 
+        if transcript.upper() == "[BLANK_AUDIO]":
+            raise HTTPException(status_code=422,detail="No speech detected in the recording.")
+
         try:
             validated_prompt = Prompt(request=transcript)
 
         except ValidationError as e:
             raise HTTPException(status_code=422, detail="The audio prompt is invalid or empty.")
 
-    # Send transcript to AI server
-    response = forward_request(validated_prompt.request)
-
     # Return the AI server's response to the user
-    return {"response": response.message.content}
+    return {"transcript": validated_prompt.request}
+
+@app.post("/api/device/command")
+async def control_device(command: DeviceCommand):
+    allowed_actions = {
+            "media_player": { "media_play", "media_pause", "media_next_track", "media_previous_track"},
+    }
+
+    if (command.action not in allowed_actions.get(command.domain, set())):
+        raise HTTPException(status_code=400, detail="Unsupported device command.")
+
+    if not (command.entity_id.startswith(f"{command.domain}")):
+        raise HTTPException(status_code=400, detail=f"Entity is not {command.domain}.")
+
+    await command_device(
+        command.entity_id,
+        "media_player",
+        "media_pause",
+        command.data
+    )
+
+    return
+
+@app.get("/api/weather")
+async def get_weather():
+    weather = await get_entity(HA_WEATHER_ENTITY)
+    forecast_response = await get_forecast(HA_WEATHER_ENTITY)
+
+    daily_forecast = forecast_response["service_response"][HA_WEATHER_ENTITY]["forecast"]
+    today_forecast = daily_forecast[0] if daily_forecast else {}
+
+    return {
+        "temperature": weather["attributes"].get("temperature"),
+        "temperature_unit": weather["attributes"].get("temperature_unit"),
+        "humidity": weather["attributes"].get("humidity"),
+        "description": weather["state"],
+        "high": today_forecast.get("temperature"),
+        "low": today_forecast.get("templow")
+    }
+
+@app.get("/api/location")
+async def get_location():
+    home = await get_entity(HA_HOME_LOCATION_ENTITY)
+
+    lat = home["attributes"]["latitude"]
+    long = home["attributes"]["longitude"]
+
+    location = reverse_geocode.get((lat, long))
+
+    return {
+        "city": location["city"],
+        "state": location["state"]
+    }
+
+@app.get("/api/devices")
+async def get_devices():
+    device_entities = await get_entities()
+
+    devices = [
+        device_entity["entity_id"]
+        for device_entity in device_entities
+    ]
+
+    return devices
+
+setup_dashboard(app)
 
 # Create function to send the prompt to the AI server
 def forward_request(request):
     try:
-        response = client.chat(model="qwen3:8b", messages=[{'role': 'user', 'content': request}])
+        response = client.chat(model="qwen3:4b", messages=[{'role': 'user', 'content': request}])
 
     except ollama.ResponseError as e:
         raise HTTPException(status_code=502, detail="Ollama encountered an error while processing the request.")
