@@ -28,7 +28,8 @@ enum BellAIServiceError: LocalizedError {
 
 @MainActor
 struct HTTPBellAIService: BellAIService {
-    nonisolated static let baseURL = URL(string: "http://ai-server:11434")!
+    // looked up on use, so a new address in Settings applies right away
+    nonisolated static var baseURL: URL { URL(string: "http://\(ServerSettings.address(.chat))")! }
     private let session: URLSession
 
     init(session: URLSession = .shared) {

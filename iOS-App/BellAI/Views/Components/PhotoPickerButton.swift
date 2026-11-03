@@ -2,7 +2,7 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-// pick a photo, hand back JPEG data (the server rejects HEIC and anything over 10 MB)
+// take a photo or pick one, hand back JPEG data (the server rejects HEIC and anything over 10 MB)
 struct PhotoPickerButton: View {
     enum Style { case icon, mealCard, logMeal }
     var isDisabled = false
@@ -10,26 +10,42 @@ struct PhotoPickerButton: View {
     var onPick: (Data) -> Void
 
     @State private var item: PhotosPickerItem?
+    @State private var showsLibrary = false
+    @State private var showsCamera = false
     @State private var showsPhotoError = false
+    // devices like the simulator have no camera, so they go straight to the library
+    private let hasCamera = UIImagePickerController.isSourceTypeAvailable(.camera)
 
     var body: some View {
-        PhotosPicker(selection: $item, matching: .images) {
-            pickerLabel
+        Group {
+            if hasCamera {
+                Menu {
+                    Button { showsCamera = true } label: { Label("Take Photo", systemImage: "camera") }
+                    Button { showsLibrary = true } label: { Label("Choose from Library", systemImage: "photo.on.rectangle") }
+                } label: {
+                    pickerLabel
+                }
+            } else {
+                Button { showsLibrary = true } label: { pickerLabel }
+            }
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .accessibilityLabel(style == .icon ? "Send a photo" : "Understand a meal from a photo")
+        .photosPicker(isPresented: $showsLibrary, selection: $item, matching: .images)
+        .fullScreenCover(isPresented: $showsCamera) {
+            CameraPicker { image in send(Self.jpeg(from: image)) }
+                .ignoresSafeArea()
+        }
         .onChange(of: item) { _, picked in
             guard let picked else { return }
             item = nil
             Task {
-                guard let data = try? await picked.loadTransferable(type: Data.self),
-                      let jpeg = Self.jpeg(from: data) else {
+                guard let data = try? await picked.loadTransferable(type: Data.self), let image = UIImage(data: data) else {
                     showsPhotoError = true
                     return
                 }
-                guard !isDisabled else { return }
-                onPick(jpeg)
+                send(Self.jpeg(from: image))
             }
         }
         .alert("Couldn't open photo", isPresented: $showsPhotoError) {
@@ -37,6 +53,15 @@ struct PhotoPickerButton: View {
         } message: {
             Text("Choose another photo or try downloading it to your device first.")
         }
+    }
+
+    private func send(_ jpeg: Data?) {
+        guard let jpeg else {
+            showsPhotoError = true
+            return
+        }
+        guard !isDisabled else { return }
+        onPick(jpeg)
     }
 
     @ViewBuilder
@@ -59,7 +84,7 @@ struct PhotoPickerButton: View {
                     Text("Understand a meal from a photo")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
-                    Text("Upload a photo for BellAI to analyze")
+                    Text("Take or upload a photo for BellAI to analyze")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -72,8 +97,7 @@ struct PhotoPickerButton: View {
     }
 
     // 1600 px is plenty to recognise a meal, and keeps the upload fast
-    private static func jpeg(from data: Data, maxSide: CGFloat = 1_600) -> Data? {
-        guard let image = UIImage(data: data) else { return nil }
+    private static func jpeg(from image: UIImage, maxSide: CGFloat = 1_600) -> Data? {
         let scale = min(1, maxSide / max(image.size.width, image.size.height))
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
         let format = UIGraphicsImageRendererFormat.default()

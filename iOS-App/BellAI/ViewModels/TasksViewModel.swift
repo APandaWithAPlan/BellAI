@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-// wherever the user's data lives, firebase in the app and a stub in the checks
+// wherever the user's data lives, the data server in the app and a stub in the checks
 @MainActor
 protocol UserDataStore {
     func load() async throws -> [String: Any]?
@@ -37,6 +37,15 @@ final class TasksViewModel {
         } catch {
             errorMessage = "Couldn't load your tasks. \(error.localizedDescription)"
         }
+    }
+
+    // for after the server changed, what is saved there is a different set of tasks
+    func reload() async {
+        isLoaded = false
+        tasks = []
+        stored = [:]
+        errorMessage = nil
+        await load()
     }
 
     // false if blank, or if we haven't loaded yet (a save would overwrite what's stored)

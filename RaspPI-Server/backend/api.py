@@ -6,7 +6,7 @@
 # https://fastapi.tiangolo.com/reference/uploadfile/#fastapi.UploadFile
 
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, FileResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field, field_validator, ValidationError
 import ollama
 import reverse_geocode
@@ -88,13 +88,13 @@ async def control_device(command: DeviceCommand):
     if (command.action not in allowed_actions.get(command.domain, set())):
         raise HTTPException(status_code=400, detail="Unsupported device command.")
 
-    if not (command.entity_id.startswith(f"{command.domain}")):
+    if not (command.entity_id.startswith(f"{command.domain}.")):
         raise HTTPException(status_code=400, detail=f"Entity is not {command.domain}.")
 
     await command_device(
         command.entity_id,
-        "media_player",
-        "media_pause",
+        command.domain,
+        command.action,
         command.data
     )
 

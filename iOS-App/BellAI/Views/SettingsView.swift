@@ -7,18 +7,19 @@ import UIKit
 
 /// Settings layout with a location control backed by system authorization.
 struct SettingsView: View {
-    var auth: AuthViewModel? = nil
+    var profile: ProfileViewModel? = nil
+    var onServerSaved: () -> Void = {}
     @State private var showsAccountDetails = false
-    var onLogout: (() -> Void)? = nil
-    var isLoggingOut = false
-    var logoutError: String? = nil
-    var isLocalTestSession = false
+    @State private var serverHost = ""
+    @State private var serverPorts: [ServerSettings.Service: String] = [:]
+    @State private var serverError: String?
+    @State private var serverResults: [ServerSettings.Service: Bool] = [:]
+    @State private var isTestingServer = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
     @State private var locationPermission = SettingsLocationPermission()
     @State private var showsLocationSettings = false
-    @State private var showsLogoutConfirmation = false
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
     private let muted = Color(red: 0.48, green: 0.43, blue: 0.46)
@@ -34,31 +35,8 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                if isLocalTestSession {
-                    Text("Local test account · Tasks reset when you log out or restart.")
-                        .font(.caption)
-                        .foregroundStyle(muted)
-                }
                 privacyCard
-                if onLogout != nil {
-                    Button { showsLogoutConfirmation = true } label: {
-                        HStack {
-                            Text(isLoggingOut ? "Logging out…" : "Log Out")
-                                .font(.headline)
-                            Spacer()
-                            if isLoggingOut { ProgressView() }
-                            else { Image(systemName: "rectangle.portrait.and.arrow.right") }
-                        }
-                        .foregroundStyle(accent)
-                        .padding(16)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLoggingOut)
-                    if let logoutError {
-                        Text(logoutError).font(.subheadline).foregroundStyle(.red)
-                    }
-                }
+                serverCard
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -67,17 +45,12 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(surface)
         .sheet(isPresented: $showsAccountDetails) {
-            if let auth { AccountDetailsView(model: auth) }
-        }
-        .alert("Log out?", isPresented: $showsLogoutConfirmation) {
-            Button("No", role: .cancel) {}
-            Button("Yes", role: .destructive) { onLogout?() }
-        } message: {
-            Text("Are you sure you want to log out?")
+            if let profile { AccountDetailsView(model: profile) }
         }
         .task(id: scenePhase) {
             if scenePhase == .active { await locationPermission.refresh() }
         }
+        .onAppear(perform: loadServerFields)
         .alert("Location access", isPresented: $showsLocationSettings) {
             #if os(iOS)
             Button("Open Settings") { openLocationSettings() }
@@ -108,8 +81,8 @@ struct SettingsView: View {
                     .overlay(Circle().strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
             }
             .buttonStyle(.plain)
-            .disabled(auth == nil)
-            .accessibilityLabel("Account details")
+            .disabled(profile == nil)
+            .accessibilityLabel("Profile")
         }
         .padding(.bottom, 2)
     }
@@ -179,6 +152,138 @@ struct SettingsView: View {
                 locationTile
             }
         }
+    }
+
+    private var serverCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: "server.rack")
+                        .foregroundStyle(accent)
+                        .accessibilityHidden(true)
+                    Text("Server options")
+                        .font(.headline)
+                        .foregroundStyle(ink)
+                    Spacer(minLength: 0)
+                }
+
+                Text("Where BellAI finds your Mac. ai-server is its name on Tailscale. On NetBird or your local network, enter the Mac's IP address instead. iOS only allows plain HTTP to IP addresses, short names and .local names.")
+                    .font(.caption)
+                    .foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Address")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(muted)
+                    serverField("ai-server", text: $serverHost, keyboard: .URL)
+                }
+
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(ServerSettings.Service.allCases, id: \.self) { service in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(service.title) port")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(muted)
+                            serverField("\(service.defaultPort)", text: portBinding(service), keyboard: .numberPad)
+                        }
+                    }
+                }
+
+                if let serverError {
+                    Text(serverError).font(.caption).foregroundStyle(.red)
+                }
+                ForEach(ServerSettings.Service.allCases, id: \.self) { service in
+                    if let reached = serverResults[service] {
+                        Label("\(service.title): \(reached ? "connected" : "couldn't connect")",
+                              systemImage: reached ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(reached ? green : .red)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Button(action: saveServer) {
+                        Text(isTestingServer ? "Testing…" : "Save and test")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(accent, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isTestingServer)
+                    Button(action: resetServer) {
+                        Text("Reset")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(accent)
+                            .frame(minWidth: 72, minHeight: 44)
+                            .background(surface, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isTestingServer)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func serverField(_ placeholder: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
+        TextField(placeholder, text: text)
+            .keyboardType(keyboard)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .font(.subheadline)
+            .foregroundStyle(ink)
+            .padding(10)
+            .frame(minHeight: 44)
+            .background(surface, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func portBinding(_ service: ServerSettings.Service) -> Binding<String> {
+        Binding(get: { serverPorts[service] ?? "" }, set: { serverPorts[service] = $0 })
+    }
+
+    // what is in use now, so the form starts from it
+    private func loadServerFields() {
+        serverHost = ServerSettings.resolved(.chat).host
+        for service in ServerSettings.Service.allCases {
+            serverPorts[service] = String(ServerSettings.resolved(service).port)
+        }
+    }
+
+    private func saveServer() {
+        serverError = nil
+        serverResults = [:]
+        var ports: [ServerSettings.Service: Int] = [:]
+        for service in ServerSettings.Service.allCases {
+            let text = (serverPorts[service] ?? "").trimmingCharacters(in: .whitespaces)
+            guard let port = text.isEmpty ? service.defaultPort : Int(text) else {
+                serverError = "\(service.title) needs a port between 1 and 65535."
+                return
+            }
+            ports[service] = port
+        }
+        if let problem = ServerSettings.save(host: serverHost, ports: ports) {
+            serverError = problem
+            return
+        }
+        loadServerFields()
+        onServerSaved()
+        isTestingServer = true
+        Task {
+            var results: [ServerSettings.Service: Bool] = [:]
+            for service in ServerSettings.Service.allCases {
+                results[service] = await ServerSettings.isReachable(service)
+            }
+            serverResults = results
+            isTestingServer = false
+        }
+    }
+
+    private func resetServer() {
+        ServerSettings.reset()
+        serverError = nil
+        serverResults = [:]
+        loadServerFields()
+        onServerSaved()
     }
 
     private func preferenceTile(_ title: String, symbol: String, isOn: Bool) -> some View {

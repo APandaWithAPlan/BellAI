@@ -29,19 +29,18 @@ protocol VoiceStreamService {
 // websocket to the voice server
 @MainActor
 struct WebSocketVoiceService: VoiceStreamService {
-    private let url: URL
+    private let url: URL?
     private let session: URLSession
 
-    init(url: URL = WebSocketVoiceService.configuredURL, session: URLSession = .shared) {
+    // no url means the address from Settings, looked up on use
+    init(url: URL? = nil, session: URLSession = .shared) {
         self.url = url
         self.session = session
     }
 
-    // VOICE_SERVER_HOST from Info.plist, else ai-server:8000
+    // host:port of the voice server, from Settings, else VOICE_SERVER_HOST in Info.plist, else ai-server:8000
     nonisolated static var configuredHost: String {
-        let configured = (Bundle.main.object(forInfoDictionaryKey: "VOICE_SERVER_HOST") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return configured?.isEmpty == false && configured?.hasPrefix("$(") == false ? configured! : "ai-server:8000"
+        ServerSettings.address(.voice)
     }
 
     nonisolated static var configuredURL: URL {
@@ -49,7 +48,7 @@ struct WebSocketVoiceService: VoiceStreamService {
     }
 
     func stream(_ request: ChatRequest) -> AsyncThrowingStream<VoiceEvent, Error> {
-        let socket = session.webSocketTask(with: url)
+        let socket = session.webSocketTask(with: url ?? Self.configuredURL)
         return AsyncThrowingStream { continuation in
             let reader = Task {
                 do {

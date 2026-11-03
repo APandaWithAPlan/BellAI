@@ -12,6 +12,7 @@ final class ChatViewModel {
     var errorMessage: String?
     private(set) var isListening = false
     private(set) var isStartingMicrophone = false
+    private(set) var isTranscribing = false
     private var microphoneTask: Task<Void, Never>?
     private var microphoneSession: UUID?
     private let microphone: any MicrophoneListening
@@ -32,23 +33,19 @@ final class ChatViewModel {
     private var speakerOn = true
     private let service: any BellAIService
     private let voiceService: (any VoiceStreamService)?
-    private let foodService: (any FoodAnalysisService)?
     private let speech: (any SpeechPlaying)?
-    private var pendingPhoto: (jpeg: Data, note: String?)?
     private let model: String
 
     // no voiceService/speech = text only
     init(
         service: (any BellAIService)? = nil,
         voiceService: (any VoiceStreamService)? = nil,
-        foodService: (any FoodAnalysisService)? = nil,
         speech: (any SpeechPlaying)? = nil,
         microphone: (any MicrophoneListening)? = nil,
         model: String? = nil
     ) {
         self.service = service ?? HTTPBellAIService()
         self.voiceService = voiceService
-        self.foodService = foodService
         self.speech = speech
         self.microphone = microphone ?? MicrophoneService()
         let configuredModel = (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String)?
@@ -56,8 +53,13 @@ final class ChatViewModel {
         self.model = model ?? (configuredModel?.isEmpty == false && configuredModel?.hasPrefix("$(") == false ? configuredModel! : "qwen3.5:4b-q4_K_M")
     }
 
+    // starts listening, and once listening a tap ends it and sends what was said. a tap while it is still
+    // starting or already turning the recording into text cancels
     func toggleMicrophone(startsNewSession: Bool = false) {
-        if microphoneSession != nil { stopMicrophone(); return }
+        if microphoneSession != nil {
+            if isListening { microphone.finish() } else { stopMicrophone() }
+            return
+        }
         guard !isSubmitting else { return }
         errorMessage = nil
         let id = UUID()
@@ -67,17 +69,26 @@ final class ChatViewModel {
             do {
                 await speech?.stopForRecording()
                 guard microphoneSession == id, !Task.isCancelled else { return }
-                let text = try await microphone.listen { [weak self] in
+                let text = try await microphone.listen(onReady: { [weak self] in
                     guard let self, self.microphoneSession == id else { return }
                     self.isStartingMicrophone = false
                     self.isListening = true
-                }
+                }, onTranscribing: { [weak self] in
+                    guard let self, self.microphoneSession == id else { return }
+                    self.isListening = false
+                    self.isTranscribing = true
+                })
                 guard microphoneSession == id, !Task.isCancelled else { return }
                 microphoneSession = nil
                 microphoneTask = nil
                 isStartingMicrophone = false
                 isListening = false
-                if let text, validateAndStoreRequest(text, startsNewSession: startsNewSession) {
+                isTranscribing = false
+                guard let text else {
+                    errorMessage = "I didn't hear anything. Tap the microphone and try again."
+                    return
+                }
+                if validateAndStoreRequest(text, startsNewSession: startsNewSession) {
                     await submitStoredRequest()
                 }
             } catch {
@@ -95,6 +106,7 @@ final class ChatViewModel {
         microphone.cancel()
         isListening = false
         isStartingMicrophone = false
+        isTranscribing = false
     }
 
     /// Validates and snapshots a request in memory, reserving one submission at a time.
@@ -133,48 +145,6 @@ final class ChatViewModel {
     @discardableResult
     func startNewSession(with text: String) -> Bool {
         validateAndStoreRequest(text, startsNewSession: true)
-    }
-
-    /// Like `validateAndStoreRequest`, for a JPEG with an optional note. Finish it with `submitStoredPhoto()`.
-    @discardableResult
-    func validateAndStorePhoto(_ jpeg: Data, note: String = "", startsNewSession: Bool = false) -> Bool {
-        guard !isSubmitting, foodService != nil else { return false }
-        errorMessage = nil
-        let note = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard note.count <= 4_000 else {
-            errorMessage = "Keep your message to 4,000 characters or fewer."
-            return false
-        }
-        response = nil
-        responseError = nil
-        stopMicrophone()
-        speech?.stop()
-        if startsNewSession { conversation.removeAll() }
-        conversation.append(ConversationEntry(kind: .user, content: note.isEmpty ? "📷 Photo" : "📷 \(note)"))
-        pendingPhoto = (jpeg, note.isEmpty ? nil : note)
-        isSubmitting = true
-        return true
-    }
-
-    // the summary shows up as soon as it arrives, its audio follows
-    func submitStoredPhoto() async {
-        guard isSubmitting, let photo = pendingPhoto, let foodService else { return }
-        pendingPhoto = nil
-        defer { isSubmitting = false }
-        do {
-            let summary = try await foodService.analyze(jpeg: photo.jpeg, note: photo.note)
-            response = ChatResponse(model: model, message: ChatMessage(role: "assistant", content: summary), done: true)
-            conversation.append(ConversationEntry(kind: .assistant, content: summary))
-            guard speakerOn, let speech else { return }
-            // no audio is not worth an error, the text is already there
-            if let wav = try? await foodService.speak(summary), speakerOn { speech.enqueue(wav) }
-        } catch {
-            let message = error is CancellationError
-                ? "The request was cancelled. Please try again."
-                : error.localizedDescription
-            responseError = message
-            conversation.append(ConversationEntry(kind: .error, content: message))
-        }
     }
 
     func submitStoredRequest() async {

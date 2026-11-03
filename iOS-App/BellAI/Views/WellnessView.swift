@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct WellnessView: View {
+    var insights: InsightsViewModel
     var isSubmitting = false
     var onSubmitPhoto: (Data, String) -> Bool
     @State private var health = WellnessHealthModel()
@@ -77,10 +78,11 @@ struct WellnessView: View {
                             }
                         }
                         .font(.subheadline)
-                        Text("Today’s entries shared from Apple Health. Meal photo analysis does not save nutrition to Health.")
+                        Text("Today’s entries shared from Apple Health. Meals you log from a photo are saved to Health too.")
                             .font(.caption).foregroundStyle(muted)
                     }
                 }
+                RecommendationsCardView(model: insights)
                 PhotoPickerButton(isDisabled: isSubmitting, style: .mealCard, onPick: submitMeal)
             }
             .padding(.horizontal, 20)
@@ -128,7 +130,7 @@ struct WellnessView: View {
     }
 
     private func submitMeal(_ jpeg: Data) {
-        _ = onSubmitPhoto(jpeg, "Help me understand this meal.")
+        _ = onSubmitPhoto(jpeg, "")
     }
 
     private func formatted(_ value: Double?) -> String {

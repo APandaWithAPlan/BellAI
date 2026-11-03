@@ -1,114 +1,67 @@
 import AVFoundation
 import Foundation
-import Speech
 
 @MainActor
 protocol MicrophoneListening: AnyObject {
-    func listen(onReady: @escaping @MainActor () -> Void) async throws -> String?
+    /// Records until the speaker pauses, `finish()` is called or `cancel()` stops it. Returns what was said, nil if nothing was.
+    /// `onTranscribing` is called when the recording ends and the server is turning it into text.
+    func listen(onReady: @escaping @MainActor () -> Void, onTranscribing: @escaping @MainActor () -> Void) async throws -> String?
+    /// Ends the recording now and goes on to transcribe what was heard
+    func finish()
     func cancel()
 }
 
-/// One utterance per tap. Recognition activity resets the five-second silence deadline.
+/// One utterance per tap. It records on the phone and the Mac's Whisper turns it into text, so nothing goes to Apple.
 @MainActor
 final class MicrophoneService: MicrophoneListening {
     private let engine = AVAudioEngine()
-    private var recognizer: SFSpeechRecognizer?
-    private var recognition: SFSpeechRecognitionTask?
-    private var request: SFSpeechAudioBufferRecognitionRequest?
-    private var completion: CheckedContinuation<String?, Error>?
-    private var timeout: Task<Void, Never>?
+    private let transcriber: any SpeechTranscribing
     private var sessionID: UUID?
-    private var transcript = ""
+    private var finishRequested = false
     private var tapInstalled = false
     private var sessionActive = false
 
-    func listen(onReady: @escaping @MainActor () -> Void) async throws -> String? {
+    init(transcriber: (any SpeechTranscribing)? = nil) {
+        self.transcriber = transcriber ?? HTTPSpeechTranscriber()
+    }
+
+    func listen(onReady: @escaping @MainActor () -> Void, onTranscribing: @escaping @MainActor () -> Void) async throws -> String? {
         cancel()
         let id = UUID()
         sessionID = id
-        do {
-            let permission = await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
-            }
-            try checkSession(id)
-            guard permission == .authorized else {
-                throw MicrophoneError.unavailable("Allow Speech Recognition for BellAI in Settings to use voice input.")
-            }
-            let allowed = await AVCaptureDevice.requestAccess(for: .audio)
-            try checkSession(id)
-            guard allowed else {
-                throw MicrophoneError.unavailable("Allow Microphone access for BellAI in Settings to use voice input.")
-            }
-            guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
-                throw MicrophoneError.unavailable("Speech recognition is unavailable. Please try again later.")
-            }
-            self.recognizer = recognizer
-            #if os(iOS)
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.record, mode: .measurement)
-            try audioSession.setActive(true)
-            sessionActive = true
-            #endif
-            let input = engine.inputNode
-            let format = input.outputFormat(forBus: 0)
-            guard format.sampleRate > 0, format.channelCount > 0 else {
-                throw MicrophoneError.unavailable("No microphone is available.")
-            }
-            let request = SFSpeechAudioBufferRecognitionRequest()
-            request.shouldReportPartialResults = true
-            self.request = request
-            transcript = ""
-            return try await withCheckedThrowingContinuation { continuation in
-                completion = continuation
-                recognition = recognizer.recognitionTask(with: request) { [weak self] result, error in
-                    let text = result?.bestTranscription.formattedString
-                    let isFinal = result?.isFinal ?? false
-                    Task { @MainActor [weak self] in
-                        guard let self, self.sessionID == id else { return }
-                        if let text, text != self.transcript {
-                            self.transcript = text
-                            self.resetTimeout(id)
-                        }
-                        if isFinal {
-                            self.finish(.success(self.transcript))
-                        } else if let error {
-                            let failure = error as NSError
-                            print("[Microphone] Speech error: \(failure.domain) (\(failure.code)), locale: \(self.recognizer?.locale.identifier ?? "unknown")")
-                            if failure.domain == "kAFAssistantErrorDomain", failure.code == 1110 {
-                                self.finish(.success(""))
-                            } else {
-                                self.finish(.failure(Self.recognitionError(failure)))
-                            }
-                        }
-                    }
-                }
-                Self.installAudioTap(input, format: format, request: request)
-                tapInstalled = true
-                do {
-                    engine.prepare()
-                    try engine.start()
-                    onReady()
-                    resetTimeout(id)
-                } catch {
-                    finish(.failure(error))
-                }
-            }
-        } catch {
-            if sessionID == id { cancel() }
-            throw error
+        finishRequested = false
+        defer {
+            stopRecording()
+            if sessionID == id { sessionID = nil }
         }
+        let allowed = await AVCaptureDevice.requestAccess(for: .audio)
+        try checkSession(id)
+        guard allowed else {
+            throw MicrophoneError.unavailable("Allow Microphone access for BellAI in Settings to use voice input.")
+        }
+        let capture = try startRecording()
+        onReady()
+
+        var endpoint = SpeechEndpoint()
+        while !finishRequested {
+            try await Task.sleep(for: .milliseconds(100))
+            try checkSession(id)
+            if endpoint.hear(level: capture.takeLoudness(), seconds: 0.1) { break }
+        }
+        stopRecording()
+        onTranscribing()
+        let text = try await transcriber.transcribe(capture.wav)
+        try checkSession(id)
+        return text.isEmpty ? nil : text
     }
 
-    // Audio callbacks run on an audio thread, outside MainActor isolation.
-    nonisolated private static func installAudioTap(_ input: AVAudioInputNode, format: AVAudioFormat,
-                                                    request: SFSpeechAudioBufferRecognitionRequest) {
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
-            request.append(buffer)
-        }
+    func finish() {
+        if sessionID != nil { finishRequested = true }
     }
 
     func cancel() {
-        finish(.failure(CancellationError()))
+        sessionID = nil
+        stopRecording()
     }
 
     private func checkSession(_ id: UUID) throws {
@@ -116,59 +69,153 @@ final class MicrophoneService: MicrophoneListening {
         guard sessionID == id else { throw CancellationError() }
     }
 
-    private func resetTimeout(_ id: UUID) {
-        timeout?.cancel()
-        timeout = Task { [weak self] in
-            do { try await Task.sleep(for: .seconds(5)) } catch { return }
-            guard let self, self.sessionID == id else { return }
-            self.finish(.success(self.transcript))
+    private func startRecording() throws -> AudioCapture {
+        #if os(iOS)
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.record, mode: .default)
+        try audioSession.setActive(true)
+        sessionActive = true
+        #endif
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0, let capture = AudioCapture(input: format) else {
+            throw MicrophoneError.unavailable("No microphone is available.")
         }
+        Self.installAudioTap(input, format: format, capture: capture)
+        tapInstalled = true
+        engine.prepare()
+        try engine.start()
+        return capture
     }
 
-    private func finish(_ result: Result<String, Error>) {
-        sessionID = nil
-        timeout?.cancel()
-        timeout = nil
+    // safe to call again, it only undoes what is still on
+    private func stopRecording() {
         engine.stop()
         if tapInstalled { engine.inputNode.removeTap(onBus: 0) }
         tapInstalled = false
-        request?.endAudio()
-        recognition?.cancel()
-        recognition = nil
-        recognizer = nil
-        request = nil
         #if os(iOS)
         if sessionActive {
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
         #endif
         sessionActive = false
-        let continuation = completion
-        completion = nil
-        switch result {
-        case .success(let text):
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            continuation?.resume(returning: trimmed.isEmpty ? nil : trimmed)
-        case .failure(let error): continuation?.resume(throwing: error)
-        }
     }
 
-    static func recognitionError(_ error: NSError) -> Error {
-        guard error.domain == "kLSRErrorDomain" else { return error }
-        switch error.code {
-        case 102:
-            return MicrophoneError.unavailable("Speech recognition language files are not installed. Enable Dictation for your language in Settings, then try again. (Speech error 102)")
-        case 201:
-            return MicrophoneError.unavailable("Siri or Dictation is disabled. Enable Dictation in Settings, then try again. (Speech error 201)")
-        case 300:
-            #if targetEnvironment(simulator)
-            return MicrophoneError.unavailable("Apple’s speech recognizer could not start in this Simulator. Try voice input on a physical iPhone and check that Dictation works there. (Speech error 300)")
-            #else
-            return MicrophoneError.unavailable("Apple’s speech recognizer could not start. Check that keyboard Dictation works for your language, check your internet connection, then try again. (Speech error 300)")
-            #endif
-        default:
-            return error
+    // Audio callbacks run on an audio thread, outside MainActor isolation.
+    nonisolated private static func installAudioTap(_ input: AVAudioInputNode, format: AVAudioFormat, capture: AudioCapture) {
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            capture.append(buffer)
         }
+    }
+}
+
+/// Decides when the speaker is done, from the loudness of each short slice of audio.
+nonisolated struct SpeechEndpoint {
+    static let speechLevel: Float = 0.02 // loudness (RMS, 0 to 1) that counts as someone talking
+    static let pauseToFinish = 1.4 // seconds of quiet after talking that ends it
+    static let waitForSpeech = 8.0 // seconds of quiet before any talking that ends it too, it is still sent in case it was only soft
+    static let longest = 60.0
+
+    private var elapsed = 0.0
+    private var quiet = 0.0
+    private(set) var heardSpeech = false
+
+    // true once the recording should stop
+    mutating func hear(level: Float, seconds: Double) -> Bool {
+        elapsed += seconds
+        if level >= Self.speechLevel {
+            heardSpeech = true
+            quiet = 0
+        } else {
+            quiet += seconds
+        }
+        return elapsed >= Self.longest || quiet >= (heardSpeech ? Self.pauseToFinish : Self.waitForSpeech)
+    }
+}
+
+/// What the microphone heard as 16 kHz mono 16 bit audio, which is what the server's Whisper wants.
+/// The tap fills it on the audio thread while the main thread reads how loud it is.
+nonisolated final class AudioCapture: @unchecked Sendable {
+    static let sampleRate = 16_000.0
+
+    private let lock = NSLock()
+    private let converter: AVAudioConverter
+    private let format: AVAudioFormat
+    private var pcm = Data()
+    private var loudest: Float = 0
+
+    init?(input: AVAudioFormat) {
+        guard let format = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: Self.sampleRate, channels: 1, interleaved: true),
+              let converter = AVAudioConverter(from: input, to: format) else { return nil }
+        self.format = format
+        self.converter = converter
+    }
+
+    func append(_ buffer: AVAudioPCMBuffer) {
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * Self.sampleRate / buffer.format.sampleRate) + 32
+        guard let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
+        let supplied = Flag()
+        var error: NSError?
+        converter.convert(to: converted, error: &error) { _, status in
+            if supplied.isSet {
+                status.pointee = .noDataNow
+                return nil
+            }
+            supplied.isSet = true
+            status.pointee = .haveData
+            return buffer
+        }
+        let count = Int(converted.frameLength)
+        guard error == nil, count > 0, let samples = converted.int16ChannelData?[0] else { return }
+        var sum: Float = 0
+        for index in 0..<count {
+            let sample = Float(samples[index]) / 32768
+            sum += sample * sample
+        }
+        append(UnsafeBufferPointer(start: samples, count: count), level: (sum / Float(count)).squareRoot())
+    }
+
+    // for the checks, which have no microphone
+    func append(_ samples: UnsafeBufferPointer<Int16>, level: Float) {
+        lock.lock()
+        pcm.append(samples)
+        loudest = max(loudest, level)
+        lock.unlock()
+    }
+
+    /// the loudest slice since this was last asked
+    func takeLoudness() -> Float {
+        lock.lock()
+        defer { lock.unlock() }
+        let level = loudest
+        loudest = 0
+        return level
+    }
+
+    var wav: Data {
+        lock.lock()
+        let body = pcm
+        lock.unlock()
+        var header = Data("RIFF".utf8)
+        func put<T: FixedWidthInteger>(_ value: T) {
+            withUnsafeBytes(of: value.littleEndian) { header.append(contentsOf: $0) }
+        }
+        put(UInt32(36 + body.count))
+        header.append(Data("WAVEfmt ".utf8))
+        put(UInt32(16)) // size of the format part
+        put(UInt16(1)) // plain pcm
+        put(UInt16(1)) // mono
+        put(UInt32(Self.sampleRate))
+        put(UInt32(Self.sampleRate) * 2) // bytes per second
+        put(UInt16(2)) // bytes per frame
+        put(UInt16(16)) // bits
+        header.append(Data("data".utf8))
+        put(UInt32(body.count))
+        return header + body
+    }
+
+    private final class Flag: @unchecked Sendable {
+        var isSet = false
     }
 }
 

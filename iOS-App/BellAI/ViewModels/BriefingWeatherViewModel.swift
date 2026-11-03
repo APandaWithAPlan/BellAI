@@ -27,7 +27,7 @@ final class BriefingWeatherViewModel {
         } catch {
             weather = nil
             errorMessage = (error as? BriefingLocationError)?.localizedDescription
-                ?? (error as? OpenWeatherError)?.localizedDescription
+                ?? (error as? BriefingWeatherError)?.localizedDescription
                 ?? "Weather is unavailable. Please try again."
             let failure = error as NSError
             print("[Weather] \(failure.domain) (\(failure.code))")

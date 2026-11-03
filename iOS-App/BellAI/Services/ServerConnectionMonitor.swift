@@ -6,12 +6,12 @@ import Observation
 final class ServerConnectionMonitor {
     private(set) var isConnected = false
     private let session: URLSession
-    private let url: URL
+    private let fixedURL: URL?
 
-    init(session: URLSession = .shared,
-         url: URL = HTTPBellAIService.baseURL.appendingPathComponent("api/version")) {
+    // no url means the chat server's address from Settings, looked up on every check
+    init(session: URLSession = .shared, url: URL? = nil) {
         self.session = session
-        self.url = url
+        self.fixedURL = url
     }
 
     func reset() {
@@ -20,6 +20,7 @@ final class ServerConnectionMonitor {
 
     func check() async {
         isConnected = false
+        let url = fixedURL ?? HTTPBellAIService.baseURL.appendingPathComponent("api/version")
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         request.timeoutInterval = 8
         do {

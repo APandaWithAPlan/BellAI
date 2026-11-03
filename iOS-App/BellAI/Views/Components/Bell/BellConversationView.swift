@@ -13,16 +13,18 @@ struct BellConversationView: View {
             }
 
             ForEach(conversation) { entry in
-                BellMessageCardView(
-                    position: entry.kind == .user ? .trailing : .leading,
-                    title: title(for: entry),
-                    symbol: entry.kind == .error ? "exclamationmark.triangle" : "sparkles",
-                    message: entry.content,
-                    subtext: entry.kind == .user ? "Your message" : entry.kind == .error ? "You can try again using the input below." : ""
-                ) {
-                    if entry.kind != .error {
-                        ShareLink(item: entry.content) {
-                            Label("Share", systemImage: "square.and.arrow.up")
+                VStack(alignment: .leading, spacing: 8) {
+                    BellMessageCardView(
+                        position: entry.kind == .user ? .trailing : .leading,
+                        title: title(for: entry),
+                        symbol: entry.kind == .error ? "exclamationmark.triangle" : "sparkles",
+                        message: entry.content,
+                        subtext: entry.kind == .user ? "Your message" : entry.kind == .error ? "You can try again using the input below." : ""
+                    ) {
+                        if entry.kind != .error {
+                            ShareLink(item: entry.content) {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
                         }
                     }
                 }

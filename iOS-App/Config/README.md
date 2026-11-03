@@ -1,22 +1,16 @@
-# Ollama development configuration
+# Server development configuration
 
 ## Briefing weather
 
-Agenda uses Core Location for a one-time approximate location and MapKit for the city name. Weather comes from OpenWeather's Current Weather and 5-day/3-hour Forecast endpoints. No WeatherKit entitlement or paid Apple Developer membership is required for weather access.
+Agenda uses Core Location for a one-time approximate location, MapKit for the city name, and Apple's WeatherKit for the weather. There is no API key to set up. Apple recognizes the app by its signature, so the app needs the **WeatherKit** capability, which is already in `BellAI/BellAI.entitlements`.
 
-Create an OpenWeather account and get an active API key with access to those endpoints. Add this line to `BellAI/Config/Secrets.xcconfig` (ignored by Git; used by Debug and Release):
+WeatherKit needs a paid Apple Developer Program membership. In Xcode, check that the BellAI target's Signing & Capabilities tab lists WeatherKit and that signing succeeds. Registering it for the App ID can take up to 30 minutes to take effect. If it hasn't, or the account isn't a paid one, the card says Apple Weather isn't enabled for this build. Weather does not work in an unsigned or ad-hoc signed build, like the checks and the simulator builds used for testing the rest of the app.
 
-```xcconfig
-OPENWEATHER_API_KEY = YOUR_OPENWEATHER_API_KEY
-```
+The card shows the current temperature, the condition, an SF Symbol from WeatherKit, and today's high and low from the daily forecast. Temperatures follow device units. Apple requires its Apple Weather mark and a link to its legal page next to the weather, and they are shown under the card. WeatherKit includes 500,000 calls a month, and a refresh makes one weather call.
 
-`Config/Secrets.xcconfig.example` is a template. Rebuild after setting the key. Missing or inactive keys show a configuration/access error. The key is bundled into the app for local development; for distribution, proxy requests through your backend to keep the provider credential off client devices. Never commit the populated secrets file.
+Pull down or tap Try again to refresh. In Simulator, select a simulated location; on a device, grant location access. Check city, condition icon, units, denied location permission, and offline behavior. The console logs only error domains and codes.
 
-The card shows current temperature, condition, and an SF Symbol mapped from OpenWeather's condition code and day/night icon. Temperatures follow device units. The lower row is labeled **Rest of today (est.)**: it uses current temperature and remaining 3-hour forecast temperatures on the location's local calendar day. It is not a full-day high/low; earlier temperatures are unavailable from this endpoint. If there are no remaining samples, the range shows dashes. OpenWeather's current `temp_min`/`temp_max` fields are not daily extremes and are not used.
-
-Pull down or tap Try again to refresh. Each refresh makes two weather requests. In Simulator, select a simulated location; on a device, grant location access. Check city, condition icon, units, denied permission, missing/invalid key, and offline behavior. The console logs only error domains/codes, never request URLs or credentials.
-
-Run offline checks with `sh scripts/check-weather.sh`.
+Run offline checks with `sh scripts/check-weather.sh`. They cover the screen's states and error messages, not WeatherKit itself, which can't be called without a signed app.
 
 The app connects to the OpenAI-compatible API at `http://ai-server:11434/v1/` without an API key or Authorization header. The device running BellAI must be connected to Tailscale with access to `ai-server` on port 11434.
 
@@ -25,6 +19,14 @@ The app connects to the OpenAI-compatible API at `http://ai-server:11434/v1/` wi
 ## Spoken replies
 
 With the speaker on, the app sends the request over a WebSocket to the voice server (`ws://ai-server:8000/ws`). Text streams in as Ollama writes it, and each sentence comes back as a wav clip that `SpeechPlayer` plays in order. Change the host with `VOICE_SERVER_HOST` in `Config/Debug.xcconfig`. If the voice server can't be reached, the app falls back to the plain HTTP request and the reply is text only. Turning the speaker off stops any audio that's playing.
+
+## Voice input
+
+The microphone records 16 kHz mono audio on the phone and posts it as a wav file to `http://ai-server:8000/transcribe` on the voice server, which runs Whisper on MLX and answers `{"text": "..."}`. It uses the same address as spoken replies (`VOICE_SERVER_HOST`, or the address set in Settings > Server options). Only the microphone permission is needed, set by `INFOPLIST_KEY_NSMicrophoneUsageDescription` in the project; the Speech Recognition permission is not used.
+
+## Mail, recommendations and meals
+
+The Mail screen and the Recommendations card use the same voice server address: `GET /mail`, `GET` and `POST /drafts` and `POST /drafts/<id>/send` and `/discard` are passed on to the mail watcher, and `POST /insights` to the Insights server. Meals logged from a photo are kept in the app (`MealJournal`, 14 days) and food and workout preferences in `UserDefaults` (`FoodPreferencesStore`), so nothing about you is stored on the server for these. The project includes the camera, microphone, Health read and Health update usage descriptions, which iOS requires or the app is stopped when it asks for the permission.
 
 The app permits HTTP connections to local hostnames through `NSAllowsLocalNetworking` and includes a local-network permission description.
 

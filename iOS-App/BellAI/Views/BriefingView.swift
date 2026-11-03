@@ -143,7 +143,7 @@ struct BriefingView: View {
                     .tint(.white)
                     .disabled(weatherModel.isLoading)
             } else {
-                Text("Rest of today (est.) · High \(weatherModel.temperatureText(weatherModel.weather?.high)) · Low \(weatherModel.temperatureText(weatherModel.weather?.low))")
+                Text("Today · High \(weatherModel.temperatureText(weatherModel.weather?.high)) · Low \(weatherModel.temperatureText(weatherModel.weather?.low))")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.9))
                     .padding(.top, 4)
@@ -157,10 +157,19 @@ struct BriefingView: View {
 
     @ViewBuilder
     private var weatherAttribution: some View {
-        if let weather = weatherModel.weather {
-            Link("Weather data by OpenWeather", destination: weather.attributionURL)
-                .font(.caption)
-                .foregroundStyle(ink)
+        if let attribution = weatherModel.weather?.attribution {
+            VStack(alignment: .leading, spacing: 4) {
+                AsyncImage(url: attribution.markURL) { image in
+                    image.resizable().scaledToFit()
+                } placeholder: {
+                    Text("Apple Weather")
+                }
+                .frame(height: 14)
+                Link("Other data sources", destination: attribution.legalURL)
+                    .font(.caption)
+            }
+            .font(.caption)
+            .foregroundStyle(ink)
         }
     }
 

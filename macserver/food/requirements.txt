@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+python-multipart
+requests
+pillow
+mlx-vlm==0.7.11

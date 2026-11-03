@@ -6,6 +6,7 @@ struct BellView: View {
     var isSpeaking = false
     var isListening = false
     var isStartingMicrophone = false
+    var isTranscribing = false
     var onMicrophoneTap: (() -> Void)? = nil
     @Binding var isSpeakerEnabled: Bool
     var onSubmitPrompt: (String) -> Bool = { _ in false }
@@ -23,7 +24,7 @@ struct BellView: View {
         VStack(spacing: 0) {
             BellHeaderView(
                 isServerConnected: connection.isConnected,
-                subtitle: isStartingMicrophone ? "Preparing microphone..." : isListening ? "Listening..." : isSpeaking ? "Speaking..." : isSubmitting ? "Processing..." : "Tap to speak",
+                subtitle: isStartingMicrophone ? "Preparing microphone..." : isListening ? "Listening... tap to send" : isTranscribing ? "Transcribing..." : isSpeaking ? "Speaking..." : isSubmitting ? "Processing..." : "Tap to speak",
                 onClose: onClose,
                 onOpenSettings: onOpenSettings
             )
@@ -58,7 +59,8 @@ struct BellView: View {
                     isKeyboardVisible: showsKeyboardInput,
                     onKeyboardTap: toggleKeyboardInput,
                     onMicrophoneTap: isSubmitting ? nil : onMicrophoneTap,
-                    isListening: isListening || isStartingMicrophone
+                    isListening: isListening || isStartingMicrophone,
+                    isTranscribing: isTranscribing
                 )
 
                 if showsKeyboardInput {

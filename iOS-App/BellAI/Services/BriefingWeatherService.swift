@@ -1,15 +1,22 @@
 import CoreLocation
 import Foundation
 import MapKit
+import WeatherKit
 
 struct BriefingWeather {
     let locationName: String
     let temperature: Measurement<UnitTemperature>
     let condition: String
     let symbolName: String
-    let high: Measurement<UnitTemperature>?
+    let high: Measurement<UnitTemperature>? // today's, from the daily forecast
     let low: Measurement<UnitTemperature>?
-    let attributionURL: URL
+    let attribution: BriefingWeatherAttribution
+}
+
+// what Apple requires next to its weather: the Apple Weather mark and a link to the legal page
+struct BriefingWeatherAttribution {
+    let markURL: URL
+    let legalURL: URL
 }
 
 @MainActor
@@ -20,32 +27,63 @@ protocol BriefingWeatherProviding {
 @MainActor
 final class BriefingWeatherService: BriefingWeatherProviding {
     private let location = BriefingLocationService()
-    private let client: OpenWeatherClient
-
-    init(client: OpenWeatherClient? = nil) {
-        self.client = client ?? OpenWeatherClient()
-    }
 
     func fetch() async throws -> BriefingWeather {
-        try client.validateConfiguration()
         let coordinate = try await location.currentLocation()
-        async let response = client.fetch(latitude: coordinate.coordinate.latitude, longitude: coordinate.coordinate.longitude)
-        let cityName: String?
-        if #available(iOS 26, macOS 26, visionOS 26, *) {
-            let geocoding = MKReverseGeocodingRequest(location: coordinate)
-            let place = try? await geocoding?.mapItems.first
-            cityName = place?.addressRepresentations?.cityName ?? place?.addressRepresentations?.cityWithContext
-        } else {
-            let place = try? await CLGeocoder().reverseGeocodeLocation(coordinate).first
-            cityName = place?.locality
+        async let city = Self.cityName(for: coordinate)
+        let weather: (CurrentWeather, Forecast<DayWeather>)
+        let attribution: WeatherAttribution
+        do {
+            weather = try await WeatherService.shared.weather(for: coordinate, including: .current, .daily)
+            attribution = try await WeatherService.shared.attribution
+        } catch {
+            throw BriefingWeatherError(mapping: error) ?? error
         }
-        let result = try await response
+        let (current, daily) = weather
+        let today = daily.forecast.first
+        let name = await city
         try Task.checkCancellation()
         return BriefingWeather(
-            locationName: cityName ?? result.locationName,
-            temperature: result.temperature, condition: result.condition, symbolName: result.symbolName,
-            high: result.high, low: result.low, attributionURL: result.attributionURL
+            locationName: name ?? "Current location",
+            temperature: current.temperature,
+            condition: current.condition.description,
+            symbolName: current.symbolName,
+            high: today?.highTemperature,
+            low: today?.lowTemperature,
+            // the dark mark, because the screen behind it is always light
+            attribution: BriefingWeatherAttribution(markURL: attribution.combinedMarkDarkURL, legalURL: attribution.legalPageURL)
         )
+    }
+
+    // WeatherKit gives the weather, not the place's name
+    private static func cityName(for location: CLLocation) async -> String? {
+        if #available(iOS 26, macOS 26, visionOS 26, *) {
+            let geocoding = MKReverseGeocodingRequest(location: location)
+            let place = try? await geocoding?.mapItems.first
+            return place?.addressRepresentations?.cityName ?? place?.addressRepresentations?.cityWithContext
+        } else {
+            return (try? await CLGeocoder().reverseGeocodeLocation(location).first)?.locality
+        }
+    }
+}
+
+enum BriefingWeatherError: LocalizedError {
+    case notEnabled
+
+    // nil for anything that isn't Apple turning the app away. when the app isn't entitled, WeatherKit usually
+    // doesn't throw permissionDenied, its token service fails first and that error comes through as it is
+    init?(mapping error: Error) {
+        if let error = error as? WeatherError, case .permissionDenied = error {
+            self = .notEnabled
+        } else if (error as NSError).domain.contains("JWTAuthenticator") {
+            self = .notEnabled
+        } else {
+            return nil
+        }
+    }
+
+    var errorDescription: String? {
+        "Apple Weather isn't enabled for this build of BellAI. Turn on the WeatherKit capability for the app in your developer account, then rebuild."
     }
 }
 

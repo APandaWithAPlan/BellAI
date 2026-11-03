@@ -2,51 +2,22 @@ import AVFoundation
 import SwiftUI
 
 struct ContentView: View {
-    @State private var auth = AuthViewModel()
-
-    var body: some View {
-        Group {
-            if auth.isRestoringSession {
-                ProgressView("Restoring session…")
-            } else if let userID = auth.userID {
-                MainAppView(auth: auth, firstName: auth.firstName, lastName: auth.lastName, isLocalTestSession: auth.isLocalTestSession, onLogout: auth.logout, logoutError: auth.errorMessage)
-                    .id(userID)
-            } else {
-                LoginView(model: auth)
-            }
-        }
-    }
-}
-
-private struct MainAppView: View {
-    let auth: AuthViewModel
-    let firstName: String
-    let lastName: String
-    let isLocalTestSession: Bool
-    let onLogout: () -> Void
-    let logoutError: String?
-    @State private var isLoggingOut = false
+    @State private var profile = ProfileViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: BellAITab = .home
     @State private var homeSection: HomeSection = .main
     @State private var bottomNavigationHeight: CGFloat = 56
-    @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), foodService: HTTPFoodAnalysisService(), speech: SpeechPlayer())
-    @State private var tasks: TasksViewModel
+    @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), speech: SpeechPlayer())
+    @State private var meal: MealPhotoViewModel
+    @State private var insights: InsightsViewModel
+    @State private var tasks = TasksViewModel(store: HTTPUserDataService())
+    @State private var mail = MailViewModel(service: HTTPMailService())
 
-    init(auth: AuthViewModel, firstName: String, lastName: String, isLocalTestSession: Bool, onLogout: @escaping () -> Void, logoutError: String?) {
-        self.auth = auth
-        self.firstName = firstName
-        self.lastName = lastName
-        self.isLocalTestSession = isLocalTestSession
-        self.onLogout = onLogout
-        self.logoutError = logoutError
-        #if DEBUG
-        if isLocalTestSession {
-            _tasks = State(initialValue: TasksViewModel(store: LocalTestUserDataStore()))
-            return
-        }
-        #endif
-        _tasks = State(initialValue: TasksViewModel(store: FirebaseUserDataService()))
+    init() {
+        // the photo flow records meals in the journal, and the recommendations are worked out from it
+        let journal = MealJournal()
+        _meal = State(initialValue: MealPhotoViewModel(foodService: HTTPFoodAnalysisService(), logger: standardMealLogger(), journal: journal))
+        _insights = State(initialValue: InsightsViewModel(service: HTTPInsightsService(), journal: journal))
     }
 
     var body: some View {
@@ -56,31 +27,35 @@ private struct MainAppView: View {
 
             if selectedTab == .home {
                 if homeSection == .main {
-                    HomeView(tasks: tasks, firstName: firstName, lastName: lastName, isSubmitting: chat.isSubmitting, onMicrophoneTap: {
+                    HomeView(tasks: tasks, mail: mail, firstName: profile.firstName, lastName: profile.lastName, isSubmitting: chat.isSubmitting || meal.isBusy, onMicrophoneTap: {
                         selectedTab = .bell
                         chat.toggleMicrophone(startsNewSession: true)
-                    }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
+                    }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitPhoto)
                 } else {
                     BriefingView(tasks: tasks)
                 }
             } else if selectedTab == .bell {
                 BellView(
                     conversation: chat.conversation,
-                    isSubmitting: chat.isSubmitting,
+                    isSubmitting: chat.isSubmitting || meal.isBusy,
                     isSpeaking: chat.isSpeaking,
                     isListening: chat.isListening,
                     isStartingMicrophone: chat.isStartingMicrophone,
+                    isTranscribing: chat.isTranscribing,
                     onMicrophoneTap: { chat.toggleMicrophone() },
                     isSpeakerEnabled: $chat.isSpeakerEnabled,
                     onSubmitPrompt: submitFollowUpPrompt,
-                    onSubmitPhoto: submitFollowUpPhoto,
+                    onSubmitPhoto: submitPhoto,
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }
                 )
             } else if selectedTab == .activity {
-                WellnessView(isSubmitting: chat.isSubmitting, onSubmitPhoto: submitHomePhoto)
+                WellnessView(insights: insights, isSubmitting: chat.isSubmitting || meal.isBusy, onSubmitPhoto: submitPhoto)
             } else if selectedTab == .settings {
-                SettingsView(auth: auth, onLogout: logout, isLoggingOut: isLoggingOut, logoutError: logoutError, isLocalTestSession: isLocalTestSession)
+                SettingsView(profile: profile, onServerSaved: {
+                    Task { await tasks.reload() }
+                    Task { await mail.reload() }
+                })
             } else {
                 Text(selectedTab.rawValue)
                     .font(.title2.weight(.semibold))
@@ -101,17 +76,25 @@ private struct MainAppView: View {
                     }
             }
         }
-        .disabled(isLoggingOut)
         .task {
-            // BellAI gets your open tasks as context, so load them now, not when the tab opens
-            chat.contextProvider = { [tasks] in tasks.openTaskSummary }
+            // BellAI gets your open tasks and important emails as context, so load them now, not when the tab opens
+            chat.contextProvider = { [tasks, mail] in
+                let facts = [tasks.openTaskSummary, mail.importantSummary].compactMap { $0 }
+                return facts.isEmpty ? nil : facts.joined(separator: ", and ")
+            }
+            async let loadingMail: Void = mail.refresh()
             await tasks.load()
+            await loadingMail
+        }
+        .sheet(isPresented: Binding(get: { meal.isShown }, set: { if !$0 { meal.dismiss() } })) {
+            MealResultView(model: meal)
         }
         .onChange(of: selectedTab) { _, tab in
             if tab != .bell { chat.stopMicrophone() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { chat.stopMicrophone() }
+            if phase == .active { Task { await mail.refresh() } } // new mail comes in while the app is closed
         }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
@@ -129,18 +112,6 @@ private struct MainAppView: View {
         }
     }
 
-    private func logout() {
-        guard !isLoggingOut else { return }
-        isLoggingOut = true
-        chat.stopMicrophone()
-        chat.isSpeakerEnabled = false
-        Task {
-            await tasks.waitForSaves()
-            onLogout()
-            isLoggingOut = false
-        }
-    }
-
     private func submitHomePrompt(_ text: String) -> Bool {
         guard chat.startNewSession(with: text) else { return false }
         transitionToBellConversation()
@@ -148,16 +119,11 @@ private struct MainAppView: View {
         return true
     }
 
-    private func submitHomePhoto(_ jpeg: Data, note: String) -> Bool {
-        guard chat.validateAndStorePhoto(jpeg, note: note, startsNewSession: true) else { return false }
-        transitionToBellConversation()
-        Task { await chat.submitStoredPhoto() }
-        return true
-    }
-
-    private func submitFollowUpPhoto(_ jpeg: Data, note: String) -> Bool {
-        guard chat.validateAndStorePhoto(jpeg, note: note) else { return false }
-        Task { await chat.submitStoredPhoto() }
+    // a meal photo is answered where it was taken, in a sheet, and not spoken
+    private func submitPhoto(_ jpeg: Data, note: String) -> Bool {
+        guard !chat.isSubmitting, meal.begin(jpeg, note: note) else { return false }
+        chat.stopMicrophone()
+        Task { await meal.analyzeStored() }
         return true
     }
 

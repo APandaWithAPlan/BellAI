@@ -82,7 +82,8 @@ final class WellnessHealthModel {
         guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return nil }
         return try await withCheckedThrowingContinuation { continuation in
             let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, error in
-                if let error { continuation.resume(throwing: error) }
+                // nothing logged today (or nothing shared) comes back as an error, but it only means there is no number to show
+                if let error, (error as? HKError)?.code != .errorNoData { continuation.resume(throwing: error) }
                 else { continuation.resume(returning: result?.sumQuantity()?.doubleValue(for: unit)) }
             }
             store.execute(query)
