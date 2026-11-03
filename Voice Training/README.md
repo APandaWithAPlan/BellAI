@@ -17,7 +17,7 @@ Speech is generated one sentence at a time, so audio starts before the whole rep
 * Files:
   * `studio/bellai_studio.py` runs the studio page (speaking, training and testing), and `studio/index.html` is the page.
   * `studio/bellai_voice_server.py` is a small web API for the voice (`POST /tts` returns audio).
-  * `dataset/prepare_dataset.py` cuts recordings into clips and transcribes them with Whisper.
+  * `orpheus/prepare_dataset.py` cuts recordings into clips and transcribes them with Whisper.
 
 ### How to Enable / Access
 
@@ -34,4 +34,4 @@ Speech is generated one sentence at a time, so audio starts before the whole rep
 5. **Use it from the app or server:** Run `studio/bellai_voice_server.py` with GPT-SoVITS's Python, then send `POST /tts` with `{"text": "Hello!"}`. Audio comes back as a WAV stream.
 6. **Handle an error:** If **Ready** never shows, check that the GPT-SoVITS folder is unzipped in the right place and that the NVIDIA drivers are installed, then launch `BellAi Studio.bat` again.
 
-> 💡 **Tip:** End every sentence with a period, question mark or exclamation point. Text is split at sentence ends, not commas, because comma splits made sentences end early. Words ending in "s" were also being cut off; `dataset/fix_clips.py` and `dataset/fix_clip_endings.py` fixed the training clips, and the studio now holds the last sound slightly longer.
+> 💡 **Tip:** End every sentence with a period, question mark or exclamation point. Text is split at sentence ends, not commas, because comma splits made sentences end early. Words ending in "s" were also being cut off; `orpheus/fix_clips.py` and `orpheus/fix_clip_endings.py` fixed the training clips, and the studio now holds the last sound slightly longer.

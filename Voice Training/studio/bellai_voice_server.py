@@ -1,6 +1,7 @@
 """Small web API for the BellAi voice. POST /tts returns a streaming WAV.
 
 Usage: <GPT-SoVITS python> bellai_voice_server.py --gpt-sovits <folder> [--host 0.0.0.0 --key KEY]
+Runs on an NVIDIA GPU, the Apple GPU on an Apple Silicon Mac, or the CPU (slow).
 """
 
 import argparse
@@ -54,6 +55,7 @@ os.chdir(SOVITS_DIR)
 sys.path.insert(0, str(SOVITS_DIR))
 sys.path.insert(1, str(SOVITS_DIR / "GPT_SoVITS"))
 os.environ.setdefault("version", VOICE.get("version", "v2"))
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")   # Mac: run anything the Apple GPU can't do on the CPU
 
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
@@ -62,6 +64,9 @@ from fastapi import Body, FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.responses import JSONResponse, Response, StreamingResponse  # noqa: E402
 
 HAS_GPU = torch.cuda.is_available()
+HAS_MPS = not HAS_GPU and torch.backends.mps.is_available()
+DEVICE = "cuda" if HAS_GPU else "mps" if HAS_MPS else "cpu"
+DEVICE_NAME = torch.cuda.get_device_name(0) if HAS_GPU else "Apple GPU (MPS)" if HAS_MPS else "CPU (slow)"
 
 
 class Voice:
@@ -76,7 +81,7 @@ class Voice:
     def load(self):
         from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
         config = {"version": VOICE.get("version", "v2"), "custom": {
-            "device": "cuda" if HAS_GPU else "cpu", "is_half": HAS_GPU, "version": VOICE.get("version", "v2"),
+            "device": DEVICE, "is_half": HAS_GPU, "version": VOICE.get("version", "v2"),
             "t2s_weights_path": str(PACK / "gpt.ckpt"), "vits_weights_path": str(PACK / "sovits.pth"),
             "bert_base_path": "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large",
             "cnhuhbert_base_path": "GPT_SoVITS/pretrained_models/chinese-hubert-base",
@@ -184,7 +189,7 @@ def speak(text, stream=True, speed=None):
 def health(request: Request):
     check_key(request)
     return {"ready": VOICE_ENGINE.ready, "voice": VOICE.get("name", "BellAi"), "sample_rate": VOICE_ENGINE.rate,
-            "gpu": torch.cuda.get_device_name(0) if HAS_GPU else "CPU (slow)"}
+            "gpu": DEVICE_NAME}
 
 
 @app.post("/tts")
@@ -202,7 +207,7 @@ def tts_get(request: Request, text: str = "", speed: float = None, stream: bool 
 def main():
     if args.host not in ("127.0.0.1", "localhost") and not args.key:
         print("WARNING: other devices can reach this server and no --key is set. Anyone on the network can use it.")
-    print(f"Voice pack: {PACK}\nGPT-SoVITS: {SOVITS_DIR}\nLoading the voice{' on the GPU' if HAS_GPU else ' on the CPU (this will be slow)'}...")
+    print(f"Voice pack: {PACK}\nGPT-SoVITS: {SOVITS_DIR}\nLoading the voice on {DEVICE_NAME}...")
     VOICE_ENGINE.load()
     print(f"\nBellAi voice is ready on http://{args.host}:{args.port}")
     print(f"Try it: http://localhost:{args.port}/tts?text=Hello%20there" + (f"&key={args.key}" if args.key else ""))
