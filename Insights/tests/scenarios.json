@@ -1,0 +1,103 @@
+[
+  {
+    "name": "avoid_foods",
+    "expect_status": "low_fiber",
+    "user": {"calorie_goal": 2000, "protein_goal_g": 100, "goal": "maintain", "allergies": ["peanut", "shellfish"]},
+    "meals": [
+      {"name": "buttered white toast and scrambled eggs and toast", "kcal": 440.0, "protein_g": 20.5, "carbs_g": 41.2, "fat_g": 21.5, "fiber_g": 2.9, "sugar_g": 5.9, "sodium_mg": 752.8},
+      {"name": "chicken caesar wrap", "kcal": 499.9, "protein_g": 31.2, "carbs_g": 39.6, "fat_g": 22.9, "fiber_g": 3.1, "sugar_g": 3.1, "sodium_mg": 1197.7},
+      {"name": "granola bar", "kcal": 198.9, "protein_g": 4.2, "carbs_g": 30.4, "fat_g": 7.3, "fiber_g": 2.1, "sugar_g": 12.6, "sodium_mg": 125.6},
+      {"name": "grilled chicken breast and white rice and mac and cheese", "kcal": 876.8, "protein_g": 64.1, "carbs_g": 99.4, "fat_g": 22.4, "fiber_g": 2.8, "sugar_g": 6.3, "sodium_mg": 1033.5}
+    ]
+  },
+  {
+    "name": "high_sodium",
+    "expect_status": "high_sodium",
+    "user": {"calorie_goal": 2200, "protein_goal_g": 100, "goal": "maintain"},
+    "meals": [
+      {"name": "scrambled eggs and toast and black coffee", "kcal": 269.7, "protein_g": 16.5, "carbs_g": 15.3, "fat_g": 15.3, "fiber_g": 1.9, "sugar_g": 2.9, "sodium_mg": 473.3},
+      {"name": "deli turkey sandwich and potato chips", "kcal": 536.2, "protein_g": 25.0, "carbs_g": 59.6, "fat_g": 21.1, "fiber_g": 4.2, "sugar_g": 6.3, "sodium_mg": 1610.9},
+      {"name": "pretzels", "kcal": 102.6, "protein_g": 2.9, "carbs_g": 21.9, "fat_g": 0.8, "fiber_g": 1.0, "sugar_g": 0.8, "sodium_mg": 365.8},
+      {"name": "instant ramen and canned chicken noodle soup", "kcal": 496.7, "protein_g": 15.2, "carbs_g": 65.5, "fat_g": 17.3, "fiber_g": 2.8, "sugar_g": 3.8, "sodium_mg": 3369.3}
+    ]
+  },
+  {
+    "name": "low_protein",
+    "expect_status": "low_protein",
+    "user": {"calorie_goal": 2000, "protein_goal_g": 120, "goal": "maintain", "fitness_level": "intermediate"},
+    "meals": [
+      {"name": "bagel with cream cheese and orange juice", "kcal": 450.8, "protein_g": 12.2, "carbs_g": 79.6, "fat_g": 9.7, "fiber_g": 2.4, "sugar_g": 29.5, "sodium_mg": 548.3},
+      {"name": "pasta with marinara", "kcal": 459.4, "protein_g": 15.3, "carbs_g": 87.5, "fat_g": 5.5, "fiber_g": 6.6, "sugar_g": 13.1, "sodium_mg": 765.7},
+      {"name": "granola bar and apple", "kcal": 272.0, "protein_g": 4.2, "carbs_g": 52.0, "fat_g": 6.8, "fiber_g": 6.3, "sugar_g": 30.1, "sodium_mg": 114.0},
+      {"name": "white rice and steamed broccoli and garden salad with vinaigrette", "kcal": 407.9, "protein_g": 9.6, "carbs_g": 67.9, "fat_g": 11.8, "fiber_g": 8.0, "sugar_g": 6.4, "sodium_mg": 287.0}
+    ]
+  },
+  {
+    "name": "no_meals",
+    "expect_status": "no_meals",
+    "user": {"calorie_goal": 2200, "protein_goal_g": 130, "goal": "gain"},
+    "meals": []
+  },
+  {
+    "name": "on_track",
+    "expect_status": "on_track",
+    "user": {"calorie_goal": 2000, "protein_goal_g": 100, "goal": "maintain", "fitness_level": "intermediate"},
+    "meals": [
+      {"name": "oatmeal with banana and plain greek yogurt and orange juice", "kcal": 502.1, "protein_g": 27.8, "carbs_g": 89.8, "fat_g": 5.3, "fiber_g": 7.6, "sugar_g": 44.2, "sodium_mg": 78.9},
+      {"name": "grilled chicken breast and brown rice and steamed broccoli", "kcal": 529.1, "protein_g": 55.7, "carbs_g": 56.8, "fat_g": 7.4, "fiber_g": 8.3, "sugar_g": 2.6, "sodium_mg": 186.1},
+      {"name": "apple and almonds", "kcal": 249.5, "protein_g": 6.4, "carbs_g": 29.0, "fat_g": 14.1, "fiber_g": 7.5, "sugar_g": 18.7, "sodium_mg": 1.8},
+      {"name": "baked salmon and baked sweet potato and garden salad with vinaigrette", "kcal": 626.2, "protein_g": 41.1, "carbs_g": 42.9, "fat_g": 32.4, "fiber_g": 8.2, "sugar_g": 15.5, "sodium_mg": 394.4}
+    ]
+  },
+  {
+    "name": "one_day_only",
+    "expect_status": "under_calories",
+    "user": {"calorie_goal": 2000, "protein_goal_g": 100, "goal": "maintain"},
+    "meals": [
+      {"name": "oatmeal with banana", "kcal": 288.7, "protein_g": 7.5, "carbs_g": 58.6, "fat_g": 4.3, "fiber_g": 7.5, "sugar_g": 16.0, "sodium_mg": 10.7},
+      {"name": "deli turkey sandwich", "kcal": 347.2, "protein_g": 21.2, "carbs_g": 40.5, "fat_g": 9.6, "fiber_g": 2.9, "sugar_g": 5.8, "sodium_mg": 1350.2}
+    ]
+  },
+  {
+    "name": "over_calories",
+    "expect_status": "over_calories",
+    "user": {"calorie_goal": 1800, "protein_goal_g": 110, "goal": "lose", "fitness_level": "beginner"},
+    "meals": [
+      {"name": "glazed donut and bagel with cream cheese and orange juice", "kcal": 746.7, "protein_g": 17.0, "carbs_g": 114.0, "fat_g": 25.8, "fiber_g": 3.5, "sugar_g": 44.4, "sodium_mg": 799.4},
+      {"name": "cheeseburger and french fries and soda", "kcal": 818.2, "protein_g": 19.0, "carbs_g": 121.1, "fat_g": 29.9, "fiber_g": 5.7, "sugar_g": 44.7, "sodium_mg": 1041.6},
+      {"name": "potato chips and granola bar", "kcal": 354.7, "protein_g": 6.2, "carbs_g": 45.5, "fat_g": 17.7, "fiber_g": 3.1, "sugar_g": 12.4, "sodium_mg": 279.0},
+      {"name": "pasta with marinara and buttered white toast and soda", "kcal": 731.4, "protein_g": 18.0, "carbs_g": 145.1, "fat_g": 11.2, "fiber_g": 7.0, "sugar_g": 54.1, "sodium_mg": 1026.8}
+    ]
+  },
+  {
+    "name": "under_eating",
+    "expect_status": "under_calories",
+    "user": {"calorie_goal": 1500, "protein_goal_g": 90, "goal": "lose"},
+    "meals": [
+      {"name": "black coffee", "kcal": 1.8, "protein_g": 0.3, "carbs_g": 0.0, "fat_g": 0.0, "fiber_g": 0.0, "sugar_g": 0.0, "sodium_mg": 4.5},
+      {"name": "garden salad with vinaigrette and apple", "kcal": 259.3, "protein_g": 2.6, "carbs_g": 37.3, "fat_g": 12.9, "fiber_g": 7.9, "sugar_g": 25.6, "sodium_mg": 264.8},
+      {"name": "plain greek yogurt and granola bar", "kcal": 299.7, "protein_g": 21.3, "carbs_g": 36.4, "fat_g": 8.0, "fiber_g": 2.1, "sugar_g": 18.6, "sodium_mg": 187.1},
+      {"name": "canned chicken noodle soup and steamed broccoli", "kcal": 202.1, "protein_g": 11.5, "carbs_g": 28.5, "fat_g": 5.1, "fiber_g": 5.8, "sugar_g": 3.9, "sodium_mg": 1836.9}
+    ]
+  },
+  {
+    "name": "vegetarian_knee",
+    "expect_status": "low_protein",
+    "user": {"calorie_goal": 1900, "weight_kg": 65, "goal": "maintain", "diet": "vegetarian", "allergies": ["peanut"], "injuries": ["knee"], "fitness_level": "beginner", "dislikes": ["mushrooms"]},
+    "meals": [
+      {"name": "bagel with cream cheese and orange juice", "kcal": 450.8, "protein_g": 12.2, "carbs_g": 79.6, "fat_g": 9.7, "fiber_g": 2.4, "sugar_g": 29.5, "sodium_mg": 548.3},
+      {"name": "pasta with marinara", "kcal": 459.4, "protein_g": 15.3, "carbs_g": 87.5, "fat_g": 5.5, "fiber_g": 6.6, "sugar_g": 13.1, "sodium_mg": 765.7},
+      {"name": "granola bar and apple", "kcal": 272.0, "protein_g": 4.2, "carbs_g": 52.0, "fat_g": 6.8, "fiber_g": 6.3, "sugar_g": 30.1, "sodium_mg": 114.0},
+      {"name": "white rice and steamed broccoli and garden salad with vinaigrette", "kcal": 407.9, "protein_g": 9.6, "carbs_g": 67.9, "fat_g": 11.8, "fiber_g": 8.0, "sugar_g": 6.4, "sodium_mg": 287.0}
+    ]
+  },
+  {
+    "name": "sample",
+    "expect_status": "under_calories",
+    "user": {"calorie_goal": 1900, "weight_kg": 65, "allergies": ["peanut"], "diet": "vegetarian", "goal": "maintain", "injuries": ["knee"], "fitness_level": "beginner"},
+    "meals": [
+      {"name": "breakfast", "kcal": 420, "protein_g": 8, "carbs_g": 70, "fat_g": 12, "fiber_g": 3, "sugar_g": 25, "sodium_mg": 450},
+      {"name": "lunch", "kcal": 650, "protein_g": 14, "carbs_g": 95, "fat_g": 20, "fiber_g": 4, "sugar_g": 10, "sodium_mg": 1200}
+    ]
+  }
+]
