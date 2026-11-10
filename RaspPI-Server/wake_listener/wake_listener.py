@@ -32,7 +32,9 @@ parser.add_argument("--wake-sound", default=str(HERE / "wake.wav") if (HERE / "w
                     help="chime .wav to play when woken (default: wake.wav next to this script, else a built-in chime)")
 parser.add_argument("--dropped-sound", default=str(HERE / "connection_dropped.wav"),
                     help=".wav spoken on connection dropped (recorded in the BellAi voice; skipped if missing)")
-parser.add_argument("--max-seconds", type=float, default=8.0, help="longest command to record")
+parser.add_argument("--max-seconds", type=float, default=8.0, help="longest command to record before cutting off")
+parser.add_argument("--wait-seconds", type=float, default=4.0, help="how long to wait for a command after the chime")
+parser.add_argument("--timeout", type=float, default=30.0, help="seconds to wait for a reply before saying connection dropped")
 parser.add_argument("--wav", default="", help="read audio from this file instead of the mic (for testing)")
 parser.add_argument("--scores", action="store_true", help="test mode: only print what the model hears, send nothing")
 args = parser.parse_args()
@@ -129,10 +131,19 @@ def level_db(chunk):
     return 20 * np.log10(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)) + 1)
 
 
-def play(path):
-    """Plays a .wav file through the speaker, if the file exists."""
-    if path and Path(path).exists() and shutil.which("aplay"):
+player = None
+
+
+def play(path, wait=True):
+    """Plays a .wav file through the speaker, if the file exists; with wait=False it plays in the background
+    while listening continues."""
+    global player
+    if not (path and Path(path).exists() and shutil.which("aplay")):
+        return
+    if wait:
         subprocess.run(["aplay", "-q", str(path)], check=False)
+    elif player is None or player.poll() is not None:
+        player = subprocess.Popen(["aplay", "-q", str(path)])
 
 
 def make_chime(path):
@@ -157,11 +168,12 @@ def server_up(url):
 def connection_dropped(reason):
     """Prints "connection dropped" with the reason and plays connection_dropped.wav."""
     log(f"connection dropped ({reason})")
-    play(args.dropped_sound)
+    play(args.dropped_sound, wait=False)
 
 
 def record_command(source, noise_db):
-    """Records the command until 1 s of quiet after speech; returns None if nobody spoke within 4 s."""
+    """Records the command until 1 s of quiet after speech, cutting off at --max-seconds; returns None if nobody
+    spoke within --wait-seconds."""
     speech_db = max(noise_db + 10, 35)
     frames, heard, quiet, seconds = [], False, 0.0, 0.0
     while seconds < args.max_seconds:
@@ -176,8 +188,11 @@ def record_command(source, noise_db):
             quiet += CHUNK / RATE
             if quiet >= 1.0:
                 break
-        elif seconds >= 4.0:
+        elif seconds >= args.wait_seconds:
             break
+    else:
+        if heard:
+            log(f"Cut off at {args.max_seconds:.0f} s")
     return np.concatenate(frames) if heard else None
 
 
@@ -205,11 +220,11 @@ def ask(audio):
     """Sends the command to api.py (POST /audio) for Whisper and the AI server, then prints the reply."""
     try:
         r = requests.post(f"{args.api}/audio", files={"audio_file": ("command.webm", to_webm(audio), "audio/webm")},
-                          timeout=180)
+                          timeout=args.timeout)
     except requests.ConnectionError:
         return connection_dropped(f"can't reach the Pi API at {args.api}. Is api.py running?")
     except requests.Timeout:
-        return connection_dropped("the request timed out")
+        return connection_dropped(f"no reply after {args.timeout:.0f} s")
     if r.status_code in (502, 503, 504):
         return connection_dropped(r.json().get("detail", "the AI server is offline") if r.headers.get(
             "content-type", "").startswith("application/json") else "the AI server is offline")
@@ -264,17 +279,18 @@ def main():
         if score < args.threshold:
             continue
         log(f"Heard BellAi ({score:.2f})")
+        model.reset()
+        play(args.wake_sound)
+        source.flush()
         if args.server and not server_up(args.server):
             connection_dropped(f"the AI server at {args.server} isn't answering")
+            continue
+        audio = record_command(source, float(np.percentile(recent, 20)))
+        if audio is None:
+            log(f"No command heard within {args.wait_seconds:.0f} s")
         else:
-            play(args.wake_sound)
-            source.flush()
-            audio = record_command(source, float(np.percentile(recent, 20)))
-            if audio is None:
-                log("No command heard")
-            else:
-                log(f"Sending {len(audio) / RATE:.1f} s of audio")
-                ask(audio)
+            log(f"Sending {len(audio) / RATE:.1f} s of audio")
+            ask(audio)
         model.reset()
         source.flush()
 

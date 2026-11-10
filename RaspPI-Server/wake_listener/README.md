@@ -29,7 +29,7 @@ Listens for "BellAi" on the Raspberry PI microphone, records the command that fo
 ## How to Use It
 
 1. **Wake it:** Say "BellAi" and wait for the chime.
-2. **Ask:** Say the command. Recording stops after 1 second of quiet.
+2. **Ask:** Say the command. Recording stops after 1 second of quiet, or at 8 seconds (`--max-seconds`). If nothing is said within 4 seconds (`--wait-seconds`), it goes back to listening. If no reply comes within 30 seconds (`--timeout`), it says "connection dropped".
 3. **Read the response:** The reply prints in the terminal.
 4. **Mic volume:** The mic is boosted 5x by default (`--gain 5`). Use a lower `--gain` if close-up speech sounds distorted.
 5. **Test the model:** Run with `--scores` to see how sure the model is (0 to 1) each time it hears something, without sending anything.
