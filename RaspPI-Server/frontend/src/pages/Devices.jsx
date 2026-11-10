@@ -6,17 +6,39 @@ import { Progress } from "@/components/ui/progress"
 function Devices() {
 
   const [devices, setDevices] = useState([
-    { id: 1, location: "Living Room", isOn: true },
+    { id: "light.bedroom", location: "Bedroom", isOn: true },
   ])
 
-  function toggleDevice(id, checked) {
+  async function toggleDevice(id, checked) {
+    const action = checked ? "turn_on" : "turn_off";
+
+    const response = await fetch("/api/devices/control", {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+          entity_id: id,
+          action: action
+      })     
+    });
+
+    if (!response.ok) {
+      toast.add({
+        type: "error",
+        description: `Failed to control ${id}`
+      });
+
+      throw new Error("Failed to control device");
+    };
+
     setDevices(prevDevices =>
       prevDevices.map(device =>
         device.id === id
           ? { ...device, isOn: checked }
           : device
       )
-    )
+    );
   }
 
   const activeDevices = devices.filter(device => device.isOn).length
@@ -41,11 +63,10 @@ function Devices() {
                 {devices.map(device => (
 
                     <SmartHomeCard
-                        key={device.id}
                         icon={Lightbulb}
-                        location={device.location}
-                        isOn={device.isOn}
                         color="#ef6cba"
+                        device={device.id}
+                        location={device.location}
                         onToggle={checked => toggleDevice(device.id, checked)}
                     />
                 ))}

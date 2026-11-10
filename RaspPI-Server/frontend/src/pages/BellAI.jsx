@@ -85,7 +85,7 @@ function BellAI() {
                 } catch (error) {
                     toast.add({
                         type: "warning",
-                        description: error.message + " Unable to process audio."
+                        description: error.message
                     });
                 
 
@@ -106,7 +106,7 @@ function BellAI() {
 
             toast.add({
                 type: "warning",
-                description: error.message + " Unable to connect to BellAI."
+                description: error.message
             });
         }
     }
@@ -174,7 +174,7 @@ function BellAI() {
         } catch (error) {
             toast.add({
                 type: "warning",
-                description: error.message + " Unable to connect to BellAI."
+                description: error.message
             });
         } finally {
             setIsLoading(false);

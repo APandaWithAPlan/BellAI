@@ -81,6 +81,8 @@ function Home() {
             active = false;
         };
     }, []);
+
+    // get music device
     
     return (
         <div className="grid grid-cols-4 gap-4">

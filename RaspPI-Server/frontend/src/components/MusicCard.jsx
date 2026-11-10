@@ -1,7 +1,51 @@
 import { Card, CardContent } from "./ui/card"
-import { EighthNotes, Pause, SkipForward, SkipBack } from "lucide-react"
+import { EighthNotes, Pause, Play, SkipForward, SkipBack } from "lucide-react"
+import { toast } from "@/components/ui/toast"
+import { useState} from "react";
 
 function MusicCard({ song, artist, device }) {
+
+  const [isPlaying, setIsPlaying] = useState(device.state === "playing");
+
+  useEffect(() => {
+    setIsPlaying(device?.state === "playing");
+  }, [device?.state]);
+
+  async function controlMusic(action) {
+
+    const response = await fetch("/api/devices/control", {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+          entity_id: device.entity_id,
+          domain: "media_player",
+          action,
+          data: {}
+      })
+    });
+
+    if (!response.ok) {
+      toast.add({
+        type: "error",
+        description: `Failed to control ${device.entity_id}`
+      });
+
+      throw new Error("Failed to control device");
+    }
+
+    if (action === "media_play") {
+      setIsPlaying(true);
+    }
+      
+    else if (action === "media_pause") {
+      setIsPlaying(false);
+    }
+    
+    return response.json();
+  }
+
   return (
     <Card className="rounded-xl border border-[#fbcfe8] bg-white p-4 text-black shadow-lg">
       <CardContent className="flex items-center justify-between gap-4 p-0">
@@ -25,18 +69,23 @@ function MusicCard({ song, artist, device }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-3 text-[#db2777]">
-          <button type="button">
+          <button type="button"
+            onClick={() => controlMusic("media_previous_track")}
+          >
             <SkipBack size={20} />
           </button>
 
           <button
             type="button"
             className="rounded-full bg-[#db2777] p-2 text-white"
+            onClick={() => controlMusic(isPlaying ? "media_pause" : "media_play")}
           >
-            <Pause fill="white" size={20} />
+            {isPlaying ? <Pause fill="white" size={20} /> :<Play fill="white" size={20} />}
           </button>
 
-          <button type="button">
+          <button type="button"
+            onClick={() => controlMusic("media_next_track", {})}
+          >
             <SkipForward size={20} />
           </button>
         </div>
