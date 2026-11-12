@@ -13,13 +13,13 @@ function SmartHomeCard({ icon: Icon, color, device, location, isOn, onToggle}) {
                 <Icon size={24} color={color}/>
             </div>
 
-            <Switch checked={device.isOn} onCheckedChange={onToggle}/>
+            <Switch checked={isOn} onCheckedChange={onToggle}/>
 
         </div>
 
         <div className="flex flex-col gap-1">
           <p className="text-sm font-semibold text-[#be185d]">
-            {location}
+            {device} · {location}
           </p>
         </div>
 

@@ -4,6 +4,7 @@ import { useDeviceCommand } from "./useDeviceCommand";
 
 export function useDevices() {
     const [devices, setDevices] = useState([])
+    const { commandDevice } = useDeviceCommand();
 
     useEffect(() => {
         let active = true;
@@ -41,6 +42,16 @@ export function useDevices() {
     }, []);
 
     async function toggleDevice(entity_id, checked) {
+        const device = devices.find( device => device.entity_id === entity_id);
+
+        if (device?.state === "unavailable") {
+            toast.add({
+                type: "error",
+                description: `${device.name} is unavailable.`
+            });
+            return;
+        }
+
         const action = checked ? "turn_on" : "turn_off";
         const domain = entity_id.split(".")[0];
 

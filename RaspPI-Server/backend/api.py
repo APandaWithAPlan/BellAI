@@ -95,7 +95,8 @@ async def receive_audio_prompt(audio_file: UploadFile = File(...)):
 async def control_device(command: DeviceCommand):
     allowed_actions = {
             "media_player": { "media_play", "media_pause", "media_next_track", "media_previous_track"},
-            "light": {"turn_on", "turn_off", "toggle"}
+            "light": {"turn_on", "turn_off", "toggle"},
+            "switch": {"turn_on", "turn_off", "toggle"}
     }
 
     if (command.action not in allowed_actions.get(command.domain, set())):

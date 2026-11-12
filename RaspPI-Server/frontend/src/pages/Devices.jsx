@@ -5,10 +5,11 @@ import { Progress } from "@/components/ui/progress"
 
 
 function Devices() {
-  const { devices } = useDevices();
+  const { devices, toggleDevice } = useDevices();
+  const lights = devices.filter(device => device.entity_id.startsWith("light."));
   const activeDevices = devices.filter(device => device.state === "on").length;
-  const totalDevices = devices.length
-  const progress = totalDevices > 0 ? (activeDevices / totalDevices) * 100 : 0
+  const totalDevices = devices.length;
+  const progress = totalDevices > 0 ? (activeDevices / totalDevices) * 100 : 0;
     
     return (
         <div className="space-y-2">
@@ -23,15 +24,15 @@ function Devices() {
         
             <div className="grid grid-cols-6 p-4 gap-4">
 
-                {devices.map(device => (
+                {lights.map(light => (
                     <SmartHomeCard
-                        key={device.entity_id}
+                        key={light.entity_id}
                         icon={Lightbulb}
                         color="#ef6cba"
-                        device={device.name}
-                        location={device.area ?? "Unassigned"}
-                        isOn={device.state === "on"}
-                        onToggle={checked => toggleDevice(device.entity_id, checked)}
+                        device={light.name}
+                        location={light.area ?? "Unassigned"}
+                        isOn={light.state === "on"}
+                        onToggle={checked => toggleDevice(light.entity_id, checked)}
                     />
                 ))}
             </div>
