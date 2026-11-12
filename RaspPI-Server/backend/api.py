@@ -1,12 +1,4 @@
-# Endpoint to forward user's prompt to the AI server.
-# 10/12/2026
-# https://fastapi.tiangolo.com/tutorial/body/#import-pydantics-basemodel
-# https://github.com/ollama/ollama-python
-# https://pydantic.dev/docs/validation/dev/errors/validation_errors/
-# https://fastapi.tiangolo.com/reference/uploadfile/#fastapi.UploadFile
-
-
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, field_validator, ValidationError
 import ollama
 import reverse_geocode
@@ -16,7 +8,7 @@ import shutil
 import subprocess
 import os
 from serve import setup_dashboard
-from homeassistant import get_entity, get_entities, command_device, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
+from homeassistant import listen_to_home_assistant, get_entity, get_entities, command_device, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
 client = ollama.Client(host=os.environ["OLLAMA_HOST"])
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
@@ -42,6 +34,26 @@ class DeviceCommand(BaseModel):
     data: dict = Field(default_factory=dict)
 
 app = FastAPI()
+
+# connected_clients = set()
+
+# @app.websocket("/ws/devices")
+# async def device_websocket(websocket: WebSocket):
+#     await websocket.accept()
+
+#     connected_clients.add(websocket)
+
+#     try:
+#         while True:
+#             await websocket.receive_text()
+
+#     except WebSocketDisconnect:
+#         pass
+
+#     finally:
+#         connected_clients.discard(websocket)
+
+
 
 # Create an endpoint to listen for and receive user prompts
 @app.post("/api/chat")
@@ -89,13 +101,13 @@ async def control_device(command: DeviceCommand):
     if (command.action not in allowed_actions.get(command.domain, set())):
         raise HTTPException(status_code=400, detail="Unsupported device command.")
 
-    if not (command.entity_id.startswith(f"{command.domain}")):
+    if not (command.entity_id.startswith(f"{command.domain}.")):
         raise HTTPException(status_code=400, detail=f"Entity is not {command.domain}.")
 
     await command_device(
         command.entity_id,
-        "media_player",
-        "media_pause",
+        command.domain,
+        command.action,
         command.data
     )
 
@@ -134,14 +146,7 @@ async def get_location():
 
 @app.get("/api/devices")
 async def get_devices():
-    device_entities = await get_entities()
-
-    devices = [
-        device_entity["entity_id"]
-        for device_entity in device_entities
-    ]
-
-    return devices
+    return await get_entities()
 
 setup_dashboard(app)
 

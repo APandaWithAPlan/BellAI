@@ -1,51 +1,14 @@
-import { useState } from "react"
 import SmartHomeCard from "../components/SmartHomeCard"
-import { Lightbulb, Thermometer, Lock, Mic } from "lucide-react"
+import { useDevices } from "../hooks/useDevices"
+import { Lightbulb } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 
+
 function Devices() {
-
-  const [devices, setDevices] = useState([
-    { id: "light.bedroom", location: "Bedroom", isOn: true },
-  ])
-
-  async function toggleDevice(id, checked) {
-    const action = checked ? "turn_on" : "turn_off";
-
-    const response = await fetch("/api/devices/control", {
-      method: "POST",
-      headers: {
-          "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-          entity_id: id,
-          action: action
-      })     
-    });
-
-    if (!response.ok) {
-      toast.add({
-        type: "error",
-        description: `Failed to control ${id}`
-      });
-
-      throw new Error("Failed to control device");
-    };
-
-    setDevices(prevDevices =>
-      prevDevices.map(device =>
-        device.id === id
-          ? { ...device, isOn: checked }
-          : device
-      )
-    );
-  }
-
-  const activeDevices = devices.filter(device => device.isOn).length
+  const { devices } = useDevices();
+  const activeDevices = devices.filter(device => device.state === "on").length;
   const totalDevices = devices.length
-  const progress = totalDevices > 0
-    ? (activeDevices / totalDevices) * 100
-    : 0
+  const progress = totalDevices > 0 ? (activeDevices / totalDevices) * 100 : 0
     
     return (
         <div className="space-y-2">
@@ -61,18 +24,17 @@ function Devices() {
             <div className="grid grid-cols-6 p-4 gap-4">
 
                 {devices.map(device => (
-
                     <SmartHomeCard
+                        key={device.entity_id}
                         icon={Lightbulb}
                         color="#ef6cba"
-                        device={device.id}
-                        location={device.location}
-                        onToggle={checked => toggleDevice(device.id, checked)}
+                        device={device.name}
+                        location={device.area ?? "Unassigned"}
+                        isOn={device.state === "on"}
+                        onToggle={checked => toggleDevice(device.entity_id, checked)}
                     />
                 ))}
-
             </div>
-
         </div> 
     )
 }
