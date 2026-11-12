@@ -5,16 +5,17 @@ import { useWeather } from "../hooks/useWeather"
 import { useLocation } from "../hooks/useLocation"
 import DeviceCard from "../components/DeviceCard"
 import MusicCard from "../components/MusicCard"
-import { useDevices } from "../hooks/useDevices"
+// import { useDevices } from "../hooks/useDevices"
+import { useDeviceWebsockets } from "../hooks/useDeviceWebsockets"
 import EventCard from "../components/EventCard"
-import { Lightbulb, Thermometer, Lock, Mic } from "lucide-react"
+import { Lightbulb, Thermometer, Lock, Cog } from "lucide-react"
 
 function Home() {
 
     const { date, time, period } = useDateTime();
     const { weather } = useWeather();
     const { location } = useLocation();
-    const { devices } = useDevices();
+    const { devices } = useDeviceWebsockets();
     const activeLights = devices.filter(device => device.entity_id.startsWith("light") && device.state === "on").length;
     const media_players = devices.filter(device => device.entity_id.startsWith("media_player."));
     
@@ -41,22 +42,22 @@ function Home() {
 
             <DeviceCard
                 icon={Thermometer}
-                value="85°F"
+                value="Unavailable"
                 label="Thermostat"
                 color="#54b7e8"
             />
 
             <DeviceCard
                 icon={Lock}
-                value="Locked"
+                value="Unavailable"
                 label="Doors"
                 color="#37c5a1"
             />
 
             <DeviceCard
-                icon={Mic}
-                value="Ask BellAI"
-                label="Voice"
+                icon={Cog}
+                value="Unavailable"
+                label="Sensors"
                 color="#ef6cba"
             />
 

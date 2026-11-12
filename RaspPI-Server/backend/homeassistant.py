@@ -2,7 +2,8 @@ import os
 import json
 import httpx
 from dotenv import load_dotenv
-from websockets.asyncio.client import connect
+import asyncio
+from py_ha_ws_client import HomeAssistantWsClient
 
 load_dotenv()
 
@@ -11,52 +12,23 @@ HA_TOKEN = os.getenv("HA_TOKEN")
 HA_WEATHER_ENTITY = os.getenv("HA_WEATHER_ENTITY")
 HA_HOME_LOCATION_ENTITY = os.getenv("HA_HOME_LOCATION_ENTITY")
 
-# async def listen_to_home_assistant():
-#     ws_url = HA_URL.replace("http://", "ws://") + "/api/websocket"
+async def listen_to_home_assistant(on_state_change):
+    ws_url = HA_URL.replace("http://", "ws://") + "/api/websocket"
 
-#     async with connect(ws_url) as websocket:
-#         message = json.loads(await websocket.recv())
+    async with HomeAssistantWsClient.with_url(HA_TOKEN, ws_url, auto_reconnect=True) as client:
+        async def handle_state_change(event):
+            data = event["data"]
+            entity_id = data["entity_id"]
 
-#     if message["type"] != "auth_required":
-#         raise RuntimeError("Unexpected authentication response")
+            if entity_id.startswith(("light.", "switch.", "media_player.")):
+                await on_state_change({
+                    "entity_id": entity_id,
+                    "new_state": data.get("new_state")
+                })
 
-#     await websocket.send(json.dumps({
-#         "type": "auth",
-#         "access_token": HA_TOKEN
-#     }))
+        await client.subscribe_events("state_changed", handle_state_change)
 
-#     auth_response = json.loads(await websocket.recv())
-
-#     if auth_response["type"] != "auth_ok":
-#             raise RuntimeError("Unable to authenticate to Home Assistant.")
-
-#     await websocket.send(json.dumps({
-#         "id": 1,
-#         "type": "subscribe_events",
-#         "event_type": "state_changed"
-#     }))
-
-#     subscription = json.loads(await websocket.recv())
-
-#     if not subscription.get("success"):
-#         raise RuntimeError("Unable to subscribe to state_changed")
-
-#     async for message in websocket:
-#         event = json.loads(message)
-
-#         if event.get("type") == "event":
-#             data = event["event"]["data"]
-
-#             entity_id = data["entity_id"]
-#             new_state = data["new_state"]
-
-#             if new_state is None:
-#                 continue
-
-#             await broadcast_event({
-#                 "entity_id": entity_id,
-#                 "state": new_state["state"],
-#             })
+        await asyncio.Event().wait()
 
 
 async def get_entity(entity_id: str):

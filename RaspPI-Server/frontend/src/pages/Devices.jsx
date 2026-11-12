@@ -1,11 +1,13 @@
 import SmartHomeCard from "../components/SmartHomeCard"
 import { useDevices } from "../hooks/useDevices"
+import { useDeviceWebsockets } from "../hooks/useDeviceWebsockets"
 import { Lightbulb } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 
 
 function Devices() {
-  const { devices, toggleDevice } = useDevices();
+  const { toggleDevice } = useDevices();
+  const { devices } = useDeviceWebsockets();
   const lights = devices.filter(device => device.entity_id.startsWith("light."));
   const activeDevices = devices.filter(device => device.state === "on").length;
   const totalDevices = devices.length;

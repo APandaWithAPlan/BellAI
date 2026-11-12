@@ -7,12 +7,15 @@ import tempfile
 import shutil
 import subprocess
 import os
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from serve import setup_dashboard
 from homeassistant import listen_to_home_assistant, get_entity, get_entities, command_device, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
 
 client = ollama.Client(host=os.environ["OLLAMA_HOST"])
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
 whisper_model = Path.home() / "whisper.cpp/models/ggml-tiny.en.bin"
+connected_clients = set()
 
 # Format user request
 class Prompt(BaseModel):
@@ -33,27 +36,47 @@ class DeviceCommand(BaseModel):
     action: str
     data: dict = Field(default_factory=dict)
 
-app = FastAPI()
 
-# connected_clients = set()
+async def broadcast_state_change(data):
+    disconnected_clients = []
 
-# @app.websocket("/ws/devices")
-# async def device_websocket(websocket: WebSocket):
-#     await websocket.accept()
+    for websocket in list(connected_clients):
+        try:
+            await websocket.send_json(data)
+        except Exception:
+            disconnected_clients.append(websocket)
 
-#     connected_clients.add(websocket)
+    for websocket in disconnected_clients:
+        connected_clients.discard(websocket)
 
-#     try:
-#         while True:
-#             await websocket.receive_text()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(listen_to_home_assistant(broadcast_state_change))
 
-#     except WebSocketDisconnect:
-#         pass
+    yield
 
-#     finally:
-#         connected_clients.discard(websocket)
+    task.cancel()
 
+    with suppress(asyncio.CancelledError):
+        await task
 
+app = FastAPI(lifespan=lifespan)
+
+@app.websocket("/ws/devices")
+async def device_websocket(websocket: WebSocket):
+    await websocket.accept()
+
+    connected_clients.add(websocket)
+
+    try:
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        pass
+
+    finally:
+        connected_clients.discard(websocket)
 
 # Create an endpoint to listen for and receive user prompts
 @app.post("/api/chat")
