@@ -5,7 +5,9 @@ struct RoutineView: View {
     @State private var isCreating = false
     @State private var isLoading = false
     @State private var loadError: String?
-    private let service = HTTPRoutineService()
+    private let notifications = RoutineNotifications.shared
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -27,6 +29,16 @@ struct RoutineView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    if let message = notifications.message {
+                        Text(message).font(.footnote).foregroundStyle(.secondary)
+                        if notifications.permissionDenied {
+                            #if os(iOS)
+                            Button("Open notification settings") {
+                                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                            }
+                            #endif
+                        }
+                    }
                     if isLoading { ProgressView("Loading routines…") }
                     if let loadError {
                         Text(loadError).font(.subheadline).foregroundStyle(.secondary)
@@ -59,6 +71,9 @@ struct RoutineView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
         .task { await refresh() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await refresh() } }
+        }
         .sheet(isPresented: $isCreating) {
             CreateRoutineView { saved in
                 routines.removeAll { $0.id == saved.id }
@@ -74,7 +89,7 @@ struct RoutineView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            routines = try await service.load()
+            routines = try await notifications.refresh(requestPermission: true)
             loadError = nil
         } catch {
             loadError = "Couldn't load routines. \(error.localizedDescription)"
@@ -130,7 +145,7 @@ private struct CreateRoutineView: View {
                 } header: {
                     Text("Actions")
                 } footer: {
-                    Text("Describe each action in order, up to 500 characters each. Saving a routine does not run it automatically.")
+                    Text("Describe each action in order, up to 500 characters each. A daily notification reminds you at this time; actions are not run automatically.")
                 }
                 if let saveError {
                     Section { Text(saveError).foregroundStyle(.red) }
@@ -163,6 +178,7 @@ private struct CreateRoutineView: View {
                               timezone: TimeZone.current.identifier, actions: cleanActions)
         do {
             let saved = try await HTTPRoutineService().create(routine)
+            await RoutineNotifications.shared.saved(saved)
             onSaved(saved)
             dismiss()
         } catch {

@@ -19,7 +19,11 @@ Restart the data server after installing the updated requirements.
 (1–50 strings, each 1–500 characters), and returns the saved routine. Repeated
 requests with the same ID and content do not create duplicates; different content
 for an existing ID returns 409. Task saves do not overwrite routines.
-These endpoints store routines; they do not schedule or execute actions.
+These endpoints store routines. The iOS app schedules daily local notifications
+in each routine's saved timezone after notification permission is granted. It
+refreshes schedules when opened and after saving. Already scheduled reminders
+work without the server; changes made elsewhere require opening the app to sync.
+Notifications remind you of the actions; they do not execute them.
 
 Run `python -m unittest discover -s tests` from this directory for validation,
 retry, and persistence checks against a temporary database.

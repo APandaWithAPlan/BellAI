@@ -114,4 +114,15 @@ The icon is `BellAi.png` in this folder, set up as the 1024 px `AppIcon` in `Bel
 
 ## Offline checks
 
+Routine reminders repeat daily in the timezone saved with the routine. Open
+Home → Routine and allow notifications, or save a routine to enable reminders.
+If notifications are denied, the Routine screen links to system notification
+settings. Schedules refresh when the app becomes active; once scheduled, delivery
+does not need the app or server to be running. Changes from other devices sync
+when this app next opens. Focus and system notification settings can silence or
+delay alerts. Actions are shown in the reminder and are not executed automatically.
+
+Run `sh scripts/check-routine-notifications.sh` to check daily triggers, saved
+timezones, reminder content, stable identifiers, and invalid schedule handling.
+
 Run `sh scripts/check-ollama.sh` for the chat, voice input, meal, mail, recommendation and settings checks, and `sh scripts/check-weather.sh` for the weather screen. They use mock responses and need no server, key or device.
