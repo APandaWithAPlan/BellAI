@@ -18,7 +18,7 @@ final class RoutineNotifications {
         center.delegate = delegate
     }
 
-    // Serialize fetches and saves so an older response cannot undo a newly saved reminder.
+    // Serialize fetches, deletions and saves so an older response cannot undo a newly saved reminder.
     func refresh(requestPermission: Bool = false) async throws -> [Routine] {
         let previous = pendingUpdate
         let update = Task<[Routine], Error> { @MainActor in
@@ -44,6 +44,22 @@ final class RoutineNotifications {
         }
         pendingUpdate = update
         _ = try? await update.value
+    }
+
+    func delete(_ routine: Routine) async throws {
+        let previous = pendingUpdate
+        let update = Task<[Routine], Error> { @MainActor in
+            _ = try? await previous?.value
+            try await HTTPRoutineService().delete(routine.id)
+            self.knownRoutines.removeAll { $0.id == routine.id }
+            let identifier = Self.identifier(routine)
+            self.center.removePendingNotificationRequests(withIdentifiers: [identifier])
+            self.center.removeDeliveredNotifications(withIdentifiers: [identifier])
+            await self.synchronize(requestPermission: false, removeStale: false)
+            return self.knownRoutines
+        }
+        pendingUpdate = update
+        _ = try await update.value
     }
 
     private func synchronize(requestPermission: Bool, removeStale: Bool = true) async {

@@ -13,8 +13,12 @@ struct HTTPRoutineService {
         try JSONDecoder().decode(Routine.self, from: await perform("POST", body: JSONEncoder().encode(routine)))
     }
 
-    private func perform(_ method: String, body: Data? = nil) async throws -> Data {
-        let url = URL(string: "http://\(ServerSettings.address(.data))/routines")!
+    func delete(_ id: UUID) async throws {
+        _ = try await perform("DELETE", path: "/\(id.uuidString.lowercased())")
+    }
+
+    private func perform(_ method: String, path: String = "", body: Data? = nil) async throws -> Data {
+        let url = URL(string: "http://\(ServerSettings.address(.data))/routines\(path)")!
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 20

@@ -5,6 +5,8 @@ struct RoutineView: View {
     @State private var isCreating = false
     @State private var isLoading = false
     @State private var loadError: String?
+    @State private var deletingIDs: Set<UUID> = []
+    @State private var deleteError: String?
     private let notifications = RoutineNotifications.shared
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
@@ -27,8 +29,8 @@ struct RoutineView: View {
             .padding(.horizontal, 20)
             .padding(.top, 16)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+            List {
+                Group {
                     if let message = notifications.message {
                         Text(message).font(.footnote).foregroundStyle(.secondary)
                         if notifications.permissionDenied {
@@ -48,24 +50,37 @@ struct RoutineView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(routines) { routine in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(routine.name).font(.headline)
-                            Label("\(routine.time) · \(routine.timezone)", systemImage: "clock")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                            ForEach(Array(routine.actions.enumerated()), id: \.offset) { index, action in
-                                Text("\(index + 1). \(action)").font(.subheadline)
-                            }
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                ForEach(routines) { routine in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(routine.name).font(.headline)
+                        Label("\(routine.time) · \(routine.timezone)", systemImage: "clock")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        ForEach(Array(routine.actions.enumerated()), id: \.offset) { index, action in
+                            Text("\(index + 1). \(action)").font(.subheadline)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 13))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 13))
+                    .opacity(deletingIDs.contains(routine.id) ? 0.5 : 1)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            Task { await delete(routine) }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .disabled(deletingIDs.contains(routine.id))
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .refreshable { await refresh() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -74,6 +89,14 @@ struct RoutineView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await refresh() } }
         }
+        .alert("Couldn't delete routine", isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "Please try again.")
+        }
         .sheet(isPresented: $isCreating) {
             CreateRoutineView { saved in
                 routines.removeAll { $0.id == saved.id }
@@ -81,6 +104,17 @@ struct RoutineView: View {
                 routines.sort { ($0.time, $0.name) < ($1.time, $1.name) }
                 Task { await refresh() }
             }
+        }
+    }
+
+    private func delete(_ routine: Routine) async {
+        guard deletingIDs.insert(routine.id).inserted else { return }
+        defer { deletingIDs.remove(routine.id) }
+        do {
+            try await notifications.delete(routine)
+            withAnimation { routines.removeAll { $0.id == routine.id } }
+        } catch {
+            deleteError = error.localizedDescription
         }
     }
 

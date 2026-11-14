@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 from pydantic import ValidationError
-from routines import Routine, create_routine, list_routines
+from routines import Routine, create_routine, delete_routine, list_routines
 
 
 class RoutineTests(unittest.TestCase):
@@ -47,6 +47,18 @@ class RoutineTests(unittest.TestCase):
             create_routine(Routine(**(self.payload | {'name': 'Changed'})))
         self.assertEqual(error.exception.status_code, 409)
         self.assertEqual(list_routines(), {'routines': [expected]})
+
+    def test_delete_persists_and_preserves_other_data(self):
+        routine = Routine(**self.payload)
+        other = Routine(**(self.payload | {'id': str(uuid4()), 'name': 'Keep'}))
+        create_routine(routine)
+        create_routine(other)
+        tasks = {'tasks': [{'title': 'Keep this task'}]}
+        self.server.put_data(self.server.Save(data=tasks))
+        self.assertEqual(delete_routine(routine.id).status_code, 204)
+        self.assertEqual(delete_routine(routine.id).status_code, 204)
+        self.assertEqual(list_routines(), {'routines': [other.model_dump(mode='json')]})
+        self.assertEqual(self.server.get_data(), {'data': tasks})
 
     def test_parameterized_text_and_order(self):
         late = Routine(**(self.payload | {'name': "Evening'); DROP TABLE routines;--", 'time': '20:00'}))

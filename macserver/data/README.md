@@ -19,6 +19,8 @@ Restart the data server after installing the updated requirements.
 (1–50 strings, each 1–500 characters), and returns the saved routine. Repeated
 requests with the same ID and content do not create duplicates; different content
 for an existing ID returns 409. Task saves do not overwrite routines.
+`DELETE /routines/{id}` removes a routine and returns 204, including if it was already deleted.
+
 These endpoints store routines. The iOS app schedules daily local notifications
 in each routine's saved timezone after notification permission is granted. It
 refreshes schedules when opened and after saving. Already scheduled reminders

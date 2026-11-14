@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import sqlite3
 from storage import db
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter()
@@ -86,3 +86,11 @@ def create_routine(body: Routine):
         if saved != body.model_dump(mode="json"):
             raise HTTPException(409, "This routine was already saved with different details. Reopen Create to start a new routine.")
         return saved
+
+
+@router.delete("/routines/{routine_id}", status_code=204)
+def delete_routine(routine_id: UUID):
+    # Idempotent so retrying after a lost response is safe.
+    with database() as conn:
+        conn.execute("DELETE FROM routines WHERE id = ?", (str(routine_id),))
+    return Response(status_code=204)
