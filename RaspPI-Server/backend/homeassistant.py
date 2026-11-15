@@ -58,7 +58,10 @@ async def get_entities():
                 'name': entity.attributes.get('friendly_name', entity.entity_id),
                 'state': entity.state,
                 'area': area_name(entity.entity_id),
-                'attributes': entity.attributes
+                'attributes': {
+                    'media_title': entity.attributes.get('media_title'),
+                    'media_artist': entity.attributes.get('media_artist'),
+                }
             }] %}
         {% endfor %}
 

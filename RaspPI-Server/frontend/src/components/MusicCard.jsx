@@ -3,21 +3,10 @@ import { useDeviceCommand } from "../hooks/useDeviceCommand"
 import { EighthNotes, Pause, Play, SkipForward, SkipBack } from "lucide-react"
 
 function MusicCard({ entity_id, device, song, artist, isPlaying }) {
-  const [playing, setPlaying] = useState(isPlaying);
   const { commandDevice } = useDeviceCommand();
-
-  useEffect(() => {
-    setPlaying(isPlaying);
-  }, [isPlaying]);
 
   async function controlMusic(action) {
     await commandDevice(entity_id, "media_player", action);
-
-    if (action === "media_play") {
-        setPlaying(true);
-    } else if (action === "media_pause") {
-        setPlaying(false);
-    }
   } 
 
   return (
@@ -36,7 +25,7 @@ function MusicCard({ entity_id, device, song, artist, isPlaying }) {
             </h3>
 
             <p className="truncate text-sm text-[#be185d]">
-              {artist} · {device}
+              {artist ? `${artist}` : "Idle"} · {device ? `${device}` : "Unknown Device"}
             </p>
           </div>
 
@@ -52,9 +41,9 @@ function MusicCard({ entity_id, device, song, artist, isPlaying }) {
           <button
             type="button"
             className="rounded-full bg-[#db2777] p-2 text-white"
-            onClick={() => controlMusic(playing ? "media_pause" : "media_play")}
+            onClick={() => controlMusic(isPlaying ? "media_pause" : "media_play")}
           >
-            {playing ? <Pause fill="white" size={20} /> :<Play fill="white" size={20} />}
+            {isPlaying ? <Pause fill="white" size={20} /> : <Play fill="white" size={20} />}
           </button>
 
           <button type="button"

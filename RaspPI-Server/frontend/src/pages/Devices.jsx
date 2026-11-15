@@ -6,13 +6,13 @@ import { Progress } from "@/components/ui/progress"
 
 
 function Devices() {
-  const { toggleDevice } = useDevices();
-  const { devices } = useDeviceWebsockets();
+  const { devices, toggleDevice } = useDevices();
+//   const devices = useDeviceWebsockets();
   const lights = devices.filter(device => device.entity_id.startsWith("light."));
   const activeDevices = devices.filter(device => device.state === "on").length;
   const totalDevices = devices.length;
   const progress = totalDevices > 0 ? (activeDevices / totalDevices) * 100 : 0;
-    
+    // add toast to successful command
     return (
         <div className="space-y-2">
             

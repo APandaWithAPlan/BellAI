@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, field_validator, ValidationError
 import ollama
 import reverse_geocode
@@ -170,7 +171,9 @@ async def get_location():
 
 @app.get("/api/devices")
 async def get_devices():
-    return await get_entities()
+    devices = await get_entities()
+    
+    return jsonable_encoder(devices)
 
 setup_dashboard(app)
 
