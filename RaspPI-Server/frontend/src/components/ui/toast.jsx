@@ -153,7 +153,7 @@ function ToastIcon({
 
   if (type === "success") {
     icon = (
-      <CircleCheckIcon aria-hidden="true" />
+      <CircleCheckIcon aria-hidden="true" color="green" />
     )
   }
 

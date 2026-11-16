@@ -61,6 +61,7 @@ async def get_entities():
                 'attributes': {
                     'media_title': entity.attributes.get('media_title'),
                     'media_artist': entity.attributes.get('media_artist'),
+                    'entity_picture': entity.attributes.get('entity_picture'),
                 }
             }] %}
         {% endfor %}

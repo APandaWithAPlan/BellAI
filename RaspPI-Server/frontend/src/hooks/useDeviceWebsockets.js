@@ -87,9 +87,24 @@ export function useDeviceWebsockets() {
                         return updated;
                     }
 
+                    const existingDevice = prev[data.entity_id];
+
                     return {
                         ...prev,
-                        [data.entity_id]: data.new_state
+                        [data.entity_id]: {
+                            ...existingDevice,
+                            entity_id: data.entity_id,
+                            name:
+                                data.new_state.attributes?.friendly_name ??
+                                existingDevice?.name ??
+                                data.entity_id,
+                            state: data.new_state.state,
+                            area: existingDevice?.area ?? null,
+                            attributes: {
+                                ...existingDevice?.attributes,
+                                ...data.new_state.attributes
+                            }
+                        }
                     };
                 });
             };

@@ -2,7 +2,7 @@ import { Card, CardContent } from "./ui/card"
 import { useDeviceCommand } from "../hooks/useDeviceCommand"
 import { EighthNotes, Pause, Play, SkipForward, SkipBack } from "lucide-react"
 
-function MusicCard({ entity_id, device, song, artist, isPlaying }) {
+function MusicCard({ entity_id, device, song, artist, album_cover, isPlaying }) {
   const { commandDevice } = useDeviceCommand();
 
   async function controlMusic(action) {
@@ -16,7 +16,11 @@ function MusicCard({ entity_id, device, song, artist, isPlaying }) {
         <div className="flex min-w-0 items-center gap-4">
 
           <div className="rounded-lg bg-[#fae4ee] p-3">
-            <EighthNotes size={24} strokeWidth={1.5} className="text-[#be185d]"/>
+            {album_cover ? (
+              <img src={album_cover} className="h-full w-full rounded-lg object-cover" />
+            ) : (
+              <EighthNotes size={24} strokeWidth={1.5} className="text-[#be185d]"/>
+            )}
           </div>
 
           <div className="min-w-0">

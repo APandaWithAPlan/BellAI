@@ -65,9 +65,10 @@ function Home() {
                     <MusicCard 
                         key={media_player.entity_id}
                         entity_id={media_player.entity_id}
-                        device={media_player.friendly_name ?? media_player.attributes?.friendly_name}
+                        device={media_player.friendly_name ?? media_player.attributes?.friendly_name ?? media_player.device}
                         song={media_player.attributes.media_title}
                         artist={media_player.attributes.media_artist}
+                        album_cover={media_player.attributes.entity_picture}
                         isPlaying={media_player.state === "playing"}
                     />
                 ))}
