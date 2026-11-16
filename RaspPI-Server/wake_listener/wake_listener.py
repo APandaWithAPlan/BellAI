@@ -28,8 +28,12 @@ parser.add_argument("--gain", type=float, default=5.0, help="boosts the mic in s
 parser.add_argument("--api", default="http://127.0.0.1:8000", help="the Pi API (api.py)")
 parser.add_argument("--server", default="", help="AI server to check when woken, e.g. http://<ai-server>:11434")
 parser.add_argument("--tts", default="", help="optional voice API to speak replies, e.g. http://<ai-server>:9880")
-parser.add_argument("--wake-sound", default=str(HERE / "wake.wav") if (HERE / "wake.wav").exists() else "",
-                    help="chime .wav to play when woken (default: wake.wav next to this script, else a built-in chime)")
+parser.add_argument("--wake-sound", default=next((str(HERE / f) for f in ("listening.wav", "wake.wav") if (HERE / f).exists()), ""),
+                    help="played when BellAi is heard and starts listening (default: listening.wav, else wake.wav, else a built-in chime)")
+parser.add_argument("--startup-sound", default=str(HERE / "waking_up.wav"),
+                    help="played once BellAi is ready for the wake word (skipped if missing)")
+parser.add_argument("--done-sound", default=str(HERE / "hang_up.wav"),
+                    help="played when BellAi stops listening to the command (skipped if missing)")
 parser.add_argument("--dropped-sound", default=str(HERE / "connection_dropped.wav"),
                     help=".wav spoken on connection dropped (recorded in the BellAi voice; skipped if missing)")
 parser.add_argument("--max-seconds", type=float, default=8.0, help="longest command to record before cutting off")
@@ -264,6 +268,9 @@ def main():
     source = WavFile(args.wav) if args.wav else Mic(args.mic)
     recent = deque(maxlen=int(3 * RATE / CHUNK))
     log(f"Say \"BellAi\" (threshold {args.threshold})")
+    if not args.scores:
+        play(args.startup_sound)
+        source.flush()
     while True:
         chunk = source.read()
         if chunk is None:
@@ -286,6 +293,7 @@ def main():
             connection_dropped(f"the AI server at {args.server} isn't answering")
             continue
         audio = record_command(source, float(np.percentile(recent, 20)))
+        play(args.done_sound)
         if audio is None:
             log(f"No command heard within {args.wait_seconds:.0f} s")
         else:
