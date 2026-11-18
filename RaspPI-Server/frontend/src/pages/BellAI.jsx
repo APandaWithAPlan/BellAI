@@ -2,23 +2,17 @@ import { useState, useRef } from "react"
 import { Mic, Send, LoaderCircle } from "lucide-react"
 import { Message, MessageContent, } from "@/components/ui/message"
 import { Bubble, BubbleContent, } from "@/components/ui/bubble"
-import {
-  MessageScrollerProvider,
-  MessageScroller,
-  MessageScrollerViewport,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerButton,
-} from "@/components/ui/message-scroller"
+import { MessageScrollerProvider, MessageScroller, MessageScrollerViewport, MessageScrollerContent, MessageScrollerItem, MessageScrollerButton } from "@/components/ui/message-scroller"
 import { toast } from "@/components/ui/toast"
+import { useChatWebSocket } from "../hooks/useChatWebSocket"
 
 function BellAI() {
 
     const [input, setInput] = useState("")
-    const [messages, setMessages] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
+
+    const {messages, isLoading, isConnected, sendToBellAI} = useChatWebSocket();
 
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]); 
@@ -63,24 +57,13 @@ function BellAI() {
                     }
 
                     const data = await response.json();
-                    
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            id: crypto.randomUUID(),
-                            role: "user",
-                            content: data.transcript,
-                            time: new Date().toLocaleTimeString([], {
-                                hour: "numeric",
-                                minute: "2-digit"
-                            })
-                        }
-                    ]);
 
                     setIsTranscribing(false);
                     setIsRecording(false);
 
-                    await sendToBellAI(data.transcript);
+                    if (!sendToBellAI(data.transcript)) {
+                        throw new Error("BellAI is busy or disconnected.");
+                    }
 
                 } catch (error) {
                     toast.add({
@@ -118,66 +101,13 @@ function BellAI() {
         }
     }
 
-    async function sendMessage() {
-        if (!input.trim()) return;
-
+    function sendMessage() {
         const request = input.trim();
 
-        setMessages(prev => [
-            ...prev, {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: request,
-                time: new Date().toLocaleTimeString([], {
-                    hour: "numeric", 
-                    minute: "2-digit"
-                })
-            }
-        ]);
+        if (!request) return;
 
-        setInput("");
-
-        await sendToBellAI(request);
-    }
-
-    async function sendToBellAI(request) {
-        setIsLoading(true);
-
-        try {
-            const response = await fetch("/api/chat", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ request })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Request failed: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            setMessages(prev => [
-                ...prev,
-                {
-                    id: crypto.randomUUID(),
-                    role: "assistant",
-                    content: data.response,
-                    time: new Date().toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit"
-                    })
-                }
-            ]);
-
-        } catch (error) {
-            toast.add({
-                type: "warning",
-                description: error.message
-            });
-        } finally {
-            setIsLoading(false);
+        if (sendToBellAI(request)) {
+            setInput("");
         }
     }
 

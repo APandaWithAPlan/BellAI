@@ -17,7 +17,7 @@ function MusicCard({ entity_id, device, song, artist, album_cover, isPlaying }) 
 
           <div className="rounded-lg bg-[#fae4ee] p-3">
             {album_cover ? (
-              <img src={album_cover} className="h-full w-full rounded-lg object-cover" />
+              <img src={`/api/album_cover?entity_id=${encodeURIComponent(entity_id)}&picture=${encodeURIComponent(album_cover ?? "")}`} className="h-full w-full rounded-lg object-cover" />
             ) : (
               <EighthNotes size={24} strokeWidth={1.5} className="text-[#be185d]"/>
             )}

@@ -1,17 +1,25 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect, Response
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, field_validator, ValidationError
+from websockets.exceptions import ConnectionClosed
 import ollama
+import httpx
 import reverse_geocode
 from pathlib import Path
 import tempfile
 import shutil
+import websockets
 import subprocess
 import os
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from serve import setup_dashboard
-from homeassistant import listen_to_home_assistant, get_entity, get_entities, command_device, get_forecast, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
+from homeassistant import listen_to_home_assistant, get_entity, get_entities, command_device, get_forecast, get_album_cover, HA_WEATHER_ENTITY, HA_HOME_LOCATION_ENTITY
+
+MAC_EMAIL_URL = os.getenv("MAC_EMAIL_URL")
+MAC_TASKS_URL = os.getenv("MAC_TASKS_URL")
+VOICE_WS_URL = os.getenv( "VOICE_WS_URL")
+
 
 client = ollama.Client(host=os.environ["OLLAMA_HOST"])
 whisper_cli = Path.home() / "whisper.cpp/build/bin/whisper-cli"
@@ -62,6 +70,66 @@ async def lifespan(app: FastAPI):
         await task
 
 app = FastAPI(lifespan=lifespan)
+
+@app.websocket("/ws/chat")
+async def chat_websocket(client: WebSocket):
+    await client.accept()
+
+    try:
+        async with websockets.connect(VOICE_WS_URL,max_size=None) as voice_server:
+
+            async def send_to_voice():
+                while True:
+                    message = await client.receive()
+
+                    if message["type"] == "websocket.disconnect":
+                        return
+
+                    if message.get("text") is not None:
+                        await voice_server.send(message["text"])
+
+                    elif message.get("bytes") is not None:
+                        await voice_server.send(message["bytes"])
+
+            async def receive_from_voice():
+                async for message in voice_server:
+
+                    if isinstance(message, bytes):
+                        await client.send_bytes(message)
+
+                    else:
+                        await client.send_text(message)
+
+            tasks = [asyncio.create_task(send_to_voice()), asyncio.create_task(receive_from_voice())]
+
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            for task in pending:
+                task.cancel()
+
+            await asyncio.gather(*pending, return_exceptions=True)
+
+            for task in done:
+                if not task.cancelled():
+                    task.result()
+
+    except WebSocketDisconnect:
+        pass
+
+    except ConnectionClosed:
+        pass
+
+    except OSError as error:
+        await client.send_json({
+            "type": "error",
+            "message": f"Cannot connect to voice server: {error}"
+        })
+
+    finally:
+        try:
+            await client.close()
+        except RuntimeError:
+            pass
 
 @app.websocket("/ws/devices")
 async def device_websocket(websocket: WebSocket):
@@ -174,6 +242,47 @@ async def get_devices():
     devices = await get_entities()
     
     return jsonable_encoder(devices)
+
+@app.get("/api/album_cover")
+async def get_album_cover(entity_id: str):
+    entity = await get_entity(entity_id)
+    entity_picture = entity.get("attributes", {}).get("entity_picture")
+
+    image, image_format = await get_album_cover(entity_picture)
+
+    return Response(content=image, media_type=image_format, headers={"Cache-Control": "no-store"})
+
+@app.get("/api/mail")
+async def get_mail(limit: int = 20):
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(
+                f"{MAC_EMAIL_URL}/mail",
+                params={"limit": limit}
+            )
+
+            response.raise_for_status()
+
+        except httpx.HTTPError:
+            raise HTTPException(status_code=502,detail="Failed to retrieve mail.")
+
+    return response.json()
+
+@app.get("/api/tasks")
+async def get_tasks():
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+
+            response = await client.get(
+                f"{MAC_TASKS_URL}/data"
+            )
+
+            response.raise_for_status()
+
+        except httpx.HTTPError:
+            raise HTTPException(status_code=502, detail="Failed to retrieve tasks.")
+    
+    return response.json()
 
 setup_dashboard(app)
 

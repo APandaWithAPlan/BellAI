@@ -104,6 +104,22 @@ async def get_forecast(entity_id: str):
         
         return response.json()
 
+async def get_album_cover(entity_picture: str):
+    if not entity_picture:
+        return None
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            f"{HA_URL}{entity_picture}",
+            headers={
+                "Authorization": f"Bearer {HA_TOKEN}"
+            }
+        )
+
+        response.raise_for_status()
+
+        return response.content, response.headers.get("content-type", "image/jpeg")
+
 async def command_device(entity_id: str, domain: str, action: str, data: dict | None = None):
 
     async with httpx.AsyncClient(timeout=10.0) as client:

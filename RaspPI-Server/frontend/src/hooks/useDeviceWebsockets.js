@@ -111,7 +111,10 @@ export function useDeviceWebsockets() {
 
             socket.onerror = () => {
                 if (active) {
-                    console.error("Unable to connect to Websocket server.");
+                    toast.add({
+                        type: "error",
+                        description: "Unable to connect to Home Assistant WebSocket."
+                    });
                 }
             };
 

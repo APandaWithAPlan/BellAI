@@ -8,6 +8,7 @@ import MusicCard from "../components/MusicCard"
 import { useDeviceWebsockets } from "../hooks/useDeviceWebsockets"
 import EventCard from "../components/EventCard"
 import { Lightbulb, Thermometer, Lock, Cog } from "lucide-react"
+import { useEmails } from "../hooks/useEmails"
 
 function Home() {
 
@@ -17,6 +18,7 @@ function Home() {
     const { devices } = useDeviceWebsockets();
     const activeLights = Object.values(devices).filter(device => device.entity_id.startsWith("light") && device.state === "on").length;
     const media_players = Object.values(devices).filter(device => device.entity_id.startsWith("media_player."));
+    const { today_events } = useEmails();
     
     return (
         <div className="grid grid-cols-4 gap-4">
@@ -75,7 +77,13 @@ function Home() {
             </div>
 
             <div className="col-span-4">
-                <EventCard time="9:30 AM" timeUntil="30 min" title="Team Standup" />
+                {today_events.map((event) => (
+                    <EventCard
+                        key={event.id}
+                        subject={event.subject}
+                        due={event.due}
+                    />
+                ))}
             </div>
 
         </div>  
