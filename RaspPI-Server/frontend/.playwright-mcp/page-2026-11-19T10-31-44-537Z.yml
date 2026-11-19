@@ -1,0 +1,40 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - heading "BellAI" [level=1] [ref=e5]
+    - main [ref=e6]:
+      - generic [ref=e7]:
+        - heading "Smart Home" [level=3] [ref=e8]
+        - paragraph [ref=e9]: 1 of 3 active
+        - progressbar [ref=e10]: x
+        - generic [ref=e13]:
+          - generic [ref=e15]:
+            - generic [ref=e16]:
+              - switch [checked] [ref=e20]
+              - checkbox [checked] [aria-hidden] [ref=e21]
+            - paragraph [ref=e23]: Living Room Lamp · Living Room
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - switch [active] [ref=e30]
+              - checkbox [aria-hidden] [ref=e31]
+            - paragraph [ref=e33]: Bedroom Ceiling · Bedroom
+          - generic [ref=e35]:
+            - generic [ref=e36]:
+              - switch [ref=e40]
+              - checkbox [aria-hidden] [ref=e41]
+            - paragraph [ref=e43]: Porch Light · Outside
+    - navigation [ref=e45]:
+      - link "Home" [ref=e46] [cursor=pointer]:
+        - /url: /
+      - link "Devices" [ref=e51] [cursor=pointer]:
+        - /url: /devices
+      - link "Life" [ref=e55] [cursor=pointer]:
+        - /url: /life
+      - link "BellAI" [ref=e59] [cursor=pointer]:
+        - /url: /bellai
+  - generic:
+    - region "Notifications":
+      - dialog [ref=e63]:
+        - generic [ref=e64]:
+          - paragraph [ref=e67]: Bedroom Ceiling is on.
+          - button [aria-hidden] [ref=e68]
