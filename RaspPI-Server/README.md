@@ -9,16 +9,17 @@ The Raspberry PI acts as the user's home device hub for communicating with BellA
 * Raspberry PI 400 interface running Linux Server 26.04.
 * Communication with BellAI through text prompts.
 * Communication with BellAI through audio prompts (.webm).
+* Real-time audio and text streaming of BellAI's responses
 * Speech-to-text transcription with Whisper locally installed on the RaspPI.
 * Input validation for prompts.
 * Error handling for connection issues with BellAI.
-* Integration with Home Assistant.
+* Integration with Home Assistant for devices (lights) and Spotify.
 ### Frontend
 * Dashboard with Home, Devices, Life, and BellAI tabs.
-    * Home: Displays general information at a glance such as the date, time, weather, and location.
-    * Devices: Displays devices connected with Home Assistant and allows the user to control their state.
-    * Life: Displays calendar events, important emails, a to-do list, and upcoming deliveries.
-    * BellAI: Displays conversation history between the user and BellAI (currently non-persistant) and allows the user to send messages or audio recordings.
+    * Home: Displays general information at a glance such as the date, time, weather, and location. Also displays devices playing Spotify with Pause/Play, Forward, and Backward controls
+    * Devices: Displays devices connected with Home Assistant and allows the user to control their state. Currently only works with lights and toggle on/off actions.
+    * Life: Displays calendar events, important emails, a to-do list, and upcoming deliveries pulled from /mail and /data on the server.
+    * BellAI: Displays (non-persistent) conversation history between the user and BellAI (currently non-persistant) and allows the user to send messages or audio recordings.
 
 ## Getting Started
 
@@ -29,7 +30,7 @@ The Raspberry PI acts as the user's home device hub for communicating with BellA
 * Linux Server Version: `v26.04.1 LTS`.
 * 32gb microSD card for imaging.
 * [Whispercpp](https://github.com/ggml-org/whisper.cpp) Version: `v1.9.5` installed locally on the RaspPI.
-* [Home Assistant Core](https://pypi.org/project/homeassistant/) via `pip install homeassistant`.
+* [Home Assistant Core](https://pypi.org/project/homeassistant/) via `pip install homeassistant`. You'll need to create an account on Home Assistant accessed at port `8123`. This includes integrating any external accounts with Home Assistant, such as Spotify, as well.
 * BellAI Server: A running Ollama server with the configured model available. The default model is `qwen3:8b`.
 * The device must be on the same network as the BellAI server with access to port `11434`.
 * A browser and graphical interface to display the dashboard. Tested: `Chromium` with `Xorg`.
@@ -47,5 +48,8 @@ The Raspberry PI acts as the user's home device hub for communicating with BellA
 ## How to Use It
 
 For now, the dashboard is mainly for display and contains placeholder values, but you can:
-1. **Start a conversation:** Enter a prompt to BellAI by typing and sending a message in the chat or recording one. 
-2. **Read the response:** Wait for the assistant's reply beneath your message. Only one request can run at a time, and replies appear when the server finishes rather than streaming word by word.
+1. **Control Spotify** Press play, pause, skip forward, and skip backward buttons on the dashboard to control music being played on your Spotify account
+2. **Control Smart Home Devices** Toggle on and off matter-enabled smart light-bulbs connected to Home Assistant.
+3. **View Upcoming Events, Important Emails, and Tasks** View upcoming calendar events, important emails, and tasks displayed on the Life page.
+3. **Start a conversation:** Enter a prompt to BellAI by typing and sending a message in the chat or recording one. 
+4. **Read the response:** Wait for the assistant's reply beneath your message. Only one request can run at a time, and replies are streamed with text and audio.
