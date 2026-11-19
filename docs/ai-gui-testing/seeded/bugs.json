@@ -1,0 +1,83 @@
+[
+ {
+  "id": "N1",
+  "origin": "natural",
+  "kind": "visual",
+  "screen": "BellAI tab (dark mode)",
+  "bug": "Empty-state hint 'Start a conversation...' is nearly invisible (adaptive text on hard-coded light background)",
+  "match": [
+   "(conversation|instruction|hint).*(contrast|faint|hard to read|barely|invisible|illegible)",
+   "(contrast|faint|invisible).*(conversation|instruction|hint)"
+  ]
+ },
+ {
+  "id": "N2",
+  "origin": "natural",
+  "kind": "content",
+  "screen": "Activity/Wellness",
+  "bug": "Header says 'A BALANCED DAY' while every metric is empty",
+  "match": [
+   "balanced day"
+  ]
+ },
+ {
+  "id": "S1",
+  "origin": "seeded",
+  "kind": "visual",
+  "screen": "Settings",
+  "bug": "Screen title misspelled 'Setings'",
+  "match": [
+   "setings",
+   "typo",
+   "misspell",
+   "spelling"
+  ]
+ },
+ {
+  "id": "S2",
+  "origin": "seeded",
+  "kind": "layout",
+  "screen": "Settings > Server options",
+  "bug": "Reset button overlaps the Save and test button",
+  "match": [
+   "reset.*(overlap|overlay|obscur|cover|clip|collid|on top)",
+   "(save and test|save).*(overlap|overlay|obscur|cover|clip|collid)",
+   "(overlap|clip|cover|obscur).*(reset|save and test)"
+  ]
+ },
+ {
+  "id": "S3",
+  "origin": "seeded",
+  "kind": "visual",
+  "screen": "Settings > Server options",
+  "bug": "Helper paragraph under 'Server options' is nearly invisible",
+  "match": [
+   "(server options|where bellai|address|description|helper|explanat).*(contrast|faint|invisible|hard to read|barely|illegible|missing)",
+   "(contrast|faint|invisible|barely).*(server options|where bellai|helper)"
+  ]
+ },
+ {
+  "id": "S4",
+  "origin": "seeded",
+  "kind": "content",
+  "screen": "Activity/Wellness > Nutrition",
+  "bug": "Nutrition card's meal button is labelled 'Log workout'",
+  "match": [
+   "log workout",
+   "workout.*(nutrition|meal)",
+   "(nutrition|meal).*log workout"
+  ]
+ },
+ {
+  "id": "S5",
+  "origin": "seeded",
+  "kind": "functional",
+  "screen": "BellAI tab",
+  "bug": "Close (X) button does nothing instead of returning Home",
+  "match": [
+   "close.*(not|n.t|no).*(work|respond|navigat|return|do)",
+   "close.*(unresponsive|nothing|inert|stays)",
+   "(x|close) button.*(does nothing|no effect)"
+  ]
+ }
+]

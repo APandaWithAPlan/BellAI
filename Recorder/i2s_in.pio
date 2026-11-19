@@ -1,0 +1,28 @@
+; I2S receiver (master) for a mono MEMS mic with L/R tied low, e.g. ICS-43434 / INMP441.
+;
+; Pins:  side-set bit0 = BCLK (base pin), bit1 = LRCLK/WS (base pin + 1);  `in` pin = DOUT.
+; Timing: one BCLK period = 2 PIO cycles (low, then high); one frame = 64 BCLK = 128 PIO cycles
+;         so BCLK = 64 * fs and the PIO clock = 128 * fs.
+; Philips I2S: WS falls one BCLK before the MSB, the mic changes data on BCLK falling edges,
+;         and we sample on rising edges (input synchronizer bypassed, see audio.c).
+; Left word = rising edges R1..R32 after WS falls. 32 bits are autopushed per frame; the right
+; slot is clocked but not sampled.
+
+.program i2s_in_left
+.side_set 2
+
+public entry_point:
+    nop              side 0b00      ; F0  : WS=0, BCLK low
+    set x, 29        side 0b01      ; R0
+    nop              side 0b00      ; F1
+bitloop:
+    in pins, 1       side 0b01      ; R1..R30   (sample)
+    jmp x--, bitloop side 0b00      ; F2..F31   (30 iterations)
+    in pins, 1       side 0b01      ; R31
+    nop              side 0b10      ; F32 : WS=1 (right slot)
+    in pins, 1       side 0b11      ; R32 (LSB of the left word)
+    nop              side 0b10      ; F33
+    set y, 29        side 0b11      ; R33
+skip:
+    nop              side 0b10      ; F34..F63
+    jmp y--, skip    side 0b11      ; R34..R63  (30 iterations), then wrap to F0

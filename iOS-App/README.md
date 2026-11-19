@@ -94,6 +94,45 @@ Activity opens Wellness. Tap **Connect Apple Health** (or the heart button) to r
 
 The iOS target includes the HealthKit entitlement and Health usage descriptions for reading and for saving nutrition. Rebuild with a signing profile that supports HealthKit and verify the permission sheets and real data on a supported device. Other platforms show an unavailable state. The Nutrition card reads back the totals, including meals logged from a photo.
 
+## Music (Apple Music)
+
+Activity has a **Music** card. Tap **Connect Apple Music** to allow MusicKit. From then on:
+
+* **It learns what you play.** Each time the app opens, the songs played in Apple Music since last time are posted to the data server (`POST /music/plays`) and kept in its `song_plays` table. Apple Music's history has no timestamps, so a play is dated when the app notices it, and a song replayed back to back can be counted once.
+* **Suggest songs** reads the log, takes your most played artists, and finds songs by similar artists you haven't played. **Create playlist** saves them to your library as "BellAI Mix" (iPhone and iPad only).
+* **Match music to my workout** checks every 30 seconds, while the app is open, how hard you are working. Heart rate comes from Apple Health (the average of the last two minutes, against 220 minus your age) and what you are doing from the phone's motion (still, walking, running, cycling); the higher of the two wins. The music changes to a playlist in your most played genre that fits (calm, steady, energetic or intense) once a new level holds for about a minute. Playing music needs an Apple Music subscription.
+* **Setup:** turn on the **MusicKit** service for the app's ID under Identifiers, App Services in the Apple developer account. Without it, connecting fails. Needs the data server from `macserver/data` running, since that is where the plays are kept.
+* **Check:** `sh scripts/check-music.sh` checks the taste, intensity, logging and workout switching logic with stubs. It does not touch Apple Music, so try the real thing on a device.
+
+## Conversations (clip-on recorder to notes)
+
+Home has a **Conversations** row. Everything the clip-on recorder uploads (see the section below) is turned into text and notes on the phone:
+
+1. **Text:** each new recording in `Recordings` is transcribed on the device with Apple's speech model (`SpeechAnalyzer`, **iOS 26 or later**). The language model downloads once, the first time. The text is saved next to the audio as `rec_000001.json` before anything else happens.
+2. **Notes:** the text is cut into parts a model can hold (about 6,000 characters), and Apple Intelligence (`FoundationModels`) writes a summary, things to do, topics, people, and a short remark from BellAI for each part, merged into one set. On a phone without Apple Intelligence the BellAI server writes them instead. If the notes fail, the text is kept and the notes are tried again the next time the app opens or when you tap **Process waiting**.
+3. **When:** as soon as a recording arrives, when the app opens, and when it returns to the front. A recording where nobody is heard (an empty transcript) is deleted, audio included, and nothing is shown for it. Recordings with only a word or two are kept, but get no notes. It only works while the app is open, like the receiving.
+4. **Audio:** kept by default, which is about 115 MB for every hour recorded. **Delete audio once it is text** on the Conversations screen removes each file after it is transcribed, which can't be undone.
+
+Not tried on a real recording yet: the simulator has no speech model, so the transcription, Apple Intelligence and long-file behaviour need a device. `sh scripts/check-conversations.sh` checks the splitting, merging, ordering, retry and delete logic with stubs.
+
+## Previous captures
+
+The **Security** screen (Home > Security) lists the clips the [home camera](../Camera/README.md) recorded when it saw movement, under **Previous captures**. The card shows the latest three, with a thumbnail, the time, how long the clip is and how much movement it saw, and **See all captures** opens every clip grouped by day (Today, Yesterday, then the date). Pull down to refresh.
+
+* **Watch:** Tap a clip to play it. It streams from the Mac's data server, so it starts at once and can be paused, skipped by 10 seconds and scrubbed. It plays from a copy kept on the Mac, so the drive the recordings came from doesn't need to be connected.
+* **Where they are:** The Mac keeps a list of the clips in its database and a copy of each video on its own disk. See [data server](../macserver/data/README.md) to set that up and add new clips.
+* **Not available right now:** A clip whose copy is missing on the Mac is greyed out. If one fails to play, the player says so, and the Mac must be reachable.
+
+## Clip-on recorder
+
+Settings > **Clip-on recorder** turns the phone into the receiver for the Pico W + ICS-43434 recorder (firmware in `bellaimic`). With **Receive recordings** on, BellAI listens on port 8080 (`SERVER_PORT` in the recorder's `config.h`). The recorder finds the phone by scanning its Wi-Fi subnet for `GET /ping`, then uploads each finished WAV with `POST /upload`. BellAI replies with the byte count and CRC32 it received, and the recorder deletes its copy only if both match. The protocol is the one in the recorder's `receiver.py` (`RecorderReceiver.swift`).
+
+* **Where files go:** `Documents/Recordings`, shown in the Files app under BellAI. A file whose name is already taken is saved as `rec_000001-2.wav` instead of replacing the earlier recording.
+* **Password:** Must match `AUTH_TOKEN` in the recorder's `config.h`. It starts as `change-me`, so change it in both places.
+* **Only while open:** iOS suspends a listening app in the background. The recorder keeps its files and retries every 10 minutes, so open BellAI on the same Wi-Fi to collect them. Allow local network access when asked.
+* **Recorder's Wi-Fi:** The same card sends the Wi-Fi network the recorder uploads through, over Bluetooth, so the recorder doesn't need reflashing to change networks. Tap **Send to recorder**, then unplug and replug the recorder (it listens for 15 seconds after power-up), enter the network name and password, and tap **Send to recorder**. It needs the Bluetooth permission and the recorder password above. The recorder saves the network to `wifi.txt` on its SD card. The Bluetooth link isn't encrypted, so the network password can be read by someone sniffing Bluetooth right then.
+* **Check:** `scripts/check-recorder.sh` runs the listener on this Mac and checks ping, upload, CRC reply, wrong password, bad names, repeated names and a cut-off upload.
+
 ## Weather
 
 The Agenda section on Home shows the current temperature, condition and today's high and low for your city, using Apple's WeatherKit. The app asks for your approximate location once, only while Agenda is open. There is no API key to set up, but WeatherKit needs a paid Apple Developer Program membership and the WeatherKit capability on the app, and the Apple Weather mark and a link to its legal page are shown under the card. See [Briefing weather](Config/README.md) for setup and troubleshooting.
@@ -114,4 +153,4 @@ The icon is `BellAi.png` in this folder, set up as the 1024 px `AppIcon` in `Bel
 
 ## Offline checks
 
-Run `sh scripts/check-ollama.sh` for the chat, voice input, meal, mail, recommendation and settings checks, and `sh scripts/check-weather.sh` for the weather screen. They use mock responses and need no server, key or device.
+Run `sh scripts/check-ollama.sh` for the chat, voice input, meal, mail, recommendation, captures and settings checks, `sh scripts/check-weather.sh` for the weather screen, and `sh scripts/check-music.sh` for the music logic, and `sh scripts/check-conversations.sh` for the recording notes. They use mock responses and need no server, key or device.

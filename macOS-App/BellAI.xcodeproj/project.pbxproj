@@ -1,0 +1,547 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		060C2E1CAFD83FA5AC734141 /* Capture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF54AAB3EBE731B17AE8326C /* Capture.swift */; };
+		0E03AF345DE6320BA731017E /* RecorderSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2859B570F24FD5F47C7E8C1F /* RecorderSetupView.swift */; };
+		11DE9F4AEA7D8E6DDDB5093C /* ChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975DE314A03E6AB9076FAFD3 /* ChatStore.swift */; };
+		19BDE35D0FD54AE90CC0BB95 /* MailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986B49E1BDD8DC97F655CDA1 /* MailView.swift */; };
+		295781254170438A944124F0 /* ChatClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93877A832637671DA34AB5C /* ChatClient.swift */; };
+		3329FD73C846E1525DD7C1E1 /* InsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CAEC790E9C7CDB276CF8676 /* InsightsService.swift */; };
+		33639C9B48AF31FB951F3F80 /* MailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF88F5D5CACBFE970689A859 /* MailViewModel.swift */; };
+		38032C1DB0F5A5918B5302A7 /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA8C2AF50FB4FFCC26EC923 /* MessageRow.swift */; };
+		43EC1D1A16A4B92C7EB90AD9 /* SpeechPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA934896DABC7D1956935983 /* SpeechPlayer.swift */; };
+		45578D4CFF0EE939951A5675 /* ServerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2017C0048932BD70A3EF7AEF /* ServerSettings.swift */; };
+		4EB748C7699801E1F618034D /* MealsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 588ED36185D18D26E917759E /* MealsView.swift */; };
+		578D1B10D83B8520CB1423BA /* FoodAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E815597C997A1AEE42DC5CF3 /* FoodAnalysisService.swift */; };
+		610A83DDC7CDB15DF316C2F7 /* InsightsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82419972DADB70830D2AA333 /* InsightsViewModel.swift */; };
+		670A0EB8D46E011B3DDCC9AD /* TaskItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE8C9EBB25FF0873D48F174 /* TaskItem.swift */; };
+		70486C2B15F0594A47A5B051 /* ServerPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700E874C54951FF80BB86653 /* ServerPanel.swift */; };
+		71D2B8FFA1BEFF6882A231AA /* TasksViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC590624E6F66D03DFAB7C01 /* TasksViewModel.swift */; };
+		7249183349520C2D16B8ED92 /* MailItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619F297B58A449985DC3B524 /* MailItem.swift */; };
+		79024B728A991FD93B87C35F /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276717B7C23123E3E857276 /* Models.swift */; };
+		7F2A1B96267AE653719E1FCD /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0EBFE246DCEC7EFE681DF4 /* Theme.swift */; };
+		86C13A57B543E0AE18AE98F7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D54EC3E5F385A62D801B604A /* Assets.xcassets */; };
+		894D72A01460D7FF7B308D5A /* SpeechTranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6F7D70E16DB70D0D241ADD8 /* SpeechTranscriptionService.swift */; };
+		8D4B45F101D5AD418589E2CE /* HTTPUserDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57041EEF1FBDB9E64DA9AEC1 /* HTTPUserDataService.swift */; };
+		8E6BEEF8478144B5D19CDAF5 /* FoodPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = A995E06588C0DCF8C517D654 /* FoodPreferences.swift */; };
+		A047E22ED46B1BB46EEE0984 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550F31EDA5BB0074530242A5 /* RootView.swift */; };
+		A977CCF2F70B38986001873C /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F44B3316E2CD7D14B4A250C /* MailService.swift */; };
+		B4B6D8E265D5B73E50D09829 /* MealJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD756D0902E3711F4879874 /* MealJournal.swift */; };
+		C270DF293B2B178B2082D60A /* HTTPBellAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C8BD070018178D6394DF44 /* HTTPBellAIService.swift */; };
+		C34EA740601A6C4556DF33FB /* Features.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FB8233023799D2667BE09D /* Features.swift */; };
+		C7C50D14AFEB123612298B37 /* MicrophoneService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B535CBD7A070D3901376FB8 /* MicrophoneService.swift */; };
+		C89AE28F8D62E4E7A4E7DE2D /* MealAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 350FE167AED04C981A3A408F /* MealAnalysis.swift */; };
+		CB719BFA27EB88F93AA5923F /* MealPhotoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B1FE23EEC9FEDD44D08C0D8 /* MealPhotoViewModel.swift */; };
+		CDE722952B174553C7DE195D /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7423AF0C911D90CA12E2D3B /* TasksView.swift */; };
+		D0AF410F6AA5666A76CCBE13 /* ServerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6167703ECDF8B8305BBE72CA /* ServerController.swift */; };
+		D1F1BB6BA681027982AD28A4 /* BellAIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406A9D2B5FB4E346738D164C /* BellAIApp.swift */; };
+		D2F1415D747D471F48CF70B0 /* CaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84816EC251FCC4ABA68D6E0B /* CaptureService.swift */; };
+		D75F767FC7026CB441BC805F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01D0F8760DAA82A1CC30CA1 /* SettingsView.swift */; };
+		E48B5C6DAB36EDEF4F86D2DA /* VoiceStreamService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F9B4B614B235B7FE6372262 /* VoiceStreamService.swift */; };
+		EB85EE7C7A90F446A75CD24E /* CapturesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D8A3D54ADADEC741D3B7642 /* CapturesView.swift */; };
+		F74308CAFEB0CC936D7ACE6E /* Page.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC30CAE5F9166D1010E0A082 /* Page.swift */; };
+		FD7C56C7DF96BD634EEED9D7 /* MealLogging.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41305E2E0C6073A6CCEA909 /* MealLogging.swift */; };
+		FE65AE58FA931834F1941C3E /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E8BBA4FF2C2FB8F9369A679 /* ChatView.swift */; };
+		FF259EDD1B1BE80308BF7CEE /* ChatRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EA8F1E756F80409A0247F2 /* ChatRequest.swift */; };
+		FF3EA7107CE7D2AF21F2B7D9 /* CapturesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9926F2E0102E96B25459D67 /* CapturesViewModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		03EA8F1E756F80409A0247F2 /* ChatRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatRequest.swift; sourceTree = "<group>"; };
+		1D8A3D54ADADEC741D3B7642 /* CapturesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturesView.swift; sourceTree = "<group>"; };
+		2017C0048932BD70A3EF7AEF /* ServerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettings.swift; sourceTree = "<group>"; };
+		2859B570F24FD5F47C7E8C1F /* RecorderSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecorderSetupView.swift; sourceTree = "<group>"; };
+		2F3F7A2B5FF824DBCA4A164B /* BellAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BellAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F44B3316E2CD7D14B4A250C /* MailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailService.swift; sourceTree = "<group>"; };
+		34C8BD070018178D6394DF44 /* HTTPBellAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPBellAIService.swift; sourceTree = "<group>"; };
+		350FE167AED04C981A3A408F /* MealAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealAnalysis.swift; sourceTree = "<group>"; };
+		406A9D2B5FB4E346738D164C /* BellAIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BellAIApp.swift; sourceTree = "<group>"; };
+		40FB8233023799D2667BE09D /* Features.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features.swift; sourceTree = "<group>"; };
+		4B1FE23EEC9FEDD44D08C0D8 /* MealPhotoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhotoViewModel.swift; sourceTree = "<group>"; };
+		4B535CBD7A070D3901376FB8 /* MicrophoneService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneService.swift; sourceTree = "<group>"; };
+		550F31EDA5BB0074530242A5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		57041EEF1FBDB9E64DA9AEC1 /* HTTPUserDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPUserDataService.swift; sourceTree = "<group>"; };
+		588ED36185D18D26E917759E /* MealsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealsView.swift; sourceTree = "<group>"; };
+		6167703ECDF8B8305BBE72CA /* ServerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerController.swift; sourceTree = "<group>"; };
+		619F297B58A449985DC3B524 /* MailItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailItem.swift; sourceTree = "<group>"; };
+		700E874C54951FF80BB86653 /* ServerPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPanel.swift; sourceTree = "<group>"; };
+		7CE8C9EBB25FF0873D48F174 /* TaskItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskItem.swift; sourceTree = "<group>"; };
+		7F9B4B614B235B7FE6372262 /* VoiceStreamService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStreamService.swift; sourceTree = "<group>"; };
+		82419972DADB70830D2AA333 /* InsightsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModel.swift; sourceTree = "<group>"; };
+		84816EC251FCC4ABA68D6E0B /* CaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureService.swift; sourceTree = "<group>"; };
+		8CD756D0902E3711F4879874 /* MealJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealJournal.swift; sourceTree = "<group>"; };
+		9276717B7C23123E3E857276 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		975DE314A03E6AB9076FAFD3 /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
+		986B49E1BDD8DC97F655CDA1 /* MailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailView.swift; sourceTree = "<group>"; };
+		9CAEC790E9C7CDB276CF8676 /* InsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsService.swift; sourceTree = "<group>"; };
+		9E8BBA4FF2C2FB8F9369A679 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		A1492284E419025CBF4CEFBD /* BellAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BellAI.entitlements; sourceTree = "<group>"; };
+		A41305E2E0C6073A6CCEA909 /* MealLogging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealLogging.swift; sourceTree = "<group>"; };
+		A995E06588C0DCF8C517D654 /* FoodPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodPreferences.swift; sourceTree = "<group>"; };
+		AA0EBFE246DCEC7EFE681DF4 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		AA934896DABC7D1956935983 /* SpeechPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPlayer.swift; sourceTree = "<group>"; };
+		B01D0F8760DAA82A1CC30CA1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B6F7D70E16DB70D0D241ADD8 /* SpeechTranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscriptionService.swift; sourceTree = "<group>"; };
+		BA5F4E8DC99C64EE406D41BA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BCA8C2AF50FB4FFCC26EC923 /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
+		BF54AAB3EBE731B17AE8326C /* Capture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Capture.swift; sourceTree = "<group>"; };
+		CC590624E6F66D03DFAB7C01 /* TasksViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksViewModel.swift; sourceTree = "<group>"; };
+		D54EC3E5F385A62D801B604A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D7423AF0C911D90CA12E2D3B /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
+		DC30CAE5F9166D1010E0A082 /* Page.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Page.swift; sourceTree = "<group>"; };
+		E815597C997A1AEE42DC5CF3 /* FoodAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodAnalysisService.swift; sourceTree = "<group>"; };
+		F93877A832637671DA34AB5C /* ChatClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatClient.swift; sourceTree = "<group>"; };
+		F9926F2E0102E96B25459D67 /* CapturesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturesViewModel.swift; sourceTree = "<group>"; };
+		FF88F5D5CACBFE970689A859 /* MailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViewModel.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1B2E842C25344720BD16B133 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BF54AAB3EBE731B17AE8326C /* Capture.swift */,
+				03EA8F1E756F80409A0247F2 /* ChatRequest.swift */,
+				A995E06588C0DCF8C517D654 /* FoodPreferences.swift */,
+				619F297B58A449985DC3B524 /* MailItem.swift */,
+				350FE167AED04C981A3A408F /* MealAnalysis.swift */,
+				8CD756D0902E3711F4879874 /* MealJournal.swift */,
+				7CE8C9EBB25FF0873D48F174 /* TaskItem.swift */,
+			);
+			name = Models;
+			path = "../iOS-App/BellAI/Models";
+			sourceTree = "<group>";
+		};
+		3FFF51B6F61B20F74B23411E /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				777259A1BFF050BF23181D05 /* ViewModels */,
+			);
+			name = ViewModels;
+			sourceTree = "<group>";
+		};
+		6DF91C685AB05FB8E84482AC /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1D8A3D54ADADEC741D3B7642 /* CapturesView.swift */,
+				9E8BBA4FF2C2FB8F9369A679 /* ChatView.swift */,
+				986B49E1BDD8DC97F655CDA1 /* MailView.swift */,
+				588ED36185D18D26E917759E /* MealsView.swift */,
+				BCA8C2AF50FB4FFCC26EC923 /* MessageRow.swift */,
+				DC30CAE5F9166D1010E0A082 /* Page.swift */,
+				2859B570F24FD5F47C7E8C1F /* RecorderSetupView.swift */,
+				550F31EDA5BB0074530242A5 /* RootView.swift */,
+				700E874C54951FF80BB86653 /* ServerPanel.swift */,
+				B01D0F8760DAA82A1CC30CA1 /* SettingsView.swift */,
+				D7423AF0C911D90CA12E2D3B /* TasksView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		6E45F15DFC32FBA072A2400E /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				84816EC251FCC4ABA68D6E0B /* CaptureService.swift */,
+				E815597C997A1AEE42DC5CF3 /* FoodAnalysisService.swift */,
+				34C8BD070018178D6394DF44 /* HTTPBellAIService.swift */,
+				57041EEF1FBDB9E64DA9AEC1 /* HTTPUserDataService.swift */,
+				9CAEC790E9C7CDB276CF8676 /* InsightsService.swift */,
+				2F44B3316E2CD7D14B4A250C /* MailService.swift */,
+				A41305E2E0C6073A6CCEA909 /* MealLogging.swift */,
+				4B535CBD7A070D3901376FB8 /* MicrophoneService.swift */,
+				2017C0048932BD70A3EF7AEF /* ServerSettings.swift */,
+				AA934896DABC7D1956935983 /* SpeechPlayer.swift */,
+				B6F7D70E16DB70D0D241ADD8 /* SpeechTranscriptionService.swift */,
+				7F9B4B614B235B7FE6372262 /* VoiceStreamService.swift */,
+			);
+			name = Services;
+			path = "../iOS-App/BellAI/Services";
+			sourceTree = "<group>";
+		};
+		775AFC80537235A236E251F6 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				1B2E842C25344720BD16B133 /* Models */,
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
+		777259A1BFF050BF23181D05 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				F9926F2E0102E96B25459D67 /* CapturesViewModel.swift */,
+				82419972DADB70830D2AA333 /* InsightsViewModel.swift */,
+				FF88F5D5CACBFE970689A859 /* MailViewModel.swift */,
+				4B1FE23EEC9FEDD44D08C0D8 /* MealPhotoViewModel.swift */,
+				CC590624E6F66D03DFAB7C01 /* TasksViewModel.swift */,
+			);
+			name = ViewModels;
+			path = "../iOS-App/BellAI/ViewModels";
+			sourceTree = "<group>";
+		};
+		9BD2F1B5F970FA0BA9C0CB49 = {
+			isa = PBXGroup;
+			children = (
+				B35AB8D11A9A35F575845AAF /* BellAIMac */,
+				D1D801D6351CA5E48C0DCA2A /* Shared */,
+				F03F7FD95FF771EAEBCA4F8B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B239585F4D0F1C7F77B878B2 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				6E45F15DFC32FBA072A2400E /* Services */,
+			);
+			name = Services;
+			sourceTree = "<group>";
+		};
+		B35AB8D11A9A35F575845AAF /* BellAIMac */ = {
+			isa = PBXGroup;
+			children = (
+				D54EC3E5F385A62D801B604A /* Assets.xcassets */,
+				A1492284E419025CBF4CEFBD /* BellAI.entitlements */,
+				406A9D2B5FB4E346738D164C /* BellAIApp.swift */,
+				F93877A832637671DA34AB5C /* ChatClient.swift */,
+				975DE314A03E6AB9076FAFD3 /* ChatStore.swift */,
+				40FB8233023799D2667BE09D /* Features.swift */,
+				BA5F4E8DC99C64EE406D41BA /* Info.plist */,
+				9276717B7C23123E3E857276 /* Models.swift */,
+				6167703ECDF8B8305BBE72CA /* ServerController.swift */,
+				AA0EBFE246DCEC7EFE681DF4 /* Theme.swift */,
+				6DF91C685AB05FB8E84482AC /* Views */,
+			);
+			path = BellAIMac;
+			sourceTree = "<group>";
+		};
+		D1D801D6351CA5E48C0DCA2A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				775AFC80537235A236E251F6 /* Models */,
+				B239585F4D0F1C7F77B878B2 /* Services */,
+				3FFF51B6F61B20F74B23411E /* ViewModels */,
+			);
+			name = Shared;
+			sourceTree = "<group>";
+		};
+		F03F7FD95FF771EAEBCA4F8B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2F3F7A2B5FF824DBCA4A164B /* BellAI.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		683D9657B1B7F247C029FCD6 /* BellAI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C035227F1B35FE0645C409CC /* Build configuration list for PBXNativeTarget "BellAI" */;
+			buildPhases = (
+				1ED79F9A4A3E314BD85C2D15 /* Sources */,
+				0349CF07CAF2ECBBC0F2D8D8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BellAI;
+			packageProductDependencies = (
+			);
+			productName = BellAI;
+			productReference = 2F3F7A2B5FF824DBCA4A164B /* BellAI.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6B46855ECC2721BD13B2BAEA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					683D9657B1B7F247C029FCD6 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 2B0CA2DC6A56F06752351EAB /* Build configuration list for PBXProject "BellAI" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 9BD2F1B5F970FA0BA9C0CB49;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F03F7FD95FF771EAEBCA4F8B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				683D9657B1B7F247C029FCD6 /* BellAI */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0349CF07CAF2ECBBC0F2D8D8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86C13A57B543E0AE18AE98F7 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1ED79F9A4A3E314BD85C2D15 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1F1BB6BA681027982AD28A4 /* BellAIApp.swift in Sources */,
+				060C2E1CAFD83FA5AC734141 /* Capture.swift in Sources */,
+				D2F1415D747D471F48CF70B0 /* CaptureService.swift in Sources */,
+				EB85EE7C7A90F446A75CD24E /* CapturesView.swift in Sources */,
+				FF3EA7107CE7D2AF21F2B7D9 /* CapturesViewModel.swift in Sources */,
+				295781254170438A944124F0 /* ChatClient.swift in Sources */,
+				FF259EDD1B1BE80308BF7CEE /* ChatRequest.swift in Sources */,
+				11DE9F4AEA7D8E6DDDB5093C /* ChatStore.swift in Sources */,
+				FE65AE58FA931834F1941C3E /* ChatView.swift in Sources */,
+				C34EA740601A6C4556DF33FB /* Features.swift in Sources */,
+				578D1B10D83B8520CB1423BA /* FoodAnalysisService.swift in Sources */,
+				8E6BEEF8478144B5D19CDAF5 /* FoodPreferences.swift in Sources */,
+				C270DF293B2B178B2082D60A /* HTTPBellAIService.swift in Sources */,
+				8D4B45F101D5AD418589E2CE /* HTTPUserDataService.swift in Sources */,
+				3329FD73C846E1525DD7C1E1 /* InsightsService.swift in Sources */,
+				610A83DDC7CDB15DF316C2F7 /* InsightsViewModel.swift in Sources */,
+				7249183349520C2D16B8ED92 /* MailItem.swift in Sources */,
+				A977CCF2F70B38986001873C /* MailService.swift in Sources */,
+				19BDE35D0FD54AE90CC0BB95 /* MailView.swift in Sources */,
+				33639C9B48AF31FB951F3F80 /* MailViewModel.swift in Sources */,
+				C89AE28F8D62E4E7A4E7DE2D /* MealAnalysis.swift in Sources */,
+				B4B6D8E265D5B73E50D09829 /* MealJournal.swift in Sources */,
+				FD7C56C7DF96BD634EEED9D7 /* MealLogging.swift in Sources */,
+				CB719BFA27EB88F93AA5923F /* MealPhotoViewModel.swift in Sources */,
+				4EB748C7699801E1F618034D /* MealsView.swift in Sources */,
+				38032C1DB0F5A5918B5302A7 /* MessageRow.swift in Sources */,
+				C7C50D14AFEB123612298B37 /* MicrophoneService.swift in Sources */,
+				79024B728A991FD93B87C35F /* Models.swift in Sources */,
+				F74308CAFEB0CC936D7ACE6E /* Page.swift in Sources */,
+				0E03AF345DE6320BA731017E /* RecorderSetupView.swift in Sources */,
+				A047E22ED46B1BB46EEE0984 /* RootView.swift in Sources */,
+				D0AF410F6AA5666A76CCBE13 /* ServerController.swift in Sources */,
+				70486C2B15F0594A47A5B051 /* ServerPanel.swift in Sources */,
+				45578D4CFF0EE939951A5675 /* ServerSettings.swift in Sources */,
+				D75F767FC7026CB441BC805F /* SettingsView.swift in Sources */,
+				43EC1D1A16A4B92C7EB90AD9 /* SpeechPlayer.swift in Sources */,
+				894D72A01460D7FF7B308D5A /* SpeechTranscriptionService.swift in Sources */,
+				670A0EB8D46E011B3DDCC9AD /* TaskItem.swift in Sources */,
+				CDE722952B174553C7DE195D /* TasksView.swift in Sources */,
+				71D2B8FFA1BEFF6882A231AA /* TasksViewModel.swift in Sources */,
+				7F2A1B96267AE653719E1FCD /* Theme.swift in Sources */,
+				E48B5C6DAB36EDEF4F86D2DA /* VoiceStreamService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		093C2E6D4506974DF59810AB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		85947E28803801EED8EC8333 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BellAIMac/BellAI.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = BellAIMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nicholascervantes.bellai.mac;
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+			};
+			name = Release;
+		};
+		CD44FE68B931CD27CE24FC41 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BellAIMac/BellAI.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = BellAIMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nicholascervantes.bellai.mac;
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+			};
+			name = Debug;
+		};
+		F5AA9508C43A8DD677CD40B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2B0CA2DC6A56F06752351EAB /* Build configuration list for PBXProject "BellAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				093C2E6D4506974DF59810AB /* Debug */,
+				F5AA9508C43A8DD677CD40B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C035227F1B35FE0645C409CC /* Build configuration list for PBXNativeTarget "BellAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD44FE68B931CD27CE24FC41 /* Debug */,
+				85947E28803801EED8EC8333 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 6B46855ECC2721BD13B2BAEA /* Project object */;
+}

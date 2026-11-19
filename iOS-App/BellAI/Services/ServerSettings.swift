@@ -33,7 +33,7 @@ nonisolated enum ServerSettings {
         // a build can set its own default here, as host:port in Info.plist
         fileprivate var plistKey: String? {
             switch self {
-            case .chat: nil
+            case .chat: "CHAT_SERVER_HOST"
             case .voice: "VOICE_SERVER_HOST"
             case .data: "DATA_SERVER_HOST"
             }

@@ -1,0 +1,158 @@
+{
+ "claude": {
+  "runs": 1,
+  "steps": 40,
+  "reports": 19,
+  "tp": 4,
+  "env": 4,
+  "other": 11,
+  "recall": 0.86,
+  "per_bug": {
+   "N1": "1/1",
+   "N2": "1/1",
+   "S1": "1/1",
+   "S2": "1/1",
+   "S3": "1/1",
+   "S4": "1/1",
+   "S5": "0/1"
+  },
+  "others": [
+   [
+    "The Lights tile opens a generic 'My home' screen rather than a lights screen, and the Main/Agenda pill still s",
+    1
+   ],
+   [
+    "The Climate tile shows an identical screen titled 'My home' with no climate content, so the label and destinat",
+    1
+   ],
+   [
+    "The circular back button on Planner appears dimmed grey like a stuck pressed state, unlike the white back butt",
+    1
+   ],
+   [
+    "The Plan tile says '1 tasks' (wrong plural) and still counts the task I had already ticked off as done.",
+    1
+   ],
+   [
+    "The floating Main/Agenda pill overlaps the third clip row at the bottom of the Security screen, covering conte",
+    1
+   ],
+   [
+    "At the bottom of the Security screen the Main/Agenda pill covers the Presence card's 'No presence data availab",
+    1
+   ],
+   [
+    "The clip player shows the video with no play, pause or scrub controls and leaves most of the sheet empty.",
+    1
+   ],
+   [
+    "The Main/Agenda pill again overlaps the bottom clip row on the Previous captures list.",
+    1
+   ]
+  ]
+ },
+ "tree": {
+  "runs": 3,
+  "steps": 120,
+  "reports": 42,
+  "tp": 17,
+  "env": 10,
+  "other": 15,
+  "recall": 0.14,
+  "per_bug": {
+   "N1": "3/3",
+   "N2": "0/3",
+   "S1": "0/3",
+   "S2": "0/3",
+   "S3": "0/3",
+   "S4": "0/3",
+   "S5": "0/3"
+  },
+  "others": [
+   [
+    "The 'No workout available' message is misleading because the user may have workouts in Apple Health that aren'",
+    2
+   ],
+   [
+    "Error message 'Couldn't load your mail' with low contrast text (pink on light gray) may be unreadable for some",
+    2
+   ],
+   [
+    "The error message 'Enter your first and last name' is displayed even though the fields appear empty but not ne",
+    1
+   ],
+   [
+    "The 'Save and test' button is pink but lacks clear visual hierarchy compared to the 'Reset' button which has a",
+    1
+   ],
+   [
+    "The text 'Tap to speak' has low contrast and could be harder to read.",
+    1
+   ],
+   [
+    "Empty or stuck loading states: All three metrics (steps, active kcal, water) show dashes instead of values, su",
+    1
+   ],
+   [
+    "The text input field at the bottom is empty and lacks an active keyboard, making it unclear how to type messag",
+    1
+   ],
+   [
+    "The text 'First name' and 'Last name' are placeholders but there is no indication of what to enter (e.g., exam",
+    1
+   ]
+  ]
+ },
+ "vision": {
+  "runs": 3,
+  "steps": 96,
+  "reports": 28,
+  "tp": 0,
+  "env": 9,
+  "other": 19,
+  "recall": 0.0,
+  "per_bug": {
+   "N1": "0/3",
+   "N2": "0/3",
+   "S1": "0/3",
+   "S2": "0/3",
+   "S3": "0/3",
+   "S4": "0/3",
+   "S5": "0/3"
+  },
+  "others": [
+   [
+    "The 'Reset' button is partially cut off on the right side of the screen.",
+    2
+   ],
+   [
+    "The 'Try again' button appears to be non-functional as the error persists without any change after repeated ta",
+    2
+   ],
+   [
+    "The 'Save and test' button is pink but lacks clear visual hierarchy compared to the 'Reset' button which has a",
+    1
+   ],
+   [
+    "The 'Save and test' button is highlighted in pink but lacks clear visual feedback or indication of what will h",
+    1
+   ],
+   [
+    "The 'Save and test' button is highlighted in pink but there's no indication of what will happen when clicked.",
+    1
+   ],
+   [
+    "The 'Save and test' button is highlighted in pink but lacks clear visual feedback on what happens after pressi",
+    1
+   ],
+   [
+    "The 'Save and test' button is highlighted in pink but there's no indication of what happens when it's pressed.",
+    1
+   ],
+   [
+    "The 'Save and test' button is highlighted in pink but lacks clear visual feedback on what happens after tappin",
+    1
+   ]
+  ]
+ }
+}

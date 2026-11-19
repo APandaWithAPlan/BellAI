@@ -6,6 +6,8 @@ struct SecurityView: View {
     @AppStorage("security.cameras") private var savedCameras = Data()
     @State private var showsAddCamera = false
     @State private var selectedCamera: SecurityCamera?
+    @State private var captures = CapturesViewModel(service: HTTPCaptureService())
+    @State private var selectedCapture: Capture?
 
     private let accent = Color(red: 1, green: 0.18, blue: 0.45)
     private let ink = Color(red: 0.16, green: 0.13, blue: 0.15)
@@ -31,6 +33,7 @@ struct SecurityView: View {
                         }
                     }
                 }
+                capturesCard
                 presenceCard
             }
             .padding(.horizontal, 20)
@@ -55,6 +58,12 @@ struct SecurityView: View {
             SecurityCameraPlayerView(camera: camera)
                 .preferredColorScheme(.light)
         }
+        .sheet(item: $selectedCapture) { capture in
+            CapturePlayerView(capture: capture, url: captures.videoURL(for: capture))
+                .preferredColorScheme(.light)
+        }
+        .task { await captures.load() }
+        .refreshable { await captures.load() }
     }
 
     private var header: some View {
@@ -144,6 +153,57 @@ struct SecurityView: View {
         guard let data = try? JSONEncoder().encode(updated) else { return }
         savedCameras = data
         if selectedCamera?.id == camera.id { selectedCamera = nil }
+    }
+
+    // the camera's earlier clips: the latest few here, and all of them one tap away
+    private var capturesCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text("Previous captures").font(.title3.weight(.bold)).foregroundStyle(ink)
+                    Spacer()
+                    if captures.isLoaded { Text("\(captures.total) clips").font(.subheadline).foregroundStyle(muted) }
+                }
+                Text("Previous captures").font(.title3.weight(.bold)).foregroundStyle(ink)
+            }
+            if let error = captures.errorMessage, !captures.isLoaded {
+                Text(error).font(.subheadline).foregroundStyle(accent)
+                Button("Try again") { Task { await captures.load() } }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(accent)
+            } else if !captures.isLoaded {
+                ProgressView("Loading captures…").font(.subheadline)
+            } else if captures.captures.isEmpty {
+                Text("No clips yet. They appear here after the camera records some movement.")
+                    .font(.subheadline)
+                    .foregroundStyle(muted)
+            } else {
+                ForEach(captures.recent) { capture in
+                    CaptureButton(capture: capture, thumbnailURL: captures.thumbnailURL(for: capture), showsDay: true) {
+                        selectedCapture = capture
+                    }
+                }
+                NavigationLink {
+                    CapturesView(model: captures)
+                        #if os(iOS)
+                        .toolbar(.visible, for: .navigationBar)
+                        .navigationBarTitleDisplayMode(.inline)
+                        #endif
+                } label: {
+                    HStack {
+                        Text("See all captures").font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(accent)
+                    .frame(minHeight: 44)
+                }
+            }
+        }
+        .padding(16)
+        .background(.white, in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Color(red: 0.92, green: 0.88, blue: 0.90)))
+        .shadow(color: ink.opacity(0.05), radius: 14, y: 7)
     }
 
     private var presenceCard: some View {

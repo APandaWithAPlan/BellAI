@@ -11,7 +11,7 @@ There are no accounts. Anything on your Tailscale network can use the server, so
 | [`llm`](llm/README.md) | Ollama: runs the chat model (Qwen3.5 4B) on MLX and answers like Ollama, on the same port (`11434`) the app, Insights and the Pi already use. |
 | [`food`](food/README.md) | `Food Model`: reads a food photo or description and gives nutrition, using Qwen2.5-VL on MLX instead of CUDA. |
 | [`voice`](voice/README.md) | `Server`: streams the chat reply and speaks it in Orpheus, which runs on MLX instead of GPT-SoVITS on an NVIDIA GPU. It also turns what you say into text with Whisper (new) and passes the app's food, insights and mail requests on to the other servers. |
-| [`data`](data/README.md) | Firebase: keeps the app's saved data (tasks) in a local SQLite file. The app's Firebase login is gone. |
+| [`data`](data/README.md) | Firebase: keeps the app's saved data (tasks) in a local SQLite file. The app's Firebase login is gone. It also lists and streams the home camera's earlier clips (new). |
 | [`insights`](insights/README.md) | `Insights`: food and workout suggestions from a day's meals, with the same code. The app's Recommendations card uses it. |
 | [`mail`](mail/README.md) | New: reads your inboxes in the background, notes what matters, and writes drafts you approve before they are sent, from Discord or the app's Mail screen. |
 | [`discord`](discord/README.md) | New: lets you talk to BellAI from Discord, in chat and with meal photos. |
@@ -34,7 +34,7 @@ Run `./start.sh` to start everything. It starts `data`, `llm`, `food`, `insights
 | --- | --- | --- |
 | `11434` | `llm` | the app (text replies), the voice server, Insights, the Pi |
 | `8000` | `voice` | the app (spoken replies, voice input, food photos, insights, mail) |
-| `8001` | `data` | the app (tasks) |
+| `8001` | `data` | the app (tasks, previous captures) |
 | `8002` | `food` | the voice server only |
 | `8003` | `mail` | the Discord bridge and the voice server (for the app) |
 | `8004` | `insights` | the voice server only |

@@ -1,0 +1,58 @@
+name: BellAI
+options:
+  bundleIdPrefix: com.nicholascervantes
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+targets:
+  BellAI:
+    type: application
+    platform: macOS
+    sources:
+      - BellAIMac
+      # the iOS app's models, services and view models don't depend on the phone, so the Mac app builds them from there
+      - path: ../iOS-App/BellAI/Models
+        group: Shared/Models
+        includes: [TaskItem.swift, MailItem.swift, MealAnalysis.swift, FoodPreferences.swift, MealJournal.swift, Capture.swift, ChatRequest.swift]
+      - path: ../iOS-App/BellAI/Services
+        group: Shared/Services
+        includes: [HTTPBellAIService.swift, ServerSettings.swift, HTTPUserDataService.swift, MailService.swift, FoodAnalysisService.swift, InsightsService.swift, CaptureService.swift, VoiceStreamService.swift, SpeechTranscriptionService.swift, SpeechPlayer.swift, MicrophoneService.swift, MealLogging.swift]
+      - path: ../iOS-App/BellAI/ViewModels
+        group: Shared/ViewModels
+        includes: [TasksViewModel.swift, MailViewModel.swift, MealPhotoViewModel.swift, InsightsViewModel.swift, CapturesViewModel.swift]
+    info:
+      path: BellAIMac/Info.plist
+      properties:
+        CFBundleDisplayName: BellAI
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        # the server is usually plain http on Tailscale or the local network
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        # where start.sh is, as built from this checkout. the server panel can point somewhere else
+        MacserverFolder: $(SRCROOT)/../macserver
+        # macserver runs on this Mac unless Settings says otherwise
+        CHAT_SERVER_HOST: localhost:11434
+        VOICE_SERVER_HOST: localhost:8000
+        DATA_SERVER_HOST: localhost:8001
+        NSMicrophoneUsageDescription: BellAI records what you say and sends it to your own server to turn into text.
+    entitlements:
+      path: BellAIMac/BellAI.entitlements
+      properties:
+        com.apple.security.device.audio-input: true
+    # not sandboxed: the app starts and stops macserver by running its start.sh
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nicholascervantes.bellai.mac
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # signs to run on this Mac only; set your team to distribute
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: true
+        # the same as the iOS app, whose files this builds
+        SWIFT_APPROACHABLE_CONCURRENCY: true
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: true

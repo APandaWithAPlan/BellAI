@@ -9,9 +9,11 @@
 | Folder | What it is |
 | --- | --- |
 | [`iOS-App`](iOS-App/README.md) | The iOS App and it's components |
+| [`macOS-App`](macOS-App/README.md) | A pink, native chat app for the Mac that talks to the AI server |
 | [`macserver`](macserver/README.md) | The AI server, which runs on a Mac with Apple Silicon: chat model, voice, food analysis, insights, saved data, and the Discord and email helpers |
 | [`Voice Training`](Voice%20Training/README.md) | The Voice Model |
 | [`Insights`](Insights/README.md) | Food and workout suggestions, the original version (the Mac one is in `macserver/insights`) |
+| [`Recorder`](Recorder/README.md) | Firmware for the clip-on audio recorder (Raspberry Pi Pico W, microphone, SD card): records with automatic gain control, finds the receiver on Wi-Fi, uploads, and has a reference receiver script. The iOS app receives its files. |
 | `RaspPI-Server` |FastAPI service for the Raspberry Pi that forwards prompts to the AI server and transcribes audio with whisper.cpp, and the home dashboard. |
 | `Server`, [`Food Model`](Food%20Model/README.md) | The first versions of the voice server and meal analysis, for a Windows PC with an NVIDIA GPU. `macserver` replaces them. |
 | [`firebase`](firebase/README.md) | The old Firestore and Cloud Functions backend. The app no longer uses it, because tasks are saved by `macserver/data`. |
@@ -29,7 +31,7 @@ iOS app ──Tailscale──▶ ai-server (a Mac)
                          │            /mail        emails the mail watcher has read
                          │            /drafts      replies waiting for your approval
                          │            /speak       text → wav
-                         └─ :8001   data server (tasks, in a SQLite file)
+                         └─ :8001   data server (tasks, and the camera's previous captures, in a SQLite file)
 Raspberry Pi ──Tailscale──▶ ai-server :11434
 Discord, email ◀────────▶ ai-server (bot and mail watcher, optional)
 ```
@@ -45,6 +47,7 @@ There are no accounts. Being on your Tailscale network is the login, so nothing 
 * **Recommendations:** From the meals you log and your preferences (calorie goal, diet, allergies, injuries), BellAI suggests foods and workouts. Anything that breaks your limits is removed on the Mac before you see it.
 * **Mail:** The Mac reads your inboxes, notes what matters, and shows it in the app. BellAI can write a reply or a new email, and it is only sent when you press Send.
 * **Weather:** The Agenda screen shows the weather for your city from Apple WeatherKit.
+* **Previous captures:** The home camera's motion clips are listed in the app by day, with a thumbnail, and play from your Mac.
 * **Tasks:** A to-do list saved on your Mac. BellAI sees your open tasks and important emails as context when you chat.
 * **Server options:** Change the Mac's address in Settings to use Tailscale, NetBird or your local network.
 * **Placeholders:** The Lights, Climate and Security cards on Home show sample values only and do not control anything yet.

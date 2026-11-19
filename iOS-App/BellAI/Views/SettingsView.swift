@@ -8,6 +8,7 @@ import UIKit
 /// Settings layout with a location control backed by system authorization.
 struct SettingsView: View {
     var profile: ProfileViewModel? = nil
+    var recorder: RecorderReceiver? = nil
     var onServerSaved: () -> Void = {}
     @State private var showsAccountDetails = false
     @State private var serverHost = ""
@@ -15,6 +16,9 @@ struct SettingsView: View {
     @State private var serverError: String?
     @State private var serverResults: [ServerSettings.Service: Bool] = [:]
     @State private var isTestingServer = false
+    @State private var wifiSetup = RecorderWifiSetup()
+    @State private var wifiName = ""
+    @State private var wifiPassword = ""
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
@@ -37,6 +41,7 @@ struct SettingsView: View {
                 header
                 privacyCard
                 serverCard
+                if let recorder { recorderCard(recorder) }
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -51,6 +56,7 @@ struct SettingsView: View {
             if scenePhase == .active { await locationPermission.refresh() }
         }
         .onAppear(perform: loadServerFields)
+        .onDisappear { wifiSetup.cancel() }
         .alert("Location access", isPresented: $showsLocationSettings) {
             #if os(iOS)
             Button("Open Settings") { openLocationSettings() }
@@ -222,6 +228,126 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    private func recorderCard(_ recorder: RecorderReceiver) -> some View {
+        @Bindable var recorder = recorder
+        return card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: "mic")
+                        .foregroundStyle(accent)
+                        .accessibilityHidden(true)
+                    Text("Clip-on recorder")
+                        .font(.headline)
+                        .foregroundStyle(ink)
+                    Spacer(minLength: 0)
+                    Toggle("Receive recordings", isOn: $recorder.isEnabled)
+                        .labelsHidden()
+                        .tint(accent)
+                }
+
+                Text("The Pico recorder finds this phone on your Wi-Fi and uploads its finished files here, then deletes them from its SD card. It can only upload while BellAI is open. Recordings are saved in the Files app under BellAI.")
+                    .font(.caption)
+                    .foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Password")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(muted)
+                    serverField(RecorderReceiver.defaultToken, text: $recorder.token, keyboard: .default)
+                    Text("Must match AUTH_TOKEN in the recorder's config.h.")
+                        .font(.caption2)
+                        .foregroundStyle(muted)
+                }
+
+                switch recorder.status {
+                case .off:
+                    Label("Off", systemImage: "moon.zzz")
+                        .font(.caption)
+                        .foregroundStyle(muted)
+                case .listening:
+                    Label("Waiting for the recorder on port \(String(recorder.boundPort ?? RecorderReceiver.defaultPort))", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(green)
+                case .failed(let message):
+                    Label("Couldn't start: \(message)", systemImage: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                Text(recorder.lastFile.map { "\(recorder.recordingCount) saved, latest \($0)" } ?? "\(recorder.recordingCount) saved")
+                    .font(.caption)
+                    .foregroundStyle(muted)
+
+                Divider()
+                wifiSetupSection(token: recorder.token)
+            }
+        }
+    }
+
+    // sends the Wi-Fi network the recorder uploads through, over Bluetooth
+    private func wifiSetupSection(token: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Recorder's Wi-Fi")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(ink)
+            Text("Unplug the recorder and plug it in again, then send the network it should upload through, within 15 seconds. Tap Send first, then plug it in. It needs a 2.4 GHz network, and this phone must be on the same one to receive.")
+                .font(.caption)
+                .foregroundStyle(muted)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Wi-Fi network name")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(muted)
+                serverField("The name you pick on your phone's Wi-Fi list", text: $wifiName, keyboard: .default)
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(muted.opacity(0.35)))
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Wi-Fi network password")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(muted)
+                SecureField("The password for that network", text: $wifiPassword)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.subheadline)
+                    .foregroundStyle(ink)
+                    .padding(10)
+                    .frame(minHeight: 44)
+                    .background(surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(muted.opacity(0.35)))
+                Text("Leave empty only if the network has no password.")
+                    .font(.caption2)
+                    .foregroundStyle(muted)
+            }
+            switch wifiSetup.phase {
+            case .idle:
+                EmptyView()
+            case .searching:
+                Label("Looking for the recorder…", systemImage: "dot.radiowaves.left.and.right").font(.caption).foregroundStyle(muted)
+            case .connecting:
+                Label("Connecting…", systemImage: "dot.radiowaves.left.and.right").font(.caption).foregroundStyle(muted)
+            case .sending:
+                Label("Sending…", systemImage: "arrow.up.circle").font(.caption).foregroundStyle(muted)
+            case .done:
+                Label("Saved on the recorder. It uses this network from its next upload.", systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(green)
+            case .failed(let error):
+                Label(error.localizedDescription, systemImage: "xmark.circle.fill").font(.caption).foregroundStyle(.red)
+            }
+            Button {
+                wifiSetup.send(token: token, ssid: wifiName, password: wifiPassword)
+            } label: {
+                Text(wifiSetup.isBusy ? "Working…" : "Send to recorder")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(accent, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(wifiSetup.isBusy)
         }
     }
 

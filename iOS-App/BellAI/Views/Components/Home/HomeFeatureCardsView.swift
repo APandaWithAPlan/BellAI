@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeFeatureCardsView: View {
     var tasks: TasksViewModel
     var mail: MailViewModel
+    var conversations: ConversationsViewModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var columns: [GridItem] {
@@ -22,10 +23,28 @@ struct HomeFeatureCardsView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     #endif
             } label: {
-                MailCardView(detail: mail.cardDetail, needsAttention: !mail.important.isEmpty || !mail.drafts.isEmpty)
+                HomeRowCardView(title: "Mail", symbol: "envelope", tint: Color(red: 0.55, green: 0.36, blue: 0.96),
+                                detail: mail.cardDetail, needsAttention: !mail.important.isEmpty || !mail.drafts.isEmpty)
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                ConversationsView(model: conversations)
+                    #if os(iOS)
+                    .toolbar(.visible, for: .navigationBar)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+            } label: {
+                HomeRowCardView(title: "Conversations", symbol: "waveform", tint: Color(red: 1, green: 0.18, blue: 0.45),
+                                detail: conversationsDetail, needsAttention: false)
             }
             .buttonStyle(.plain)
         }
+    }
+
+    private var conversationsDetail: String {
+        if conversations.isWorking { return "Listening back…" }
+        if conversations.pendingCount > 0 { return "\(conversations.pendingCount) waiting" }
+        return conversations.entries.isEmpty ? "From your recorder" : "\(conversations.entries.count) heard"
     }
 
     private var grid: some View {
@@ -75,17 +94,20 @@ struct HomeFeatureCardsView: View {
 }
 
 // one wide row under the cards, it has more to say than a card has room for
-private struct MailCardView: View {
+private struct HomeRowCardView: View {
+    let title: String
+    let symbol: String
+    let tint: Color
     let detail: String
     let needsAttention: Bool
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "envelope")
+            Image(systemName: symbol)
                 .font(.system(size: 16, weight: .light))
-                .foregroundStyle(Color(red: 0.55, green: 0.36, blue: 0.96))
+                .foregroundStyle(tint)
                 .accessibilityHidden(true)
-            Text("Mail")
+            Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
             Spacer(minLength: 8)
@@ -109,7 +131,7 @@ private struct MailCardView: View {
 }
 
 #Preview {
-    HomeFeatureCardsView(tasks: TasksViewModel(store: PlannerPreviewStore()), mail: MailViewModel(service: HTTPMailService()))
+    HomeFeatureCardsView(tasks: TasksViewModel(store: PlannerPreviewStore()), mail: MailViewModel(service: HTTPMailService()), conversations: ConversationsViewModel.preview)
         .padding(20)
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
 }

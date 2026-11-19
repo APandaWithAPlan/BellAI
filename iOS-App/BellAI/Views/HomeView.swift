@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     var tasks: TasksViewModel
     var mail: MailViewModel
+    var conversations: ConversationsViewModel
     var firstName = ""
     var lastName = ""
     var isSubmitting = false
@@ -16,7 +17,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     HomeHeaderView(firstName: firstName, lastName: lastName)
-                    HomeFeatureCardsView(tasks: tasks, mail: mail)
+                    HomeFeatureCardsView(tasks: tasks, mail: mail, conversations: conversations)
                     BellAIPromptInputView(
                         text: $prompt,
                         isSubmitting: isSubmitting,
@@ -45,6 +46,6 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(tasks: TasksViewModel(store: PlannerPreviewStore()), mail: MailViewModel(service: HTTPMailService()))
+    HomeView(tasks: TasksViewModel(store: PlannerPreviewStore()), mail: MailViewModel(service: HTTPMailService()), conversations: ConversationsViewModel.preview)
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
 }

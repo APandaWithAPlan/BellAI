@@ -1,0 +1,6 @@
+PRIMARY_SERVICE, GAP_SERVICE
+CHARACTERISTIC, GAP_DEVICE_NAME, READ, "BellAI Recorder"
+
+// Setup service. One write-only characteristic takes the whole message (see provision.c for the layout).
+PRIMARY_SERVICE, 6F1A0001-7B3C-4E8A-9D52-0C3E1B7A4F10
+CHARACTERISTIC, 6F1A0002-7B3C-4E8A-9D52-0C3E1B7A4F10, WRITE | DYNAMIC,

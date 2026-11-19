@@ -1,0 +1,7 @@
+# config.h holds the Wi-Fi password: copy config.example.h to config.h and edit it
+config.h
+build/
+# third-party SD library, cloned per the README
+lib/
+*.uf2
+.DS_Store
