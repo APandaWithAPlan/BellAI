@@ -1,0 +1,21 @@
+{
+  "scenarios": [
+    {"name": "quiet_room_daylight", "description": "Empty living room in daylight, nothing moves and nobody speaks.", "seconds": 10,
+     "camera": {"brightness": 0.9, "noise": 0.01, "fault": null, "events": []},
+     "mic": {"noise_db": -60, "fault": null, "events": [{"type": "tone", "start": 1, "end": 2, "hz": 1000, "db": -12}]}},
+    {"name": "walk_by_evening", "description": "Someone walks past the camera in the evening and says the wake word.", "seconds": 12,
+     "camera": {"brightness": 0.6, "noise": 0.02, "fault": null, "events": [{"type": "motion", "start": 4, "end": 7, "size": 0.2}]},
+     "mic": {"noise_db": -55, "fault": null, "events": [{"type": "tone", "start": 1, "end": 2, "hz": 440, "db": -12}, {"type": "wake", "start": 5}]}},
+    {"name": "two_visits_noisy", "description": "Two people pass a few seconds apart while a fan is running.", "seconds": 20,
+     "camera": {"brightness": 0.8, "noise": 0.04, "fault": null, "events": [{"type": "motion", "start": 4, "end": 6.5, "size": 0.15}, {"type": "motion", "start": 12, "end": 15, "size": 0.3}]},
+     "mic": {"noise_db": -38, "fault": null, "events": [{"type": "tone", "start": 2, "end": 3, "hz": 2000, "db": -10}, {"type": "wake", "start": 8}, {"type": "wake", "start": 14}]}},
+    {"name": "camera_unplugged", "description": "The webcam cable was pulled out.", "seconds": 8,
+     "camera": {"fault": "unplugged"}, "mic": {"noise_db": -55, "events": [{"type": "tone", "start": 1, "end": 2, "hz": 1000, "db": -12}]}},
+    {"name": "lens_covered", "description": "Something is covering the lens so the picture is black.", "seconds": 8,
+     "camera": {"fault": "black"}, "mic": {"fault": "silent"}},
+    {"name": "camera_frozen_mic_clipped", "description": "The camera keeps sending the same frame and the mic gain is far too high.", "seconds": 8,
+     "camera": {"fault": "frozen"}, "mic": {"fault": "clipped", "events": [{"type": "tone", "start": 1, "end": 3, "hz": 800, "db": -6}]}},
+    {"name": "mic_unplugged", "description": "The microphone is not plugged in while someone walks by.", "seconds": 10,
+     "camera": {"brightness": 0.7, "events": [{"type": "motion", "start": 4, "end": 6, "size": 0.25}]}, "mic": {"fault": "unplugged"}}
+  ]
+}

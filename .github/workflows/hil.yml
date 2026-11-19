@@ -1,0 +1,56 @@
+name: HIL tests
+
+on:
+  push:
+    paths:
+      - "Camera/**"
+      - "RaspPI-Server/wake_listener/**"
+      - "Wake Word/models/**"
+      - "HIL-Testbed/**"
+      - ".github/workflows/hil.yml"
+  workflow_dispatch:
+
+jobs:
+  virtual:
+    name: Virtual camera and mic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          pip install numpy opencv-python-headless onnxruntime scipy scikit-learn requests tqdm
+          pip install --no-deps openwakeword==0.6.0
+      - name: Run virtual stage
+        run: python HIL-Testbed/run_hil.py --stage virtual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: virtual-results
+          path: HIL-Testbed/results
+
+  physical:
+    name: Real camera and mic on the Pi
+    needs: virtual
+    if: vars.HIL_PI_READY == 'true'
+    runs-on: [self-hosted, bellai-pi]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run physical stage
+        run: ~/bellai-env/bin/python HIL-Testbed/run_hil.py --stage physical
+      - uses: actions/download-artifact@v4
+        if: always()
+        with:
+          name: virtual-results
+          path: virtual-results
+      - name: Compare with the virtual stage
+        if: always()
+        run: ~/bellai-env/bin/python HIL-Testbed/compare_runs.py virtual-results/virtual-*.json HIL-Testbed/results/physical-*.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: physical-results
+          path: HIL-Testbed/results

@@ -1,0 +1,146 @@
+{
+  "scenarios": [
+    {
+      "name": "dim_evening_motion_test",
+      "description": "A person walks past the living room camera in a dimly lit evening room.",
+      "seconds": 15.0,
+      "camera": {
+        "brightness": 0.25,
+        "noise": 0.04,
+        "fault": null,
+        "events": [
+          {
+            "type": "motion",
+            "start": 3.0,
+            "end": 6.0,
+            "size": 0.3
+          }
+        ]
+      },
+      "mic": {
+        "noise_db": -52.0,
+        "fault": null,
+        "events": [
+          {
+            "type": "tone",
+            "start": 1.0,
+            "end": 3.0,
+            "hz": 800.0,
+            "db": -15.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "loud_room_wake_audio_clipped",
+      "description": "High ambient noise causes the microphone to clip while a user speaks a command by day.",
+      "seconds": 20.0,
+      "camera": {
+        "brightness": 0.9,
+        "noise": 0.07,
+        "fault": null,
+        "events": [
+          {
+            "type": "motion",
+            "start": 4.0,
+            "end": 8.0,
+            "size": 0.25
+          },
+          {
+            "type": "unplug",
+            "start": 9.0,
+            "end": 12.0
+          }
+        ]
+      },
+      "mic": {
+        "noise_db": -30.0,
+        "fault": "clipped",
+        "events": [
+          {
+            "type": "wake",
+            "start": 5.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "dim_black_sensor_test",
+      "description": "The camera sensor records a black screen while detecting motion in a dark room.",
+      "seconds": 18.0,
+      "camera": {
+        "brightness": 0.1,
+        "noise": 0.02,
+        "fault": "black",
+        "events": []
+      },
+      "mic": {
+        "noise_db": -58.0,
+        "fault": null,
+        "events": [
+          {
+            "type": "tone",
+            "start": 2.0,
+            "end": 5.0,
+            "hz": 600.0,
+            "db": -10.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "frozen_lens_cable_flip",
+      "description": "The camera lens freezes and the user unplugs the cable in a standard living room setting.",
+      "seconds": 20.0,
+      "camera": {
+        "brightness": 0.6,
+        "noise": 0.06,
+        "fault": "frozen",
+        "events": []
+      },
+      "mic": {
+        "noise_db": -45.0,
+        "fault": null,
+        "events": [
+          {
+            "type": "wake",
+            "start": 4.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "normal_daylight_cable_check",
+      "description": "A user unplugs the camera cable during a standard daylight session to inspect wiring.",
+      "seconds": 15.0,
+      "camera": {
+        "brightness": 0.7,
+        "noise": 0.02,
+        "fault": null,
+        "events": [
+          {
+            "type": "motion",
+            "start": 4.0,
+            "end": 7.0,
+            "size": 0.3
+          },
+          {
+            "type": "unplug",
+            "start": 8.0,
+            "end": 12.0
+          }
+        ]
+      },
+      "mic": {
+        "noise_db": -50.0,
+        "fault": null,
+        "events": [
+          {
+            "type": "wake",
+            "start": 3.0
+          }
+        ]
+      }
+    }
+  ]
+}

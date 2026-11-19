@@ -1,0 +1,18 @@
+{
+  "devices": [
+    {"id": "virtual-kiyo-720p", "stage": "virtual", "kind": "camera", "required": true, "service": true,
+     "width": 1280, "height": 720, "fps": 30, "note": "Razer Kiyo as go2rtc serves it on the Pi"},
+    {"id": "virtual-lite-360p", "stage": "virtual", "kind": "camera", "required": false,
+     "width": 640, "height": 360, "fps": 10, "note": "the home_cam_lite stream"},
+    {"id": "virtual-generic-1080p", "stage": "virtual", "kind": "camera", "required": false,
+     "width": 1920, "height": 1080, "fps": 15, "note": "a different 1080p webcam"},
+    {"id": "virtual-seiren-mini", "stage": "virtual", "kind": "mic", "required": true,
+     "card": "Mini", "name": "Razer Seiren Mini", "gain_db": 0, "note": "the BellAi mic"},
+    {"id": "virtual-generic-usb-mic", "stage": "virtual", "kind": "mic", "required": false,
+     "card": "Device", "name": "USB PnP Sound Device", "gain_db": -12, "note": "a cheap USB mic that is quieter"},
+    {"id": "pi-kiyo", "stage": "physical", "kind": "camera", "required": true,
+     "url": "http://127.0.0.1:1984", "src": "home_cam", "note": "the real webcam through go2rtc"},
+    {"id": "pi-seiren", "stage": "physical", "kind": "mic", "required": true,
+     "name": "Razer", "speaker": true, "note": "the real mic, with the Pi speaker playing the scenario"}
+  ]
+}
