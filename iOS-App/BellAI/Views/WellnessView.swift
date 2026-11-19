@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WellnessView: View {
     var insights: InsightsViewModel
+    var music: MusicViewModel
     var isSubmitting = false
     var onSubmitPhoto: (Data, String) -> Bool
     @State private var health = WellnessHealthModel()
@@ -59,6 +60,7 @@ struct WellnessView: View {
                         }
                     }
                 }
+                MusicCardView(model: music)
                 card {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {

@@ -1,0 +1,53 @@
+diff -ru /Users/nicholascervantes/Documents/GitHub/BellAI/iOS-App/BellAI/Views/Components/Bell/BellHeaderView.swift iOS-App/BellAI/Views/Components/Bell/BellHeaderView.swift
+--- /Users/nicholascervantes/Documents/GitHub/BellAI/iOS-App/BellAI/Views/Components/Bell/BellHeaderView.swift	2026-11-02 21:13:52
++++ iOS-App/BellAI/Views/Components/Bell/BellHeaderView.swift	2026-11-16 20:45:55
+@@ -11,7 +11,7 @@
+ 
+     var body: some View {
+         HStack(spacing: 12) {
+-            Button(action: onClose) {
++            Button(action: {}) {
+                 Image(systemName: "xmark")
+                     .font(.system(size: 15, weight: .light))
+                     .frame(width: 44, height: 44)
+diff -ru /Users/nicholascervantes/Documents/GitHub/BellAI/iOS-App/BellAI/Views/Components/PhotoPickerButton.swift iOS-App/BellAI/Views/Components/PhotoPickerButton.swift
+--- /Users/nicholascervantes/Documents/GitHub/BellAI/iOS-App/BellAI/Views/Components/PhotoPickerButton.swift	2026-11-02 22:27:48
++++ iOS-App/BellAI/Views/Components/PhotoPickerButton.swift	2026-11-16 20:45:55
+@@ -75,7 +75,7 @@
+                 .frame(width: 44, height: 44)
+                 .contentShape(Rectangle())
+         case .logMeal:
+-            Text("Log meal").font(.subheadline.weight(.semibold))
++            Text("Log workout").font(.subheadline.weight(.semibold))
+                 .foregroundStyle(accent).frame(minHeight: 44)
+         case .mealCard:
+             HStack(spacing: 14) {
+diff -ru /Users/nicholascervantes/Documents/GitHub/BellAI/iOS-App/BellAI/Views/SettingsView.swift iOS-App/BellAI/Views/SettingsView.swift
+--- /Users/nicholascervantes/Documents/GitHub/BellAI/iOS-App/BellAI/Views/SettingsView.swift	2026-11-13 23:19:51
++++ iOS-App/BellAI/Views/SettingsView.swift	2026-11-16 20:45:55
+@@ -73,7 +73,7 @@
+                 Text("MAKE BELL YOURS")
+                     .font(.subheadline.weight(.semibold))
+                     .foregroundStyle(accent)
+-                Text("Settings")
++                Text("Setings")
+                     .font(.largeTitle.weight(.bold))
+                     .foregroundStyle(ink)
+             }
+@@ -175,7 +175,7 @@
+ 
+                 Text("Where BellAI finds your Mac. ai-server is its name on Tailscale. On NetBird or your local network, enter the Mac's IP address instead. iOS only allows plain HTTP to IP addresses, short names and .local names.")
+                     .font(.caption)
+-                    .foregroundStyle(muted)
++                    .foregroundStyle(Color(white: 0.92))
+                     .fixedSize(horizontal: false, vertical: true)
+ 
+                 VStack(alignment: .leading, spacing: 4) {
+@@ -224,6 +224,7 @@
+                             .frame(minWidth: 72, minHeight: 44)
+                             .background(surface, in: RoundedRectangle(cornerRadius: 12))
+                     }
++                    .offset(x: -64)
+                     .disabled(isTestingServer)
+                 }
+                 .buttonStyle(.plain)

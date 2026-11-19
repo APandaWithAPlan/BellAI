@@ -191,6 +191,21 @@ final class StubInsights: InsightsService {
     }
 }
 
+@MainActor
+final class StubCaptures: CaptureService {
+    var items: [Capture] = []
+    var total = 0
+    var error: Error?
+    var limits: [Int] = []
+    func captures(limit: Int) async throws -> (captures: [Capture], total: Int) {
+        limits.append(limit)
+        if let error { throw error }
+        return (items, total)
+    }
+    func videoURL(for capture: Capture) -> URL { URL(string: "http://stub/captures/\(capture.id)/video")! }
+    func thumbnailURL(for capture: Capture) -> URL { URL(string: "http://stub/captures/\(capture.id)/thumbnail")! }
+}
+
 @main
 struct OllamaSubmissionChecks {
     @MainActor
@@ -201,6 +216,7 @@ struct OllamaSubmissionChecks {
         testFoodPreferences()
         await testMealJournalAndPhotoLogging()
         await testInsightsViewModel()
+        await testCapturesViewModel()
         await testListeningThenTranscribing()
         await testMicrophoneSubmissionAndCancellation()
         let stub = StubService()
@@ -247,6 +263,7 @@ struct OllamaSubmissionChecks {
         try await testTranscriptionHTTP(session: session)
         try await testMailHTTP(session: session)
         try await testInsightsHTTP(session: session)
+        try await testCapturesHTTP(session: session)
         await testServerConnectionHealth(session: session)
         print("All Ollama submission checks passed.")
     }
@@ -711,6 +728,92 @@ struct OllamaSubmissionChecks {
         StubURLProtocol.payload = Data(#"{"nope":1}"#.utf8)
         do {
             _ = try await service.insights(for: FoodPreferences(), meals: [])
+            preconditionFailure("Expected invalid response")
+        } catch BellAIServiceError.invalidResponse {}
+    }
+
+    @MainActor
+    private static func testCapturesViewModel() async {
+        let formatter = ISO8601DateFormatter()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: -5 * 3_600)!
+        func clip(_ id: String, _ start: String, available: Bool = true) -> Capture {
+            Capture(id: id, startedAt: formatter.date(from: start), durationSeconds: 64, peakMotionPercent: 26.2, isAvailable: available)
+        }
+        // newest first, as the server sends them
+        let service = StubCaptures()
+        service.items = [clip("c", "2026-10-29T15:24:47-05:00"), clip("b", "2026-10-29T09:00:00-05:00", available: false), clip("a", "2026-10-28T23:30:00-05:00")]
+        service.total = 130
+        let model = CapturesViewModel(service: service)
+        precondition(!model.isLoaded && model.captures.isEmpty && model.days(calendar: calendar).isEmpty)
+        await model.load()
+        precondition(model.isLoaded && model.total == 130 && service.limits == [500] && model.errorMessage == nil)
+        precondition(model.recent.map(\.id) == ["c", "b", "a"])
+
+        // grouped by the day it happened where the clip was recorded, newest day first and newest clip first in it
+        let days = model.days(calendar: calendar)
+        precondition(days.count == 2 && days[0].captures.map(\.id) == ["c", "b"] && days[1].captures.map(\.id) == ["a"])
+        precondition(days[0].date > days[1].date)
+        // out of order from the server is still put right
+        service.items = [clip("a", "2026-10-28T23:30:00-05:00"), clip("b", "2026-10-29T09:00:00-05:00"), clip("c", "2026-10-29T15:24:47-05:00")]
+        await model.load()
+        precondition(model.days(calendar: calendar)[0].captures.map(\.id) == ["c", "b"])
+        precondition(model.videoURL(for: clip("c", "2026-10-29T15:24:47-05:00")).absoluteString == "http://stub/captures/c/video")
+        precondition(model.thumbnailURL(for: clip("c", "2026-10-29T15:24:47-05:00")).absoluteString == "http://stub/captures/c/thumbnail")
+
+        // a failed refresh keeps what is shown and says why, and a changed server starts over
+        service.error = BellAIServiceError.server(503, "The data server isn't running.")
+        await model.load()
+        precondition(model.captures.count == 3 && model.isLoaded && model.errorMessage?.contains("isn't running") == true)
+        service.error = nil
+        await model.load()
+        precondition(model.errorMessage == nil)
+        service.items = []
+        service.total = 0
+        await model.reload()
+        precondition(model.isLoaded && model.captures.isEmpty && model.recent.isEmpty)
+        service.error = BellAIServiceError.http(500)
+        await model.reload()
+        precondition(!model.isLoaded && model.errorMessage != nil)
+
+        precondition(Capture(id: "x", startedAt: nil, durationSeconds: 18).durationText == "0:18")
+        precondition(Capture(id: "x", startedAt: nil, durationSeconds: 64, peakMotionPercent: 26.2).durationText == "1:04")
+        precondition(Capture(id: "x", startedAt: nil, durationSeconds: 600, peakMotionPercent: 26.2).motionText == "Motion 26%")
+        precondition(Capture(id: "x", startedAt: nil).motionText == nil)
+    }
+
+    @MainActor
+    private static func testCapturesHTTP(session: URLSession) async throws {
+        let service = HTTPCaptureService(baseURL: URL(string: "http://ai-server:8001")!, session: session)
+        StubURLProtocol.status = 200
+        StubURLProtocol.payload = Data(#"""
+        {"captures":[{"id":"20261029-152255","camera":"home_cam","started_at":"2026-10-29T15:22:52-05:00","ended_at":"2026-10-29T15:23:46-05:00",
+        "duration_s":54,"peak_motion_pct":26.0,"size_bytes":15371446,"available":true},
+        {"id":"20261029-152157","started_at":"not a date","duration_s":51,"available":false}],"total":130}
+        """#.utf8)
+        let result = try await service.captures(limit: 500)
+        precondition(StubURLProtocol.capturedRequest?.url?.absoluteString == "http://ai-server:8001/captures?limit=500")
+        precondition(result.total == 130 && result.captures.count == 2)
+        let first = result.captures[0]
+        precondition(first.id == "20261029-152255" && first.durationSeconds == 54 && first.peakMotionPercent == 26.0 && first.sizeBytes == 15_371_446 && first.isAvailable)
+        precondition(first.startedAt == Date(timeIntervalSince1970: 1_793_305_372), "\(String(describing: first.startedAt))")
+        // what the server leaves out or can't be read is left blank, and a clip is only playable when the server says so
+        precondition(result.captures[1].startedAt == nil && result.captures[1].peakMotionPercent == nil && !result.captures[1].isAvailable)
+        precondition(service.videoURL(for: first).absoluteString == "http://ai-server:8001/captures/20261029-152255/video")
+        precondition(service.thumbnailURL(for: first).absoluteString == "http://ai-server:8001/captures/20261029-152255/thumbnail")
+
+        StubURLProtocol.status = 503
+        StubURLProtocol.payload = Data(#"{"detail":"I can't read events.json. Is the drive connected?"}"#.utf8)
+        do {
+            _ = try await service.captures(limit: 10)
+            preconditionFailure("Expected 503")
+        } catch BellAIServiceError.server(503, let message) {
+            precondition(message.contains("drive"))
+        }
+        StubURLProtocol.status = 200
+        StubURLProtocol.payload = Data(#"{"nope":1}"#.utf8)
+        do {
+            _ = try await service.captures(limit: 10)
             preconditionFailure("Expected invalid response")
         } catch BellAIServiceError.invalidResponse {}
     }

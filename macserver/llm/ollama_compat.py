@@ -8,7 +8,7 @@
 #                  "think" is ignored because thinking is always off, replies are read aloud so nobody waits on it
 # GET or POST /v1/...   passed straight on, with the model name replaced because mlx-lm only runs the one it loaded
 #
-# env: LLM_MODEL, HOST, PORT
+# env: LLM_MODEL, HOST, PORT, BACKEND_PORT (the mlx-lm port, default 11435)
 import asyncio
 import json
 import logging
@@ -28,7 +28,8 @@ log = logging.getLogger("ollama_compat")
 
 MODEL = os.environ.get("LLM_MODEL", "mlx-community/Qwen3.5-4B-4bit")
 NAME = "qwen3.5:4b-q4_K_M"  # what clients expect to see in /api/tags, they ask for it by this name
-BACKEND = "http://127.0.0.1:11435"
+BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "11435"))
+BACKEND = f"http://127.0.0.1:{BACKEND_PORT}"
 SAMPLING = {"temperature": "temperature", "top_p": "top_p", "top_k": "top_k", "num_predict": "max_tokens"}
 
 backend: subprocess.Popen
@@ -43,7 +44,7 @@ def now():
 async def lifespan(_):
     global backend, http
     backend = subprocess.Popen([
-        sys.executable, "-m", "mlx_lm", "server", "--model", MODEL, "--host", "127.0.0.1", "--port", "11435",
+        sys.executable, "-m", "mlx_lm", "server", "--model", MODEL, "--host", "127.0.0.1", "--port", str(BACKEND_PORT),
         "--temp", "0.7", "--max-tokens", "1024", "--chat-template-args", '{"enable_thinking": false}',
     ])
     http = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=5))

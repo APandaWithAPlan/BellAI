@@ -5,9 +5,12 @@
 # PUT /data {"data": {...}} -> {"ok": true}
 # GET /health
 #
+# also the camera's earlier motion clips, see captures.py: GET /captures, /captures/<id>/video, /captures/<id>/thumbnail
+# and the songs played in Apple Music, see music.py: POST /music/plays, GET /music/plays
+#
 # one user, being on the tailnet is the login
 #
-# env: DATA_DB, HOST, PORT
+# env: DATA_DB, CAPTURES_DIR, CAPTURES_STORE, HOST, PORT
 import json
 import logging
 import os
@@ -19,6 +22,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from routines import router as routines_router
 from storage import DB_PATH, db
+
+from captures import make_router
+from music import make_router as make_music_router
 
 log = logging.getLogger("bell_data")
 
@@ -33,6 +39,9 @@ with db() as conn:
     )
 
 app = FastAPI()
+router, sync_captures = make_router(db)
+app.include_router(router)
+app.include_router(make_music_router(db))
 app.include_router(routines_router)
 
 
@@ -69,4 +78,5 @@ def put_data(body: Save):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     log.info("db %s", DB_PATH)
+    sync_captures()  # copies the camera's new clips in the background
     uvicorn.run(app, host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", "8001")))

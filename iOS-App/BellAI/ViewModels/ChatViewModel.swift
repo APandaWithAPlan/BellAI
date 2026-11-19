@@ -36,6 +36,13 @@ final class ChatViewModel {
     private let speech: (any SpeechPlaying)?
     private let model: String
 
+    // OLLAMA_MODEL in Info.plist, else the one the server is set up with
+    static var defaultModel: String {
+        let configured = (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return configured?.isEmpty == false && configured?.hasPrefix("$(") == false ? configured! : "qwen3.5:4b-q4_K_M"
+    }
+
     // no voiceService/speech = text only
     init(
         service: (any BellAIService)? = nil,
@@ -48,9 +55,7 @@ final class ChatViewModel {
         self.voiceService = voiceService
         self.speech = speech
         self.microphone = microphone ?? MicrophoneService()
-        let configuredModel = (Bundle.main.object(forInfoDictionaryKey: "OLLAMA_MODEL") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        self.model = model ?? (configuredModel?.isEmpty == false && configuredModel?.hasPrefix("$(") == false ? configuredModel! : "qwen3.5:4b-q4_K_M")
+        self.model = model ?? Self.defaultModel
     }
 
     // starts listening, and once listening a tap ends it and sends what was said. a tap while it is still

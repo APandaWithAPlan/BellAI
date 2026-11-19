@@ -4,6 +4,8 @@
 <dict>
 	<key>DATA_SERVER_HOST</key>
 	<string>$(DATA_SERVER_HOST)</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -11,6 +13,8 @@
 	</dict>
 	<key>OLLAMA_MODEL</key>
 	<string>$(OLLAMA_MODEL)</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>VOICE_SERVER_HOST</key>
 	<string>$(VOICE_SERVER_HOST)</string>
 </dict>

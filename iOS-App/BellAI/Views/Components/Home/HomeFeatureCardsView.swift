@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeFeatureCardsView: View {
     var tasks: TasksViewModel
     var mail: MailViewModel
+    var conversations: ConversationsViewModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var columns: [GridItem] {
@@ -22,7 +23,8 @@ struct HomeFeatureCardsView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     #endif
             } label: {
-                HomeWideCardView(title: "Mail", symbol: "envelope", detail: mail.cardDetail, needsAttention: !mail.important.isEmpty || !mail.drafts.isEmpty)
+                HomeRowCardView(title: "Mail", symbol: "envelope", tint: Color(red: 0.55, green: 0.36, blue: 0.96),
+                                detail: mail.cardDetail, needsAttention: !mail.important.isEmpty || !mail.drafts.isEmpty)
             }
             .buttonStyle(.plain)
             NavigationLink {
@@ -32,10 +34,27 @@ struct HomeFeatureCardsView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     #endif
             } label: {
-                HomeWideCardView(title: "Routine", symbol: "repeat")
+                HomeRowCardView(title: "Routine", symbol: "repeat", tint: Color(red: 0.55, green: 0.36, blue: 0.96))
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                ConversationsView(model: conversations)
+                    #if os(iOS)
+                    .toolbar(.visible, for: .navigationBar)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+            } label: {
+                HomeRowCardView(title: "Conversations", symbol: "waveform", tint: Color(red: 1, green: 0.18, blue: 0.45),
+                                detail: conversationsDetail, needsAttention: false)
             }
             .buttonStyle(.plain)
         }
+    }
+
+    private var conversationsDetail: String {
+        if conversations.isWorking { return "Listening back…" }
+        if conversations.pendingCount > 0 { return "\(conversations.pendingCount) waiting" }
+        return conversations.entries.isEmpty ? "From your recorder" : "\(conversations.entries.count) heard"
     }
 
     private var grid: some View {
@@ -85,9 +104,10 @@ struct HomeFeatureCardsView: View {
 }
 
 // one wide row under the cards, it has more to say than a card has room for
-private struct HomeWideCardView: View {
+private struct HomeRowCardView: View {
     let title: String
     let symbol: String
+    let tint: Color
     var detail = ""
     var needsAttention = false
 
@@ -95,7 +115,7 @@ private struct HomeWideCardView: View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .light))
-                .foregroundStyle(Color(red: 0.55, green: 0.36, blue: 0.96))
+                .foregroundStyle(tint)
                 .accessibilityHidden(true)
             Text(title)
                 .font(.caption.weight(.semibold))
@@ -121,7 +141,7 @@ private struct HomeWideCardView: View {
 }
 
 #Preview {
-    HomeFeatureCardsView(tasks: TasksViewModel(store: PlannerPreviewStore()), mail: MailViewModel(service: HTTPMailService()))
+    HomeFeatureCardsView(tasks: TasksViewModel(store: PlannerPreviewStore()), mail: MailViewModel(service: HTTPMailService()), conversations: ConversationsViewModel.preview)
         .padding(20)
         .background(Color(red: 0.97, green: 0.96, blue: 0.97))
 }

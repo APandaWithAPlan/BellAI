@@ -8,14 +8,18 @@ xcrun swiftc -D DEBUG -parse-as-library \
   BellAI/Models/MealAnalysis.swift \
   BellAI/Models/MailItem.swift \
   BellAI/Models/FoodPreferences.swift \
+  BellAI/Models/Capture.swift \
   BellAI/Models/MealJournal.swift \
   BellAI/Services/MealLogging.swift \
   BellAI/Services/MailService.swift \
   BellAI/Services/InsightsService.swift \
+  BellAI/Services/CaptureService.swift \
+  BellAI/Services/HTTPUserDataService.swift \
   BellAI/Services/SpeechTranscriptionService.swift \
   BellAI/ViewModels/MealPhotoViewModel.swift \
   BellAI/ViewModels/MailViewModel.swift \
   BellAI/ViewModels/InsightsViewModel.swift \
+  BellAI/ViewModels/CapturesViewModel.swift \
   BellAI/Services/HTTPBellAIService.swift \
   BellAI/Services/ServerSettings.swift \
   BellAI/Services/FoodAnalysisService.swift \

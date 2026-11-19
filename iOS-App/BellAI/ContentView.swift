@@ -12,12 +12,19 @@ struct ContentView: View {
     @State private var insights: InsightsViewModel
     @State private var tasks = TasksViewModel(store: HTTPUserDataService())
     @State private var mail = MailViewModel(service: HTTPMailService())
+    @State private var recorder: RecorderReceiver
+    @State private var conversations: ConversationsViewModel
+    @State private var music = MusicViewModel(music: AppleMusicService(), log: HTTPMusicLogService(), workout: WorkoutIntensityService())
 
     init() {
         // the photo flow records meals in the journal, and the recommendations are worked out from it
         let journal = MealJournal()
         _meal = State(initialValue: MealPhotoViewModel(foodService: HTTPFoodAnalysisService(), logger: standardMealLogger(), journal: journal))
         _insights = State(initialValue: InsightsViewModel(service: HTTPInsightsService(), journal: journal))
+        // what the recorder uploads is turned into text and notes in the folder it saves to
+        let recorder = RecorderReceiver()
+        _recorder = State(initialValue: recorder)
+        _conversations = State(initialValue: ConversationsViewModel(directory: recorder.directory, transcriber: AppleRecordingTranscriber(), analyzer: ConversationNotesService()))
     }
 
     var body: some View {
@@ -27,7 +34,7 @@ struct ContentView: View {
 
             if selectedTab == .home {
                 if homeSection == .main {
-                    HomeView(tasks: tasks, mail: mail, firstName: profile.firstName, lastName: profile.lastName, isSubmitting: chat.isSubmitting || meal.isBusy, onMicrophoneTap: {
+                    HomeView(tasks: tasks, mail: mail, conversations: conversations, firstName: profile.firstName, lastName: profile.lastName, isSubmitting: chat.isSubmitting || meal.isBusy, onMicrophoneTap: {
                         selectedTab = .bell
                         chat.toggleMicrophone(startsNewSession: true)
                     }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitPhoto)
@@ -50,9 +57,9 @@ struct ContentView: View {
                     onOpenSettings: { selectedTab = .settings }
                 )
             } else if selectedTab == .activity {
-                WellnessView(insights: insights, isSubmitting: chat.isSubmitting || meal.isBusy, onSubmitPhoto: submitPhoto)
+                WellnessView(insights: insights, music: music, isSubmitting: chat.isSubmitting || meal.isBusy, onSubmitPhoto: submitPhoto)
             } else if selectedTab == .settings {
-                SettingsView(profile: profile, onServerSaved: {
+                SettingsView(profile: profile, recorder: recorder, onServerSaved: {
                     Task { await tasks.reload() }
                     Task { await mail.reload() }
                 })
@@ -84,9 +91,13 @@ struct ContentView: View {
                 return facts.isEmpty ? nil : facts.joined(separator: ", and ")
             }
             async let loadingMail: Void = mail.refresh()
+            async let loggingMusic: Void = music.syncPlays()
+            async let hearing: Void = conversations.processNew() // what the recorder sent while the app was closed
             async let loadingRoutines: [Routine]? = try? RoutineNotifications.shared.refresh()
             await tasks.load()
             await loadingMail
+            await loggingMusic
+            await hearing
             _ = await loadingRoutines
         }
         .sheet(isPresented: Binding(get: { meal.isShown }, set: { if !$0 { meal.dismiss() } })) {
@@ -95,12 +106,21 @@ struct ContentView: View {
         .onChange(of: selectedTab) { _, tab in
             if tab != .bell { chat.stopMicrophone() }
         }
+        .onChange(of: recorder.recordingCount) { _, _ in
+            Task { await conversations.processNew() } // a recording just arrived
+        }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { chat.stopMicrophone() }
+            recorder.setActive(phase == .active) // the recorder can only upload while the app is open
+            if phase == .background {
+                chat.stopMicrophone()
+                music.stopFollowing() // heart rate and motion can't be read while the app is closed
+            }
             if phase == .active {
-                Task { await mail.refresh() }
-                Task { _ = try? await RoutineNotifications.shared.refresh() }
-            } // new mail and routine changes come in while the app is closed
+                Task { await mail.refresh() } // new mail comes in while the app is closed
+                Task { _ = try? await RoutineNotifications.shared.refresh() } // and routines change
+                Task { await music.syncPlays() } // and songs get played
+                Task { await conversations.processNew() }
+            }
         }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
