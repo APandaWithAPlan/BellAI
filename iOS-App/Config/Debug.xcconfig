@@ -2,4 +2,6 @@
 OLLAMA_MODEL = qwen3.5:4b-q4_K_M
 // voice server host:port (no ws:// here, // is a comment in xcconfig)
 VOICE_SERVER_HOST = ai-server:8000
+// data server host:port, where tasks are saved
+DATA_SERVER_HOST = ai-server:8001
 #include? "../BellAI/Config/Secrets.xcconfig"

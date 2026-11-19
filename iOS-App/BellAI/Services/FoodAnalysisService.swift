@@ -2,8 +2,8 @@ import Foundation
 
 @MainActor
 protocol FoodAnalysisService {
-    /// A one sentence summary written to be read aloud. Needs a photo, a note, or both.
-    func analyze(jpeg: Data?, note: String?) async throws -> String
+    /// A one sentence summary written to be read aloud, and the calories in it. Needs a photo, a note, or both.
+    func analyze(jpeg: Data?, note: String?) async throws -> MealAnalysis
     /// wav audio of `text`
     func speak(_ text: String) async throws -> Data
 }
@@ -11,15 +11,20 @@ protocol FoodAnalysisService {
 // POST /analyze and /speak on the voice server, same host as the websocket
 @MainActor
 struct HTTPFoodAnalysisService: FoodAnalysisService {
-    private let baseURL: URL
+    private let fixedURL: URL?
     private let session: URLSession
 
-    init(baseURL: URL = URL(string: "http://\(WebSocketVoiceService.configuredHost)")!, session: URLSession = .shared) {
-        self.baseURL = baseURL
+    // no baseURL means the voice server's address from Settings, looked up on use
+    init(baseURL: URL? = nil, session: URLSession = .shared) {
+        self.fixedURL = baseURL
         self.session = session
     }
 
-    func analyze(jpeg: Data?, note: String?) async throws -> String {
+    private var baseURL: URL {
+        fixedURL ?? URL(string: "http://\(WebSocketVoiceService.configuredHost)")!
+    }
+
+    func analyze(jpeg: Data?, note: String?) async throws -> MealAnalysis {
         let boundary = "bellai-\(UUID().uuidString)"
         var request = URLRequest(url: baseURL.appending(path: "analyze"))
         request.httpMethod = "POST"
@@ -44,7 +49,17 @@ struct HTTPFoodAnalysisService: FoodAnalysisService {
               !result.summary.isEmpty else {
             throw BellAIServiceError.invalidResponse
         }
-        return result.summary
+        let nutrition = result.totals?.kcal.map {
+            Nutrition(calories: Int($0.rounded()), proteinGrams: Int((result.totals?.protein_g ?? 0).rounded()))
+        }
+        let nutrients = result.totals?.kcal.map {
+            MealNutrients(
+                kcal: $0, proteinG: result.totals?.protein_g ?? 0, carbsG: result.totals?.carbs_g ?? 0,
+                fatG: result.totals?.fat_g ?? 0, fiberG: result.totals?.fiber_g ?? 0,
+                sugarG: result.totals?.sugar_g ?? 0, sodiumMg: result.totals?.sodium_mg ?? 0
+            )
+        }
+        return MealAnalysis(summary: result.summary, nutrition: nutrition, nutrients: nutrients)
     }
 
     func speak(_ text: String) async throws -> Data {
@@ -76,6 +91,17 @@ struct HTTPFoodAnalysisService: FoodAnalysisService {
 
 private struct AnalysisResponse: Decodable {
     let summary: String
+    let totals: Totals?
+
+    struct Totals: Decodable {
+        let kcal: Double? // null when nothing was found to look it up with
+        let protein_g: Double?
+        let carbs_g: Double?
+        let fat_g: Double?
+        let fiber_g: Double?
+        let sugar_g: Double?
+        let sodium_mg: Double?
+    }
 }
 
 private struct ErrorResponse: Decodable {

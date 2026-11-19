@@ -1,10 +1,24 @@
+import AVFoundation
 import SwiftUI
-import Playgrounds
 
 struct ContentView: View {
+    @State private var profile = ProfileViewModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: BellAITab = .home
-    @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), foodService: HTTPFoodAnalysisService(), speech: SpeechPlayer())
-    @State private var tasks = TasksViewModel(store: FirebaseUserDataService())
+    @State private var homeSection: HomeSection = .main
+    @State private var bottomNavigationHeight: CGFloat = 56
+    @State private var chat = ChatViewModel(voiceService: WebSocketVoiceService(), speech: SpeechPlayer())
+    @State private var meal: MealPhotoViewModel
+    @State private var insights: InsightsViewModel
+    @State private var tasks = TasksViewModel(store: HTTPUserDataService())
+    @State private var mail = MailViewModel(service: HTTPMailService())
+
+    init() {
+        // the photo flow records meals in the journal, and the recommendations are worked out from it
+        let journal = MealJournal()
+        _meal = State(initialValue: MealPhotoViewModel(foodService: HTTPFoodAnalysisService(), logger: standardMealLogger(), journal: journal))
+        _insights = State(initialValue: InsightsViewModel(service: HTTPInsightsService(), journal: journal))
+    }
 
     var body: some View {
         ZStack {
@@ -12,20 +26,36 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             if selectedTab == .home {
-                HomeView(isSubmitting: chat.isSubmitting, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitHomePhoto)
+                if homeSection == .main {
+                    HomeView(tasks: tasks, mail: mail, firstName: profile.firstName, lastName: profile.lastName, isSubmitting: chat.isSubmitting || meal.isBusy, onMicrophoneTap: {
+                        selectedTab = .bell
+                        chat.toggleMicrophone(startsNewSession: true)
+                    }, onSubmitPrompt: submitHomePrompt, onSubmitPhoto: submitPhoto)
+                } else {
+                    BriefingView(tasks: tasks)
+                }
             } else if selectedTab == .bell {
                 BellView(
                     conversation: chat.conversation,
-                    isSubmitting: chat.isSubmitting,
+                    isSubmitting: chat.isSubmitting || meal.isBusy,
                     isSpeaking: chat.isSpeaking,
+                    isListening: chat.isListening,
+                    isStartingMicrophone: chat.isStartingMicrophone,
+                    isTranscribing: chat.isTranscribing,
+                    onMicrophoneTap: { chat.toggleMicrophone() },
                     isSpeakerEnabled: $chat.isSpeakerEnabled,
                     onSubmitPrompt: submitFollowUpPrompt,
-                    onSubmitPhoto: submitFollowUpPhoto,
+                    onSubmitPhoto: submitPhoto,
                     onClose: { selectedTab = .home },
                     onOpenSettings: { selectedTab = .settings }
                 )
-            } else if selectedTab == .tasks {
-                TasksView(model: tasks)
+            } else if selectedTab == .activity {
+                WellnessView(insights: insights, isSubmitting: chat.isSubmitting || meal.isBusy, onSubmitPhoto: submitPhoto)
+            } else if selectedTab == .settings {
+                SettingsView(profile: profile, onServerSaved: {
+                    Task { await tasks.reload() }
+                    Task { await mail.reload() }
+                })
             } else {
                 Text(selectedTab.rawValue)
                     .font(.title2.weight(.semibold))
@@ -33,14 +63,52 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomNavigationView(selection: $selectedTab)
+            VStack(spacing: 12) {
+                if selectedTab == .home {
+                    HomeSectionNavigationView(selection: $homeSection, height: bottomNavigationHeight * 2 / 3)
+                        .padding(.horizontal, 20)
+                }
+                BottomNavigationView(selection: $selectedTab)
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.size.height
+                    } action: { height in
+                        bottomNavigationHeight = height
+                    }
+            }
         }
         .task {
-            // BellAI gets your open tasks as context, so load them now, not when the tab opens
-            chat.contextProvider = { [tasks] in tasks.openTaskSummary }
+            _ = RoutineNotifications.shared
+            // BellAI gets your open tasks and important emails as context, so load them now, not when the tab opens
+            chat.contextProvider = { [tasks, mail] in
+                let facts = [tasks.openTaskSummary, mail.importantSummary].compactMap { $0 }
+                return facts.isEmpty ? nil : facts.joined(separator: ", and ")
+            }
+            async let loadingMail: Void = mail.refresh()
+            async let loadingRoutines: [Routine]? = try? RoutineNotifications.shared.refresh()
             await tasks.load()
+            await loadingMail
+            _ = await loadingRoutines
         }
-        .alert("Couldn't send message", isPresented: Binding(
+        .sheet(isPresented: Binding(get: { meal.isShown }, set: { if !$0 { meal.dismiss() } })) {
+            MealResultView(model: meal)
+        }
+        .onChange(of: selectedTab) { _, tab in
+            if tab != .bell { chat.stopMicrophone() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { chat.stopMicrophone() }
+            if phase == .active {
+                Task { await mail.refresh() }
+                Task { _ = try? await RoutineNotifications.shared.refresh() }
+            } // new mail and routine changes come in while the app is closed
+        }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
+            chat.stopMicrophone()
+        }
+        #endif
+        .onDisappear { chat.stopMicrophone() }
+        .alert("Couldn't complete request", isPresented: Binding(
             get: { chat.errorMessage != nil },
             set: { if !$0 { chat.errorMessage = nil } }
         )) {
@@ -57,16 +125,11 @@ struct ContentView: View {
         return true
     }
 
-    private func submitHomePhoto(_ jpeg: Data, note: String) -> Bool {
-        guard chat.validateAndStorePhoto(jpeg, note: note, startsNewSession: true) else { return false }
-        transitionToBellConversation()
-        Task { await chat.submitStoredPhoto() }
-        return true
-    }
-
-    private func submitFollowUpPhoto(_ jpeg: Data, note: String) -> Bool {
-        guard chat.validateAndStorePhoto(jpeg, note: note) else { return false }
-        Task { await chat.submitStoredPhoto() }
+    // a meal photo is answered where it was taken, in a sheet, and not spoken
+    private func submitPhoto(_ jpeg: Data, note: String) -> Bool {
+        guard !chat.isSubmitting, meal.begin(jpeg, note: note) else { return false }
+        chat.stopMicrophone()
+        Task { await meal.analyzeStored() }
         return true
     }
 
@@ -79,12 +142,4 @@ struct ContentView: View {
         Task { await chat.submitStoredRequest() }
         return true
     }
-}
-
-#Preview {
-    ContentView()
-}
-
-#Playground {
-    _ = 1 + 2
 }

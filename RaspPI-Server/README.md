@@ -30,14 +30,12 @@ The Raspberry PI acts as the user's home device hub for communicating with BellA
 * Linux Server Version: `v26.04.1 LTS`.
 * 32gb microSD card for imaging.
 * [Whispercpp](https://github.com/ggml-org/whisper.cpp) Version: `v1.9.5` installed locally on the RaspPI.
-* [Home Assistant Core](https://pypi.org/project/homeassistant/) via `pip install homeassistant`. You'll need to create an account on Home Assistant accessed at port `8123`. This includes integrating any external accounts with Home Assistant, such as Spotify, as well.
-* BellAI Server: A running Ollama server with the configured model available. The default model is `qwen3:8b`.
-* The device must be on the same network as the BellAI server with access to port `11434`.
+
 * A browser and graphical interface to display the dashboard. Tested: `Chromium` with `Xorg`.
 
 ### How to Enable / Access
 
-1. Clone the repository and input IP and port for the BellAI server.
+1. Clone the repository and set `OLLAMA_HOST=ai-server:11434` for the BellAI server.
 2. Change pathing to Whispercpp, Home Assistant if needed.
 3. Include your Home Assistant token in a .env.
 4. Run `uvicorn api:app --host 127.0.0.1 --port 8000` to start the FastAPI backend.

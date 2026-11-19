@@ -918,10 +918,17 @@ Files
   voice.json             settings (reference text, speed, expressiveness)
   bellai_voice_server.py the voice as a web API (POST /tts -> streaming WAV)
   pi_client_example.py   speaks through the server from a Pi or any other device
+  start_windows.bat      double-click to start the server on Windows
+  start_mac.command      double-click to start the server on a Mac
 
-Run the server (needs GPT-SoVITS installed on that machine and an NVIDIA GPU for real-time speed)
+Run the server (needs GPT-SoVITS installed on that machine; an NVIDIA GPU is fastest, an Apple Silicon Mac also works)
+  Easiest: double-click start_windows.bat or start_mac.command. The first time, it asks where
+  GPT-SoVITS is and remembers it. On a Mac, if it says it can't be opened, right-click it, choose
+  Open, then Open again.
+  Or run it yourself:
   Windows:  "<GPT-SoVITS folder>\\runtime\\python.exe" bellai_voice_server.py --gpt-sovits "<GPT-SoVITS folder>"
   Linux:    python bellai_voice_server.py --gpt-sovits ~/GPT-SoVITS
+  macOS:    python bellai_voice_server.py --gpt-sovits ~/GPT-SoVITS
   Add --host 0.0.0.0 --key SOME-SECRET to let other devices on the network use it.
 
 Use it
@@ -956,6 +963,12 @@ def export_pack():
         z.writestr("voice.json", json.dumps(voice, indent=2))
         z.write(str(STUDIO_DIR / "bellai_voice_server.py"), "bellai_voice_server.py")
         z.write(str(STUDIO_DIR / "pi_client_example.py"), "pi_client_example.py")
+        z.write(str(STUDIO_DIR / "start_windows.bat"), "start_windows.bat")
+        mac_starter = zipfile.ZipInfo("start_mac.command", time.localtime()[:6])
+        mac_starter.create_system = 3                     # keep it double-clickable after unzipping on a Mac
+        mac_starter.external_attr = 0o100755 << 16
+        z.writestr(mac_starter, (STUDIO_DIR / "start_mac.command").read_bytes())
+        z.writestr("gpt_sovits_folder_windows.txt", str(SOVITS_DIR) + "\r\n")
         z.writestr("README.txt", PACK_README)
     partial.replace(PACKS_DIR / name)
     size = (PACKS_DIR / name).stat().st_size

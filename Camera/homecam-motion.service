@@ -1,0 +1,20 @@
+[Unit]
+Description=Home camera motion detection and recording
+After=go2rtc.service
+Wants=go2rtc.service
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/homecam-motion.py
+DynamicUser=yes
+StateDirectory=homecam
+Environment=RECORD_DIR=/var/lib/homecam/recordings
+# Tuning (uncomment to change):
+# Environment=MOTION_PCT=0.8
+# Environment=POST_ROLL_S=10
+# Environment=RETENTION_DAYS=7
+Nice=10
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

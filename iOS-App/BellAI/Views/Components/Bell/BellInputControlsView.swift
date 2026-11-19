@@ -6,6 +6,9 @@ struct BellInputControlsView: View {
     let onKeyboardTap: () -> Void
     var onMicrophoneTap: (() -> Void)? = nil
 
+    var isListening = false
+    var isTranscribing = false
+
     private let accent = Color(red: 0.92, green: 0.24, blue: 0.49)
     private let buttonBackground = Color(red: 0.94, green: 0.92, blue: 0.93)
     private let foreground = Color(red: 0.48, green: 0.43, blue: 0.46)
@@ -26,7 +29,7 @@ struct BellInputControlsView: View {
             Button {
                 onMicrophoneTap?()
             } label: {
-                Image(systemName: "mic")
+                Image(systemName: isListening || isTranscribing ? "stop.fill" : "mic")
                     .font(.system(size: 26, weight: .light))
                     .foregroundStyle(.white)
                     .frame(width: 62, height: 62)
@@ -34,7 +37,7 @@ struct BellInputControlsView: View {
                     .shadow(color: accent.opacity(0.20), radius: 18, y: 8)
             }
             .disabled(onMicrophoneTap == nil)
-            .accessibilityLabel("Start voice input")
+            .accessibilityLabel(isTranscribing ? "Cancel voice input" : isListening ? "Stop and send voice input" : "Start voice input")
 
             Spacer(minLength: 24)
 

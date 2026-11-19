@@ -1,5 +1,3 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect, Response
-from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from websockets.exceptions import ConnectionClosed
 import ollama

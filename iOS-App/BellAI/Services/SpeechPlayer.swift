@@ -7,6 +7,11 @@ protocol SpeechPlaying: AnyObject {
     var isSpeaking: Bool { get }
     func enqueue(_ wav: Data) // plays now, or after whatever is already playing
     func stop() // also clears the queue
+    func stopForRecording() async
+}
+
+extension SpeechPlaying {
+    func stopForRecording() async { stop() }
 }
 
 // plays the sentence clips one after another
@@ -36,6 +41,14 @@ final class SpeechPlayer: SpeechPlaying {
         player = nil
         isSpeaking = false
         endSession()
+    }
+
+    func stopForRecording() async {
+        stop()
+        // Drain playback-session cleanup before recording takes over.
+        await withCheckedContinuation { continuation in
+            sessionQueue.async { continuation.resume() }
+        }
     }
 
     private func playQueue() async {
