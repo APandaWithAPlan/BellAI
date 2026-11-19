@@ -1,3 +1,6 @@
+<img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/0e216c75-3d6e-4454-b92f-37fea5e52458" />
+
+
 # BellAI
 
 ## Overview

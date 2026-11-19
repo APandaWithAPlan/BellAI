@@ -28,6 +28,16 @@ struct HomeFeatureCardsView: View {
             }
             .buttonStyle(.plain)
             NavigationLink {
+                RoutineView()
+                    #if os(iOS)
+                    .toolbar(.visible, for: .navigationBar)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+            } label: {
+                HomeRowCardView(title: "Routine", symbol: "repeat", tint: Color(red: 0.55, green: 0.36, blue: 0.96))
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
                 ConversationsView(model: conversations)
                     #if os(iOS)
                     .toolbar(.visible, for: .navigationBar)
@@ -98,8 +108,8 @@ private struct HomeRowCardView: View {
     let title: String
     let symbol: String
     let tint: Color
-    let detail: String
-    let needsAttention: Bool
+    var detail = ""
+    var needsAttention = false
 
     var body: some View {
         HStack(spacing: 10) {

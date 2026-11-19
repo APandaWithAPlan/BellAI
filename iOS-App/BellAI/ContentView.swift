@@ -84,6 +84,7 @@ struct ContentView: View {
             }
         }
         .task {
+            _ = RoutineNotifications.shared
             // BellAI gets your open tasks and important emails as context, so load them now, not when the tab opens
             chat.contextProvider = { [tasks, mail] in
                 let facts = [tasks.openTaskSummary, mail.importantSummary].compactMap { $0 }
@@ -92,10 +93,12 @@ struct ContentView: View {
             async let loadingMail: Void = mail.refresh()
             async let loggingMusic: Void = music.syncPlays()
             async let hearing: Void = conversations.processNew() // what the recorder sent while the app was closed
+            async let loadingRoutines: [Routine]? = try? RoutineNotifications.shared.refresh()
             await tasks.load()
             await loadingMail
             await loggingMusic
             await hearing
+            _ = await loadingRoutines
         }
         .sheet(isPresented: Binding(get: { meal.isShown }, set: { if !$0 { meal.dismiss() } })) {
             MealResultView(model: meal)
@@ -114,6 +117,7 @@ struct ContentView: View {
             }
             if phase == .active {
                 Task { await mail.refresh() } // new mail comes in while the app is closed
+                Task { _ = try? await RoutineNotifications.shared.refresh() } // and routines change
                 Task { await music.syncPlays() } // and songs get played
                 Task { await conversations.processNew() }
             }

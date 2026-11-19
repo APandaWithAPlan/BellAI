@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var serverPorts: [ServerSettings.Service: String] = [:]
     @State private var serverError: String?
     @State private var serverResults: [ServerSettings.Service: Bool] = [:]
+    @State private var routineServerResult: Bool?
     @State private var isTestingServer = false
     @State private var wifiSetup = RecorderWifiSetup()
     @State private var wifiName = ""
@@ -201,11 +202,11 @@ struct SettingsView: View {
                 }
                 ForEach(ServerSettings.Service.allCases, id: \.self) { service in
                     if let reached = serverResults[service] {
-                        Label("\(service.title): \(reached ? "connected" : "couldn't connect")",
-                              systemImage: reached ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(reached ? green : .red)
+                        serverStatus(service.title, reached: reached)
                     }
+                }
+                if let reached = routineServerResult {
+                    serverStatus("Routine", reached: reached)
                 }
 
                 HStack(spacing: 8) {
@@ -351,6 +352,13 @@ struct SettingsView: View {
         }
     }
 
+    private func serverStatus(_ title: String, reached: Bool) -> some View {
+        Label("\(title): \(reached ? "connected" : "couldn't connect")",
+              systemImage: reached ? "checkmark.circle.fill" : "xmark.circle.fill")
+            .font(.caption)
+            .foregroundStyle(reached ? green : .red)
+    }
+
     private func serverField(_ placeholder: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
         TextField(placeholder, text: text)
             .keyboardType(keyboard)
@@ -378,6 +386,7 @@ struct SettingsView: View {
     private func saveServer() {
         serverError = nil
         serverResults = [:]
+        routineServerResult = nil
         var ports: [ServerSettings.Service: Int] = [:]
         for service in ServerSettings.Service.allCases {
             let text = (serverPorts[service] ?? "").trimmingCharacters(in: .whitespaces)
@@ -395,12 +404,25 @@ struct SettingsView: View {
         onServerSaved()
         isTestingServer = true
         Task {
+            async let routineCheck = checkRoutineServer()
             var results: [ServerSettings.Service: Bool] = [:]
             for service in ServerSettings.Service.allCases {
                 results[service] = await ServerSettings.isReachable(service)
             }
             serverResults = results
+            routineServerResult = await routineCheck
             isTestingServer = false
+        }
+    }
+
+    private func checkRoutineServer() async -> Bool {
+        // Use the actual routines endpoint: /health can succeed on older servers
+        // that do not support routines or cannot read their stored data.
+        do {
+            _ = try await HTTPRoutineService().load()
+            return true
+        } catch {
+            return false
         }
     }
 
@@ -408,6 +430,7 @@ struct SettingsView: View {
         ServerSettings.reset()
         serverError = nil
         serverResults = [:]
+        routineServerResult = nil
         loadServerFields()
         onServerSaved()
     }
