@@ -22,7 +22,17 @@ struct HomeFeatureCardsView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     #endif
             } label: {
-                MailCardView(detail: mail.cardDetail, needsAttention: !mail.important.isEmpty || !mail.drafts.isEmpty)
+                HomeWideCardView(title: "Mail", symbol: "envelope", detail: mail.cardDetail, needsAttention: !mail.important.isEmpty || !mail.drafts.isEmpty)
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                RoutineView()
+                    #if os(iOS)
+                    .toolbar(.visible, for: .navigationBar)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+            } label: {
+                HomeWideCardView(title: "Routine", symbol: "repeat")
             }
             .buttonStyle(.plain)
         }
@@ -75,17 +85,19 @@ struct HomeFeatureCardsView: View {
 }
 
 // one wide row under the cards, it has more to say than a card has room for
-private struct MailCardView: View {
-    let detail: String
-    let needsAttention: Bool
+private struct HomeWideCardView: View {
+    let title: String
+    let symbol: String
+    var detail = ""
+    var needsAttention = false
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "envelope")
+            Image(systemName: symbol)
                 .font(.system(size: 16, weight: .light))
                 .foregroundStyle(Color(red: 0.55, green: 0.36, blue: 0.96))
                 .accessibilityHidden(true)
-            Text("Mail")
+            Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color(red: 0.16, green: 0.13, blue: 0.15))
             Spacer(minLength: 8)

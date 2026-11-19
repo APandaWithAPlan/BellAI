@@ -6,6 +6,30 @@
 
 It stores one JSON object (`{"tasks": [...]}` and whatever else the app saves) in a single row of `bellai.db`.
 
+## Routines
+
+Home → Routine → Create saves a name, local time, timezone, and ordered text actions.
+The app uses the same data server address as Tasks (port 8001). Routines live in a
+separate `routines` table inside the same `DATA_DB` / `bellai.db` SQLite database;
+the table is created automatically. No additional database configuration is needed.
+Restart the data server after installing the updated requirements.
+
+`GET /routines` returns `{"routines": [...]}`. `POST /routines` accepts `id` (UUID),
+`name` (1–100 characters), `time` (`HH:mm`), `timezone` (IANA), and `actions`
+(1–50 strings, each 1–500 characters), and returns the saved routine. Repeated
+requests with the same ID and content do not create duplicates; different content
+for an existing ID returns 409. Task saves do not overwrite routines.
+`DELETE /routines/{id}` removes a routine and returns 204, including if it was already deleted.
+
+These endpoints store routines. The iOS app schedules daily local notifications
+in each routine's saved timezone after notification permission is granted. It
+refreshes schedules when opened and after saving. Already scheduled reminders
+work without the server; changes made elsewhere require opening the app to sync.
+Notifications remind you of the actions; they do not execute them.
+
+Run `python -m unittest discover -s tests` from this directory for validation,
+retry, and persistence checks against a temporary database.
+
 ## Getting Started
 
 ### Prerequisites

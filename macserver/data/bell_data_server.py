@@ -11,29 +11,18 @@
 import json
 import logging
 import os
-import sqlite3
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from routines import router as routines_router
+from storage import DB_PATH, db
 
 log = logging.getLogger("bell_data")
 
-DB_PATH = os.environ.get("DATA_DB") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "bellai.db")
 MAX_PAYLOAD_BYTES = 100_000
-
-
-@contextmanager
-def db():
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        with conn:  # commits, or rolls back if something raises
-            yield conn
-    finally:
-        conn.close()
 
 
 # the id check keeps it to a single row
@@ -44,6 +33,7 @@ with db() as conn:
     )
 
 app = FastAPI()
+app.include_router(routines_router)
 
 
 class Save(BaseModel):
