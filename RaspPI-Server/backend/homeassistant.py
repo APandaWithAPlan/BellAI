@@ -2,7 +2,8 @@ import os
 import json
 import httpx
 from dotenv import load_dotenv
-from websockets.asyncio.client import connect
+import asyncio
+from py_ha_ws_client import HomeAssistantWsClient
 
 load_dotenv()
 
@@ -11,24 +12,24 @@ HA_TOKEN = os.getenv("HA_TOKEN")
 HA_WEATHER_ENTITY = os.getenv("HA_WEATHER_ENTITY")
 HA_HOME_LOCATION_ENTITY = os.getenv("HA_HOME_LOCATION_ENTITY")
 
-# async def listen_to_home_assistant():
-#     ws_url = HA_URL.replace("http://", "ws://") + "/api/websocket"
+async def listen_to_home_assistant(on_state_change):
+    ws_url = HA_URL.replace("http://", "ws://") + "/api/websocket"
 
-#     async with connect(ws_url) as websocket:
-#         message = json.loads(await websocket.recv())
+    async with HomeAssistantWsClient.with_url(HA_TOKEN, ws_url, auto_reconnect=True) as client:
+        async def handle_state_change(event):
+            data = event["data"]
+            entity_id = data["entity_id"]
 
-#     if message["type"] != "auth_required":
-#         raise RuntimeError("Unexpected authentication response")
+            if entity_id.startswith(("light.", "switch.", "media_player.")):
+                await on_state_change({
+                    "entity_id": entity_id,
+                    "new_state": data.get("new_state")
+                })
 
-#     await websocket.send(json.dumps({
-#     "type": "auth",
-#     "access_token": HA_TOKEN
-#     }))
+        await client.subscribe_events("state_changed", handle_state_change)
 
-#     auth_response = json.loads(await websocket.recv())
+        await asyncio.Event().wait()
 
-#     if auth_response["type"] != "auth_ok":
-#             raise RuntimeError("Unable to authenticate to Home Assistant.")
 
 async def get_entity(entity_id: str):
 
@@ -46,17 +47,43 @@ async def get_entity(entity_id: str):
 
 async def get_entities():
 
+    template = """
+
+        {% set domains = ['light', 'media_player', 'switch', 'fan'] %}
+        {% set ns = namespace(devices=[]) %}
+
+        {% for entity in states | selectattr('domain', 'in', domains) %}
+            {% set ns.devices = ns.devices + [{
+                'entity_id': entity.entity_id,
+                'name': entity.attributes.get('friendly_name', entity.entity_id),
+                'state': entity.state,
+                'area': area_name(entity.entity_id),
+                'attributes': {
+                    'media_title': entity.attributes.get('media_title'),
+                    'media_artist': entity.attributes.get('media_artist'),
+                    'entity_picture': entity.attributes.get('entity_picture'),
+                }
+            }] %}
+        {% endfor %}
+
+        {{ ns.devices | to_json }}
+
+    """
+
     async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.get(
-            f"{HA_URL}/api/states/",
+        response = await client.post(
+            f"{HA_URL}/api/template",
             headers={
                 "Authorization": f"Bearer {HA_TOKEN}"
+            },
+            json={
+                "template": template
             }
         )
 
         response.raise_for_status()
 
-        return response.json()
+        return json.loads(response.text)
 
 async def get_forecast(entity_id: str):
 
@@ -77,6 +104,22 @@ async def get_forecast(entity_id: str):
         
         return response.json()
 
+async def get_album_cover(entity_picture: str):
+    if not entity_picture:
+        return None
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            f"{HA_URL}{entity_picture}",
+            headers={
+                "Authorization": f"Bearer {HA_TOKEN}"
+            }
+        )
+
+        response.raise_for_status()
+
+        return response.content, response.headers.get("content-type", "image/jpeg")
+
 async def command_device(entity_id: str, domain: str, action: str, data: dict | None = None):
 
     async with httpx.AsyncClient(timeout=10.0) as client:
@@ -94,4 +137,3 @@ async def command_device(entity_id: str, domain: str, action: str, data: dict | 
         response.raise_for_status()
 
         return response.json()
-

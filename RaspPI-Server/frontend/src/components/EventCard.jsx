@@ -1,7 +1,7 @@
 import { Card, CardContent } from "./ui/card"
 import { Separator } from "@/components/ui/separator"
 
-function EventCard({ time, timeUntil, title }) {
+function EventCard({ subject, due }) {
   return (
     <Card className="rounded-xl border border-[#fbcfe8] bg-white p-4 text-black shadow-lg">
       <CardContent className="flex items-center justify-between gap-4 p-0">
@@ -13,11 +13,12 @@ function EventCard({ time, timeUntil, title }) {
           <div className="min-w-0">
 
             <p className="text-lg font-semibold">
-                {title}
+                {subject}
             </p>
 
             <p className="text-sm text-[#be185d]">
-              {time} · {timeUntil}
+              {/* {time} · {timeUntil} */}
+              {due}
             </p>
 
           </div>

@@ -1,30 +1,16 @@
-import { useState } from "react"
 import SmartHomeCard from "../components/SmartHomeCard"
-import { Lightbulb, Thermometer, Lock, Mic } from "lucide-react"
+import { useToggleDevice } from "../hooks/useToggleDevice"
+import { Lightbulb } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 
+
 function Devices() {
+  const { devices, toggleDevice } = useToggleDevice();
+  const lights = Object.values(devices).filter(device => device.entity_id.startsWith("light."));
+  const activeDevices = lights.filter(device => device.state === "on").length;
+  const totalDevices = lights.length;
+  const progress = totalDevices > 0 ? (activeDevices / totalDevices) * 100 : 0;
 
-  const [devices, setDevices] = useState([
-    { id: 1, location: "Living Room", isOn: true },
-  ])
-
-  function toggleDevice(id, checked) {
-    setDevices(prevDevices =>
-      prevDevices.map(device =>
-        device.id === id
-          ? { ...device, isOn: checked }
-          : device
-      )
-    )
-  }
-
-  const activeDevices = devices.filter(device => device.isOn).length
-  const totalDevices = devices.length
-  const progress = totalDevices > 0
-    ? (activeDevices / totalDevices) * 100
-    : 0
-    
     return (
         <div className="space-y-2">
             
@@ -36,22 +22,20 @@ function Devices() {
 
             <Progress value={progress} className="h-1 bg-[#f9ddea] [&_[data-slot=progress-indicator]]:bg-[#db2777]"/>
         
-            <div className="grid grid-cols-6 p-4 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 p-4">
 
-                {devices.map(device => (
-
+                {lights.map(light => (
                     <SmartHomeCard
-                        key={device.id}
+                        key={light.entity_id}
                         icon={Lightbulb}
-                        location={device.location}
-                        isOn={device.isOn}
                         color="#ef6cba"
-                        onToggle={checked => toggleDevice(device.id, checked)}
+                        device={light.name ?? "Unknown Device"}
+                        location={light.area ?? "Unassigned"}
+                        isOn={light.state === "on"}
+                        onToggle={checked => toggleDevice(light.entity_id, checked)}
                     />
                 ))}
-
             </div>
-
         </div> 
     )
 }

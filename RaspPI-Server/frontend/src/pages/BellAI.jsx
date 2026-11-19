@@ -2,23 +2,18 @@ import { useState, useRef } from "react"
 import { Mic, Send, LoaderCircle } from "lucide-react"
 import { Message, MessageContent, } from "@/components/ui/message"
 import { Bubble, BubbleContent, } from "@/components/ui/bubble"
-import {
-  MessageScrollerProvider,
-  MessageScroller,
-  MessageScrollerViewport,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerButton,
-} from "@/components/ui/message-scroller"
+import { MessageScrollerProvider, MessageScroller, MessageScrollerViewport, MessageScrollerContent, MessageScrollerItem, MessageScrollerButton } from "@/components/ui/message-scroller"
 import { toast } from "@/components/ui/toast"
+import { useChatWebSocket } from "../hooks/useChatWebSocket"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 function BellAI() {
 
     const [input, setInput] = useState("")
-    const [messages, setMessages] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
+
+    const {messages, isLoading, isConnected, sendToBellAI} = useChatWebSocket();
 
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]); 
@@ -63,29 +58,18 @@ function BellAI() {
                     }
 
                     const data = await response.json();
-                    
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            id: crypto.randomUUID(),
-                            role: "user",
-                            content: data.transcript,
-                            time: new Date().toLocaleTimeString([], {
-                                hour: "numeric",
-                                minute: "2-digit"
-                            })
-                        }
-                    ]);
 
                     setIsTranscribing(false);
                     setIsRecording(false);
 
-                    await sendToBellAI(data.transcript);
+                    if (!sendToBellAI(data.transcript)) {
+                        throw new Error("BellAI is busy or disconnected.");
+                    }
 
                 } catch (error) {
                     toast.add({
                         type: "warning",
-                        description: error.message + " Unable to process audio."
+                        description: error.message
                     });
                 
 
@@ -106,7 +90,7 @@ function BellAI() {
 
             toast.add({
                 type: "warning",
-                description: error.message + " Unable to connect to BellAI."
+                description: error.message
             });
         }
     }
@@ -118,66 +102,13 @@ function BellAI() {
         }
     }
 
-    async function sendMessage() {
-        if (!input.trim()) return;
-
+    function sendMessage() {
         const request = input.trim();
 
-        setMessages(prev => [
-            ...prev, {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: request,
-                time: new Date().toLocaleTimeString([], {
-                    hour: "numeric", 
-                    minute: "2-digit"
-                })
-            }
-        ]);
+        if (!request) return;
 
-        setInput("");
-
-        await sendToBellAI(request);
-    }
-
-    async function sendToBellAI(request) {
-        setIsLoading(true);
-
-        try {
-            const response = await fetch("/api/chat", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ request })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Request failed: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            setMessages(prev => [
-                ...prev,
-                {
-                    id: crypto.randomUUID(),
-                    role: "assistant",
-                    content: data.response,
-                    time: new Date().toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit"
-                    })
-                }
-            ]);
-
-        } catch (error) {
-            toast.add({
-                type: "warning",
-                description: error.message + " Unable to connect to BellAI."
-            });
-        } finally {
-            setIsLoading(false);
+        if (sendToBellAI(request)) {
+            setInput("");
         }
     }
 
@@ -194,9 +125,15 @@ function BellAI() {
                                             <MessageContent>
                                                 <div className={`flex w-full gap-2 ${ message.role === "user" ? "justify-end" : "justify-start" }`}>
                                                     {message.role === "assistant" && (
-                                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#fbcfe8] bg-[#fad5e6] text-xs text-black">
-                                                            B
-                                                        </div>
+                                                        <Avatar className="h-7 w-7 shrink-0 border border-[#fbcfe8]">
+                                                            <AvatarImage
+                                                                src="/assets/bellai-avatar.png"
+                                                                className="object-cover"
+                                                            />
+                                                            <AvatarFallback className="bg-[#fad5e6] text-xs text-black">
+                                                                B
+                                                            </AvatarFallback>
+                                                        </Avatar>
                                                     )}
                                                     <div className="flex min-w-0 flex-col gap-1">
                                                 <Bubble className="rounded-xl border border-[#fbcfe8] shadow-lg">

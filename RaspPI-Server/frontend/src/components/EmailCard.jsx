@@ -1,6 +1,6 @@
 import { Card, CardContent } from "./ui/card"
 
-function EmailCard({ sender, subject, contents, time }) {
+function EmailCard({ sender, subject, summary, received }) {
   return (
     <Card className="rounded-xl border border-[#fbcfe8] bg-white p-4 text-white shadow-lg">
       <CardContent className="flex flex-col gap-1 p-0">
@@ -12,7 +12,7 @@ function EmailCard({ sender, subject, contents, time }) {
             </p>
 
             <p className="shrink-0 text-xs text-[#be185d]">
-                {time}
+                {received.toLocaleString("en-US")}
             </p>
 
         </div>
@@ -22,7 +22,7 @@ function EmailCard({ sender, subject, contents, time }) {
             </p>
 
             <p className="text-xs text-[#be185d]">
-              {contents}
+              {summary}
             </p>
 
       </CardContent>

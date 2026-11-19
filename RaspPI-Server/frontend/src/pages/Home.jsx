@@ -1,86 +1,24 @@
 import DateTimeCard from "../components/DateTimeCard"
 import { useDateTime } from "../hooks/useDateTime"
 import WeatherCard from "../components/WeatherCard"
+import { useWeather } from "../hooks/useWeather"
+import { useLocation } from "../hooks/useLocation"
 import DeviceCard from "../components/DeviceCard"
 import MusicCard from "../components/MusicCard"
+import { useDeviceWebsockets } from "../hooks/useDeviceWebsockets"
 import EventCard from "../components/EventCard"
-import { Lightbulb, Thermometer, Lock, Mic } from "lucide-react"
-import { useState, useEffect } from "react";
-import { toast } from "@/components/ui/toast"
+import { Lightbulb, Thermometer, Lock, Cog } from "lucide-react"
+import { useEmails } from "../hooks/useEmails"
 
 function Home() {
 
     const { date, time, period } = useDateTime();
-    const [weather, setWeather] = useState(null);
-    const [location, setLocation] = useState(null);
-
-    useEffect(() => {
-        let active = true;
-
-        async function fetchWeather() {
-            try {
-                const response = await fetch("/api/weather");
-
-                if(!response.ok) {
-                    throw new Error("Failed to fetch /api/weather.");
-                }
-
-                const data = await response.json();
-
-                if (active) {
-                setWeather(data);
-                }
-            } catch (error) {
-                if (active) {
-
-                    toast.add({
-                        type: "warning",
-                        description: error.message
-                    });
-                }
-            }
-        }
-
-        fetchWeather();
-
-        return () => {
-            active = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        let active = true;
-
-        async function fetchLocation() {
-            try {
-                const response = await fetch("/api/location");
-
-                if(!response.ok) {
-                    throw new Error("Failed to fetch /api/location.");
-                }
-
-                const data = await response.json();
-
-                if (active) {
-                setLocation(data);
-                }
-            } catch (error) {
-                if (active) {
-
-                    toast.add({
-                        type: "warning",
-                        description: error.message
-                    });
-                }
-            }
-        }
-
-        fetchLocation();
-
-        return () => {
-            active = false;
-        };
-    }, []);
+    const { weather } = useWeather();
+    const { location } = useLocation();
+    const { devices } = useDeviceWebsockets();
+    const activeLights = Object.values(devices).filter(device => device.entity_id.startsWith("light") && device.state === "on").length;
+    const media_players = Object.values(devices).filter(device => device.entity_id.startsWith("media_player."));
+    const { today_events } = useEmails();
     
     return (
         <div className="grid grid-cols-4 gap-4">
@@ -92,44 +30,60 @@ function Home() {
             <div className="col-span-1">
                 {weather && location ? (
                 <WeatherCard temperature={weather.temperature} temperature_unit={weather.temperature_unit} description={weather.description} high={weather.high} low={weather.low} hum={weather.humidity} location={`${location.city}, ${location.state}`} />
-                ) : ( <p></p>
+                ) : ( <WeatherCard temperature="" temperature_unit="" description="" high="" low="" hum="" location="" />
                 )}
             </div>
 
             <DeviceCard
                 icon={Lightbulb}
-                value="6 Lights"
+                value={`${activeLights} Lights`}
                 label="Active"
                 color="#ef6cba"
             />
 
             <DeviceCard
                 icon={Thermometer}
-                value="85°F"
+                value="Unavailable"
                 label="Thermostat"
                 color="#54b7e8"
             />
 
             <DeviceCard
                 icon={Lock}
-                value="Locked"
+                value="Unavailable"
                 label="Doors"
                 color="#37c5a1"
             />
 
             <DeviceCard
-                icon={Mic}
-                value="Ask BellAI"
-                label="Voice"
+                icon={Cog}
+                value="Unavailable"
+                label="Sensors"
                 color="#ef6cba"
             />
 
-            <div className="col-span-4">
-                <MusicCard song="Blonde" artist="Frank Ocean" device="Living Room Speaker" />
+            <div className="col-span-4"> 
+                {media_players.map(media_player => (
+                    <MusicCard 
+                        key={media_player.entity_id}
+                        entity_id={media_player.entity_id}
+                        device={media_player.friendly_name ?? media_player.attributes?.friendly_name ?? media_player.device}
+                        song={media_player.attributes.media_title}
+                        artist={media_player.attributes.media_artist}
+                        album_cover={media_player.attributes.entity_picture}
+                        isPlaying={media_player.state === "playing"}
+                    />
+                ))}
             </div>
 
             <div className="col-span-4">
-                <EventCard time="9:30 AM" timeUntil="30 min" title="Team Standup" />
+                {today_events.map((event) => (
+                    <EventCard
+                        key={event.id}
+                        subject={event.subject}
+                        due={event.due}
+                    />
+                ))}
             </div>
 
         </div>  
