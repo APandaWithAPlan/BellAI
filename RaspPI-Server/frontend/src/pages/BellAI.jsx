@@ -5,6 +5,7 @@ import { Bubble, BubbleContent, } from "@/components/ui/bubble"
 import { MessageScrollerProvider, MessageScroller, MessageScrollerViewport, MessageScrollerContent, MessageScrollerItem, MessageScrollerButton } from "@/components/ui/message-scroller"
 import { toast } from "@/components/ui/toast"
 import { useChatWebSocket } from "../hooks/useChatWebSocket"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 function BellAI() {
 
@@ -124,9 +125,15 @@ function BellAI() {
                                             <MessageContent>
                                                 <div className={`flex w-full gap-2 ${ message.role === "user" ? "justify-end" : "justify-start" }`}>
                                                     {message.role === "assistant" && (
-                                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#fbcfe8] bg-[#fad5e6] text-xs text-black">
-                                                            B
-                                                        </div>
+                                                        <Avatar className="h-7 w-7 shrink-0 border border-[#fbcfe8]">
+                                                            <AvatarImage
+                                                                src="/assets/bellai-avatar.png"
+                                                                className="object-cover"
+                                                            />
+                                                            <AvatarFallback className="bg-[#fad5e6] text-xs text-black">
+                                                                B
+                                                            </AvatarFallback>
+                                                        </Avatar>
                                                     )}
                                                     <div className="flex min-w-0 flex-col gap-1">
                                                 <Bubble className="rounded-xl border border-[#fbcfe8] shadow-lg">
